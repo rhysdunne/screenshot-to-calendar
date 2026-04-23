@@ -58,6 +58,48 @@ Note: The Shortcut passes text (base64) to Scriptable because Scriptable's "Run 
 - **Anthropic API**: Uses Header Auth credential in n8n. Model is `claude-sonnet-4-20250514`.
 - **n8n version**: 2.3.6 (as of initial development). Google Calendar node is v1.3.
 
+## First-time setup
+
+### 1. Environment
+```bash
+cp .env.example .env
+# Fill in N8N_WEBHOOK_URL (your Tailscale hostname), N8N_API_KEY, and N8N_WORKFLOW_ID
+make up
+```
+
+### 2. n8n credentials (via n8n UI at http://localhost:5678)
+
+**Anthropic API key:**
+- Settings → Credentials → Add → Header Auth
+- Name: `Header Auth account`
+- Name field: `x-api-key`, Value field: your Anthropic API key
+
+**Google Calendar OAuth:**
+- Settings → Credentials → Add → Google Calendar OAuth2
+- Follow the OAuth flow — callback URL is `http://localhost:5678/oauth2/callback`
+- `N8N_EDITOR_BASE_URL=http://localhost:5678/` in docker-compose.yml ensures this works locally
+
+### 3. Workflow
+```bash
+make push   # deploy workflow JSON to n8n
+```
+Then activate the workflow in the n8n editor (toggle in top-right).
+
+### 4. Scriptable (iPhone)
+```bash
+make deploy  # copies ScreenshotToCalendar.js to Scriptable's iCloud folder
+```
+- Open Scriptable on iPhone, run `ScreenshotToCalendar` — it will prompt for your n8n hostname (e.g. `myhost.ts.net`)
+- Port defaults to `5678`; set `n8n_port` in Keychain only if different
+
+### 5. iOS Shortcut
+- Create a Shortcut called "Capture Event" (or similar) in the Share Sheet
+- Actions: Receive Images → Resize Image (width 1500) → Base64 Encode → Run Script "ScreenshotToCalendar" in Scriptable
+
+### Subsequent use
+- `make pull` before editing the workflow JSON, `make push` to deploy changes
+- `make deploy` after editing `ScreenshotToCalendar.js`
+
 ## Claude Vision prompt
 
 The prompt in the "Prepare Vision Request" node asks Claude to extract:
