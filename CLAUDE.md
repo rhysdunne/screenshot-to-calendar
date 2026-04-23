@@ -1,0 +1,115 @@
+# CLAUDE.md
+
+## Project: screenshot-to-irl
+
+An automation pipeline that turns screenshots and photos of event posters, flyers, and Instagram posts into Google Calendar events. Built to solve the universal habit of screenshotting things you want to do and then never acting on them.
+
+## How it works
+
+```
+iPhone Share Sheet
+  → iOS Shortcut (resizes image, base64 encodes it)
+    → Scriptable (POSTs to n8n webhook, shows result)
+      → n8n Webhook (receives base64 image)
+        → Claude Vision API (extracts structured event data as JSON)
+          → Google Calendar (creates event with title, dates, venue, description)
+            → Response back to Scriptable (confirmation alert with "Open in Calendar" option)
+```
+
+The user's flow: see a poster or Instagram post → share the image → tap "Capture Event" → get a calendar event created automatically.
+
+## Key files
+
+| File | Purpose |
+|------|---------|
+| `ScreenshotToCalendar.js` | Scriptable script that runs on iPhone. Handles three input modes: via iOS Shortcut (receives base64 string), via Scriptable Share Sheet (receives image directly), or manual run (photo picker). POSTs to the n8n webhook and displays the result. |
+| `screenshot-to-calendar-workflow.json` | n8n workflow JSON — import into n8n via Workflows → Import. This is the version from initial development; the live workflow in n8n may have diverged. **Always re-export from n8n before making changes here.** |
+| `docker-compose.yml` | Docker Compose config for the self-hosted n8n instance. Mounts `~/.n8n` for persistent data. |
+| `n8n-configuration.json` | Likely a duplicate/earlier version of the workflow JSON. Check if this can be removed. |
+| `test-image.jpg` | A test image of an event poster, used during development for testing the pipeline via curl. |
+
+## n8n workflow nodes (in execution order)
+
+1. **Webhook** — Receives POST at `/webhook/screenshot-to-calendar` with `{type: "image", image: "<base64>"}`. Response mode is set to "last node" so the Scriptable script gets the final output.
+2. **Route by Type** (Switch) — Branches on `body.type`: `"image"` goes to the vision pipeline, `"url"` goes to a placeholder (not yet implemented).
+3. **Prepare Vision Request** (Code) — Builds the Anthropic API request body. Detects image format from base64 magic bytes (PNG starts with `iVBOR`, JPEG with `/9j/`). Injects today's date into the prompt so Claude can resolve relative dates like "next Saturday".
+4. **Claude Vision API** (HTTP Request) — POSTs to `https://api.anthropic.com/v1/messages` with the image and extraction prompt. Uses Header Auth credential for the API key. 120s timeout.
+5. **Parse Event Data** (Code) — Extracts JSON from Claude's response, handles markdown code fences. Builds Google Calendar fields: maps dates/times, handles all-day vs timed events, constructs description from venue/address/URL/confidence.
+6. **Google Calendar** (v1.3) — Creates the event. `start` and `end` are top-level required params. `summary`, `description`, `location`, and `allday` go inside `additionalFields`.
+7. **Format Response** (Code) — Returns `{status, message, calendarEventId, eventLink}` to the Scriptable script.
+8. **URL Path (TODO)** (Code) — Placeholder that returns an error message. Instagram URL parsing is not yet implemented.
+
+## iOS Shortcut configuration
+
+The Shortcut is called "Capture Event" and appears at the top level of the iOS Share Sheet.
+
+Actions:
+1. Receive **Images** from Share Sheet
+2. **Resize Image** to width 1500 (important: this converts to PNG regardless of input format)
+3. **Base64 Encode** the resized image
+4. **Run Script** "ScreenshotToCalendar" in Scriptable, passing the base64 string as text input
+
+Note: The Shortcut passes text (base64) to Scriptable because Scriptable's "Run Script" action from Shortcuts silently drops image inputs — it only supports text via `args.shortcutParameter`.
+
+## Infrastructure
+
+- **n8n**: Self-hosted via Docker Desktop on macOS. Data persists in `~/.n8n/` (bind mount, contains `database.sqlite`).
+- **Networking**: n8n is exposed to the iPhone via Tailscale (MagicDNS hostname in the compose file). No custom domain.
+- **Google Calendar OAuth**: Set up via `localhost:5678` callback URL. The `N8N_EDITOR_BASE_URL` env var ensures the OAuth callback uses localhost while `WEBHOOK_URL` uses the Tailscale hostname for external webhooks.
+- **Anthropic API**: Uses Header Auth credential in n8n. Model is `claude-sonnet-4-20250514`.
+- **n8n version**: 2.3.6 (as of initial development). Google Calendar node is v1.3.
+
+## Claude Vision prompt
+
+The prompt in the "Prepare Vision Request" node asks Claude to extract:
+```json
+{
+  "title": "event or exhibition name",
+  "venue": "venue name if visible, otherwise null",
+  "address": "full address if visible, otherwise null",
+  "start_date": "YYYY-MM-DD or null",
+  "end_date": "YYYY-MM-DD or null",
+  "start_time": "HH:MM or null (24h format)",
+  "end_time": "HH:MM or null (24h format)",
+  "description": "brief one-sentence summary",
+  "url": "any website or ticket link visible, otherwise null",
+  "confidence": "high/medium/low"
+}
+```
+
+Key prompt rules: infer end dates from "until" / "runs through" phrasing, resolve day-of-week references relative to today, assume 2026 for ambiguous years, include Instagram handles in description.
+
+## Known issues and quirks
+
+- **iOS Shortcuts "Resize Image" outputs PNG** regardless of input format. The n8n Code node detects format from base64 magic bytes to set the correct `media_type` for the Anthropic API.
+- **n8n Google Calendar node v1.3**: `summary`, `description`, `location`, and `allday` must be inside `additionalFields`, not top-level params. `allday` accepts string values `"yes"` / `"no"`, not booleans.
+- **Webhook paths**: `/webhook/screenshot-to-calendar` only works when workflow is Active. `/webhook-test/screenshot-to-calendar` only works for a single request while the editor is listening.
+- **Large images**: iPhone photos can be 10MB+, base64 inflates by ~33%. The Shortcut's resize step mitigates this, but very large screenshots could still hit payload limits.
+
+## Things to parameterise
+
+These values are currently hardcoded and should be extracted to config/env:
+- `N8N_WEBHOOK_URL` in `ScreenshotToCalendar.js` (Tailscale hostname)
+- `MAX_IMAGE_WIDTH` in `ScreenshotToCalendar.js`
+- Claude model name in the "Prepare Vision Request" Code node
+- Tailscale hostname in `docker-compose.yml`
+- Google Calendar ID (currently `primary`)
+
+## Planned enhancements (priority order)
+
+1. **Dedicated calendar** — Create a "London Events" calendar and target that instead of `primary`. Keeps auto-captured events separate.
+2. **Deduplication** — Before creating an event, query Google Calendar for events with similar titles in the same date range. Fuzzy match to catch duplicates from different sources.
+3. **Image attachment** — Upload the source image to Google Drive, attach it to the calendar event so the original poster/screenshot is reviewable alongside the parsed data.
+4. **Weekly digest** — Scheduled n8n workflow that runs Monday mornings: queries the events calendar for the next 7 days, formats a summary, sends via email or Telegram.
+5. **Venue enrichment** — If `address` is null but `venue` is present, hit Google Places Text Search API to resolve the full address and Google Maps link.
+6. **Category tagging** — Extend the Claude prompt to classify events (exhibition, music, theatre, food/drink, workshop, talk). Could map to colour-coded calendars or description prefixes.
+7. **Confidence gating** — If Claude returns `confidence: low`, send a review notification instead of auto-creating the event.
+8. **Price extraction** — Add a `price` field (free / £amount / unknown) to the Claude prompt.
+9. **Instagram URL path** — Accept Instagram post URLs, resolve via oEmbed API, extract image and caption for parsing. Optionally fetch account bio for venue address.
+
+## Development notes
+
+- The workflow JSON in this repo may not match the live n8n workflow. Always export from n8n (three dots → Export) before making programmatic changes, and re-import after.
+- To test the webhook locally: `curl -X POST http://localhost:5678/webhook/screenshot-to-calendar -H "Content-Type: application/json" -d '{"type":"image","image":"<base64>"}'`
+- The Scriptable script must be manually copied into the Scriptable app on the iPhone — there's no deployment pipeline for this.
+- n8n credentials (Anthropic API key, Google Calendar OAuth) are stored in n8n's database (`~/.n8n/database.sqlite`) and are not in this repo.
