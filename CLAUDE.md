@@ -151,6 +151,7 @@ Tracked as GitHub issues:
 - [#2 Confidence gating](../../issues/2) — If Claude returns `confidence: low`, send a review notification instead of auto-creating the event.
 - [#4 Price extraction](../../issues/4) — Add a `price` field (free / £amount / unknown) to the Claude prompt.
 - [#1 Instagram URL path](../../issues/1) — Accept Instagram post URLs, resolve via oEmbed API, extract image and caption for parsing. Optionally fetch account bio for venue address.
+- [#9 Simplify iOS Shortcut](../../issues/9) — Move image resizing and base64 encoding from the Shortcut into Scriptable, reducing the Shortcut to just two steps: receive image → run script.
 
 ## Development notes
 
