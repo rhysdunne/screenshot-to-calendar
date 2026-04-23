@@ -5,16 +5,19 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "screenshot-to-calendar",
+        "responseMode": "lastNode",
         "options": {
           "rawBody": false
-        },
-        "responseMode": "lastNode"
+        }
       },
-      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "id": "ac553af3-56c8-47ff-8cc8-2590cd4aee25",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        -464,
+        112
+      ],
       "webhookId": "screenshot-to-calendar"
     },
     {
@@ -65,21 +68,27 @@
         },
         "options": {}
       },
-      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "id": "7b40e6ad-36f6-4c37-9230-bea9c1e3af6d",
       "name": "Route by Type",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [460, 300]
+      "position": [
+        -240,
+        112
+      ]
     },
     {
       "parameters": {
-        "jsCode": "// Prepare the Anthropic Vision API request body\nconst inputData = $input.first().json.body;\nconst imageBase64 = inputData.image;\n\n// Detect media type from the data URI prefix if present,\n// otherwise default to JPEG (iPhone photos)\nlet mediaType = 'image/jpeg';\nif (imageBase64.startsWith('data:')) {\n  const match = imageBase64.match(/^data:(image\\/[a-zA-Z+]+);base64,/);\n  if (match) {\n    mediaType = match[1];\n  }\n}\n\n// Strip data URI prefix if present\nconst cleanBase64 = imageBase64.replace(/^data:image\\/[a-zA-Z+]+;base64,/, '');\n\nconst today = new Date().toISOString().split('T')[0];\n\nconst requestBody = {\n  model: 'claude-sonnet-4-20250514',\n  max_tokens: 1024,\n  messages: [\n    {\n      role: 'user',\n      content: [\n        {\n          type: 'image',\n          source: {\n            type: 'base64',\n            media_type: mediaType,\n            data: cleanBase64\n          }\n        },\n        {\n          type: 'text',\n          text: `Today's date is ${today}. Analyse this image. It shows a poster, flyer, social media post, or screenshot advertising an event or exhibition, likely in London.\\n\\nExtract the following and return ONLY valid JSON with no markdown formatting:\\n{\\n  \"title\": \"event or exhibition name\",\\n  \"venue\": \"venue name if visible, otherwise null\",\\n  \"address\": \"full address if visible, otherwise null\",\\n  \"start_date\": \"YYYY-MM-DD or null\",\\n  \"end_date\": \"YYYY-MM-DD or null (for exhibitions with a run period)\",\\n  \"start_time\": \"HH:MM or null (24h format)\",\\n  \"end_time\": \"HH:MM or null (24h format)\",\\n  \"description\": \"brief one-sentence summary of the event\",\\n  \"url\": \"any website or ticket link visible, otherwise null\",\\n  \"confidence\": \"high/medium/low — how confident you are in the extracted dates\"\\n}\\n\\nRules:\\n- If a date says \"until 30 March\" or \"runs through April\", infer the end_date.\\n- If only a day of the week is given (e.g. \"Saturday\"), infer the next occurrence from today.\\n- If the year is ambiguous, assume 2026.\\n- If you see an Instagram handle or account name, include it in the description.\\n- Return ONLY the JSON object, no explanation or markdown.`\n        }\n      ]\n    }\n  ]\n};\n\nreturn { json: requestBody };"
+        "jsCode": "// Prepare the Anthropic Vision API request body\nconst inputData = $input.first().json.body;\nconst imageBase64 = inputData.image;\n\n// Detect media type from data URI prefix or magic bytes\nlet mediaType = 'image/jpeg';\nif (imageBase64.startsWith('data:')) {\n  const match = imageBase64.match(/^data:(image\\/[a-zA-Z+]+);base64,/);\n  if (match) {\n    mediaType = match[1];\n  }\n} else {\n  // No data URI prefix — detect from base64 magic bytes\n  if (imageBase64.startsWith('iVBOR')) {\n    mediaType = 'image/png';\n  } else if (imageBase64.startsWith('R0lGOD')) {\n    mediaType = 'image/gif';\n  } else if (imageBase64.startsWith('UklGR')) {\n    mediaType = 'image/webp';\n  }\n  // else stays as image/jpeg (starts with /9j/)\n}\n\n// Strip data URI prefix if present\nconst cleanBase64 = imageBase64.replace(/^data:image\\/[a-zA-Z+]+;base64,/, '');\n\nconst today = new Date().toISOString().split('T')[0];\n\nconst requestBody = {\n  model: 'claude-sonnet-4-20250514',\n  max_tokens: 1024,\n  messages: [\n    {\n      role: 'user',\n      content: [\n        {\n          type: 'image',\n          source: {\n            type: 'base64',\n            media_type: mediaType,\n            data: cleanBase64\n          }\n        },\n        {\n          type: 'text',\n          text: `Today's date is ${today}. Analyse this image. It shows a poster, flyer, social media post, or screenshot advertising an event or exhibition, likely in London.\\n\\nExtract the following and return ONLY valid JSON with no markdown formatting:\\n{\\n  \"title\": \"event or exhibition name\",\\n  \"venue\": \"venue name if visible, otherwise null\",\\n  \"address\": \"full address if visible, otherwise null\",\\n  \"start_date\": \"YYYY-MM-DD or null\",\\n  \"end_date\": \"YYYY-MM-DD or null (for exhibitions with a run period)\",\\n  \"start_time\": \"HH:MM or null (24h format)\",\\n  \"end_time\": \"HH:MM or null (24h format)\",\\n  \"description\": \"brief one-sentence summary of the event\",\\n  \"url\": \"any website or ticket link visible, otherwise null\",\\n  \"confidence\": \"high/medium/low — how confident you are in the extracted dates\"\\n}\\n\\nRules:\\n- If a date says \"until 30 March\" or \"runs through April\", infer the end_date.\\n- If only a day of the week is given (e.g. \"Saturday\"), infer the next occurrence from today.\\n- If the year is ambiguous, assume 2026.\\n- If you see an Instagram handle or account name, include it in the description.\\n- Return ONLY the JSON object, no explanation or markdown.`\n        }\n      ]\n    }\n  ]\n};\n\nreturn { json: requestBody };"
       },
-      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "id": "1904d8c3-a244-4a68-a37f-10b9ecc69e4c",
       "name": "Prepare Vision Request",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 200]
+      "position": [
+        0,
+        0
+      ]
     },
     {
       "parameters": {
@@ -90,10 +99,6 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            {
-              "name": "x-api-key",
-              "value": "={{ $credentials.value }}"
-            },
             {
               "name": "anthropic-version",
               "value": "2023-06-01"
@@ -111,49 +116,62 @@
           "timeout": 30000
         }
       },
-      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "id": "f42e1509-b04d-4a9a-ba2b-869891f61039",
       "name": "Claude Vision API",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [940, 200]
+      "position": [
+        240,
+        0
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "wax4Rt0ZCBcJgF0A",
+          "name": "Header Auth account"
+        }
+      }
     },
     {
       "parameters": {
         "jsCode": "// Parse the Claude response into structured event data\nconst response = $input.first().json;\n\nlet rawText = '';\nif (response.content && Array.isArray(response.content)) {\n  rawText = response.content\n    .filter(block => block.type === 'text')\n    .map(block => block.text)\n    .join('');\n} else {\n  throw new Error('Unexpected API response structure');\n}\n\n// Clean up — sometimes the model wraps in code fences despite instructions\nlet cleaned = rawText.trim();\ncleaned = cleaned.replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/i, '');\n\nlet eventData;\ntry {\n  eventData = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error(`Failed to parse event JSON: ${e.message}\\nRaw response: ${rawText}`);\n}\n\n// Build the calendar event fields to match Google Calendar node v1.3\n// Required params: start, end\n// Additional fields: summary, description, location, allday\n\nconst descParts = [];\nif (eventData.description) descParts.push(eventData.description);\nif (eventData.venue) descParts.push(`Venue: ${eventData.venue}`);\nif (eventData.address) descParts.push(`Address: ${eventData.address}`);\nif (eventData.url) descParts.push(`Link: ${eventData.url}`);\ndescParts.push(`\\n[Auto-captured \\u00b7 Confidence: ${eventData.confidence || 'unknown'}]`);\n\nconst hasTime = !!eventData.start_time;\nconst startDate = eventData.start_date;\nconst endDate = eventData.end_date || eventData.start_date;\n\nlet startDateTime, endDateTime, allDay;\n\nif (hasTime) {\n  allDay = 'no';\n  startDateTime = `${startDate}T${eventData.start_time}:00`;\n  endDateTime = eventData.end_time\n    ? `${endDate}T${eventData.end_time}:00`\n    : `${startDate}T${String(Number(eventData.start_time.split(':')[0]) + 2).padStart(2, '0')}:${eventData.start_time.split(':')[1]}:00`;\n} else {\n  allDay = 'yes';\n  startDateTime = startDate;\n  // Google Calendar all-day end date is exclusive, so add 1 day\n  if (endDate) {\n    const end = new Date(endDate);\n    end.setDate(end.getDate() + 1);\n    endDateTime = end.toISOString().split('T')[0];\n  } else {\n    const end = new Date(startDate);\n    end.setDate(end.getDate() + 1);\n    endDateTime = end.toISOString().split('T')[0];\n  }\n}\n\nconst calendarEvent = {\n  start: startDateTime,\n  end: endDateTime,\n  summary: eventData.title || 'Untitled Event',\n  description: descParts.join('\\n'),\n  location: eventData.address || eventData.venue || '',\n  allDay: allDay,\n  confidence: eventData.confidence,\n  _raw: eventData\n};\n\nreturn { json: calendarEvent };"
       },
-      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "id": "7a4905b2-dd03-4c9c-bc93-5653dea4f9ae",
       "name": "Parse Event Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1180, 200]
+      "position": [
+        480,
+        0
+      ]
     },
     {
       "parameters": {
-        "resource": "event",
-        "operation": "create",
         "calendar": {
           "__rl": true,
-          "value": "primary",
-          "mode": "list"
+          "value": "9a0ad5ed4c8d9893c8b02572aff543e358fd9576e445a58a38aa34a91ac0c205@group.calendar.google.com",
+          "mode": "list",
+          "cachedResultName": "ig-events"
         },
         "start": "={{ $json.start }}",
         "end": "={{ $json.end }}",
-        "useDefaultReminders": true,
         "additionalFields": {
-          "summary": "={{ $json.summary }}",
+          "allday": "={{ $json.allDay }}",
           "description": "={{ $json.description }}",
           "location": "={{ $json.location }}",
-          "allday": "={{ $json.allDay }}"
+          "summary": "={{ $json.summary }}"
         }
       },
-      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "id": "c3873f4e-9a96-4d13-a2b4-a761c918d52a",
       "name": "Google Calendar",
       "type": "n8n-nodes-base.googleCalendar",
       "typeVersion": 1.3,
-      "position": [1420, 200],
+      "position": [
+        720,
+        0
+      ],
       "credentials": {
         "googleCalendarOAuth2Api": {
-          "id": "",
+          "id": "1XM6AoyXQ73olb8k",
           "name": "Google Calendar account"
         }
       }
@@ -162,21 +180,27 @@
       "parameters": {
         "jsCode": "// Prepare success response for the iOS Shortcut\nconst event = $input.first().json;\n\nreturn {\n  json: {\n    status: 'ok',\n    message: `Created: ${$('Parse Event Data').first().json.summary}`,\n    calendarEventId: event.id || null,\n    eventLink: event.htmlLink || null\n  }\n};"
       },
-      "id": "a1b2c3d4-0007-4000-8000-000000000007",
+      "id": "b7765926-eca6-41b8-a061-457b19384a46",
       "name": "Format Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1660, 200]
+      "position": [
+        960,
+        0
+      ]
     },
     {
       "parameters": {
         "jsCode": "// URL path placeholder\n// Instagram URLs require either:\n// 1. Facebook oEmbed API (needs app + access token)\n// 2. A third-party scraper API\n// For now, return an error prompting the user to screenshot instead\n\nreturn {\n  json: {\n    status: 'error',\n    message: 'URL parsing is not yet configured. Please share a screenshot of the post instead.'\n  }\n};"
       },
-      "id": "a1b2c3d4-0008-4000-8000-000000000008",
+      "id": "75b5395d-cad0-47b2-89fd-f5514a27884a",
       "name": "URL Path (TODO)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [700, 420]
+      "position": [
+        0,
+        224
+      ]
     }
   ],
   "connections": {
@@ -254,10 +278,12 @@
       ]
     }
   },
-  "active": false,
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/London",
+    "callerPolicy": "workflowsFromSameOwner"
   },
-  "tags": [],
-  "pinData": {}
+  "staticData": null
 }

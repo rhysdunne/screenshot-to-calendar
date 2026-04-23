@@ -4,16 +4,18 @@
 
 const MAX_IMAGE_WIDTH = 1500;
 
-// URL is stored in the iOS Keychain — set it once by running this script manually
-// with no image input, or by running: Keychain.set("n8n_webhook_url", "http://YOUR_HOST:5678/webhook/screenshot-to-calendar")
-const KEYCHAIN_KEY = "n8n_webhook_url";
-let N8N_WEBHOOK_URL = Keychain.contains(KEYCHAIN_KEY) ? Keychain.get(KEYCHAIN_KEY) : null;
+// Host and port are stored in the iOS Keychain — set them once by running this script
+// manually with no image input, or via:
+//   Keychain.set("n8n_host", "YOUR_HOST")
+//   Keychain.set("n8n_port", "5678")  // optional, defaults to 5678
+let n8nHost = Keychain.contains("n8n_host") ? Keychain.get("n8n_host") : null;
+const n8nPort = Keychain.contains("n8n_port") ? Keychain.get("n8n_port") : "5678";
 
-if (!N8N_WEBHOOK_URL) {
+if (!n8nHost) {
   let alert = new Alert();
   alert.title = "Setup Required";
-  alert.message = "Enter your n8n webhook URL:";
-  alert.addTextField("http://YOUR_HOST:5678/webhook/screenshot-to-calendar");
+  alert.message = "Enter your n8n hostname (e.g. myhost.ts.net):";
+  alert.addTextField("YOUR_HOST");
   alert.addAction("Save");
   alert.addCancelAction("Cancel");
   let idx = await alert.present();
@@ -21,9 +23,11 @@ if (!N8N_WEBHOOK_URL) {
     Script.complete();
     return;
   }
-  N8N_WEBHOOK_URL = alert.textFieldValue(0).trim();
-  Keychain.set(KEYCHAIN_KEY, N8N_WEBHOOK_URL);
+  n8nHost = alert.textFieldValue(0).trim();
+  Keychain.set("n8n_host", n8nHost);
 }
+
+const N8N_WEBHOOK_URL = `http://${n8nHost}:${n8nPort}/webhook/screenshot-to-calendar`;
 
 async function main() {
   let base64;

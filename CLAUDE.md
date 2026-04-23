@@ -25,7 +25,6 @@ The user's flow: see a poster or Instagram post → share the image → tap "Cap
 | `ScreenshotToCalendar.js` | Scriptable script that runs on iPhone. Handles three input modes: via iOS Shortcut (receives base64 string), via Scriptable Share Sheet (receives image directly), or manual run (photo picker). POSTs to the n8n webhook and displays the result. |
 | `screenshot-to-calendar-workflow.json` | n8n workflow JSON — import into n8n via Workflows → Import. This is the version from initial development; the live workflow in n8n may have diverged. **Always re-export from n8n before making changes here.** |
 | `docker-compose.yml` | Docker Compose config for the self-hosted n8n instance. Mounts `~/.n8n` for persistent data. |
-| `n8n-configuration.json` | Likely a duplicate/earlier version of the workflow JSON. Check if this can be removed. |
 | `test-image.jpg` | A test image of an event poster, used during development for testing the pipeline via curl. |
 
 ## n8n workflow nodes (in execution order)
@@ -86,14 +85,17 @@ Key prompt rules: infer end dates from "until" / "runs through" phrasing, resolv
 - **Webhook paths**: `/webhook/screenshot-to-calendar` only works when workflow is Active. `/webhook-test/screenshot-to-calendar` only works for a single request while the editor is listening.
 - **Large images**: iPhone photos can be 10MB+, base64 inflates by ~33%. The Shortcut's resize step mitigates this, but very large screenshots could still hit payload limits.
 
-## Things to parameterise
+## Configuration
 
-These values are currently hardcoded and should be extracted to config/env:
-- `N8N_WEBHOOK_URL` in `ScreenshotToCalendar.js` (Tailscale hostname)
+- **Scriptable (iPhone)**: `n8n_host` and `n8n_port` are stored in the Scriptable Keychain. Set once by running `ScreenshotToCalendar.js` manually with no image — it will prompt for the hostname. Port defaults to `5678`.
+- **Docker**: `N8N_WEBHOOK_URL`, `N8N_API_KEY`, and `N8N_WORKFLOW_ID` are set in `.env` (gitignored). See `.env.example`.
+- **n8n**: Anthropic API key and Google Calendar OAuth are stored in n8n's credential store (`~/.n8n/database.sqlite`), not in this repo.
+
+## Things still to parameterise
+
 - `MAX_IMAGE_WIDTH` in `ScreenshotToCalendar.js`
 - Claude model name in the "Prepare Vision Request" Code node
-- Tailscale hostname in `docker-compose.yml`
-- Google Calendar ID (currently `primary`)
+- Google Calendar ID (currently targeting the `ig-events` calendar)
 
 ## Planned enhancements (priority order)
 
@@ -109,7 +111,8 @@ These values are currently hardcoded and should be extracted to config/env:
 
 ## Development notes
 
-- The workflow JSON in this repo may not match the live n8n workflow. Always export from n8n (three dots → Export) before making programmatic changes, and re-import after.
+- Use `make pull` before editing the workflow JSON — it fetches the live workflow and strips metadata. Use `make push` to deploy changes back to n8n.
+- Use `make deploy` to copy `ScreenshotToCalendar.js` to the Scriptable iCloud folder. iCloud sync to the iPhone takes a few seconds.
+- Use `make up` / `make down` / `make logs` to manage the n8n Docker container.
 - To test the webhook locally: `curl -X POST http://localhost:5678/webhook/screenshot-to-calendar -H "Content-Type: application/json" -d '{"type":"image","image":"<base64>"}'`
-- The Scriptable script must be manually copied into the Scriptable app on the iPhone — there's no deployment pipeline for this.
 - n8n credentials (Anthropic API key, Google Calendar OAuth) are stored in n8n's database (`~/.n8n/database.sqlite`) and are not in this repo.

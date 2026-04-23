@@ -3,4 +3,3 @@
 *.log
 node_modules/
 test-image.jpg
-n8n-configuration.json

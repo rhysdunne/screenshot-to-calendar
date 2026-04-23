@@ -9,5 +9,6 @@ services:
       - N8N_SECURE_COOKIE=false
       - WEBHOOK_URL=${N8N_WEBHOOK_URL}
       - N8N_EDITOR_BASE_URL=http://localhost:5678/
+      - GENERIC_TIMEZONE=Europe/London
     volumes:
       - ${HOME}/.n8n:/home/node/.n8n
