@@ -139,17 +139,18 @@ Key prompt rules: infer end dates from "until" / "runs through" phrasing, resolv
 - Claude model name in the "Prepare Vision Request" Code node
 - Google Calendar ID (currently targeting the `ig-events` calendar)
 
-## Planned enhancements (priority order)
+## Planned enhancements
 
-1. **Dedicated calendar** — Create a "London Events" calendar and target that instead of `primary`. Keeps auto-captured events separate.
-2. **Deduplication** — Before creating an event, query Google Calendar for events with similar titles in the same date range. Fuzzy match to catch duplicates from different sources.
-3. **Image attachment** — Upload the source image to Google Drive, attach it to the calendar event so the original poster/screenshot is reviewable alongside the parsed data.
-4. **Weekly digest** — Scheduled n8n workflow that runs Monday mornings: queries the events calendar for the next 7 days, formats a summary, sends via email or Telegram.
-5. **Venue enrichment** — If `address` is null but `venue` is present, hit Google Places Text Search API to resolve the full address and Google Maps link.
-6. **Category tagging** — Extend the Claude prompt to classify events (exhibition, music, theatre, food/drink, workshop, talk). Could map to colour-coded calendars or description prefixes.
-7. **Confidence gating** — If Claude returns `confidence: low`, send a review notification instead of auto-creating the event.
-8. **Price extraction** — Add a `price` field (free / £amount / unknown) to the Claude prompt.
-9. **Instagram URL path** — Accept Instagram post URLs, resolve via oEmbed API, extract image and caption for parsing. Optionally fetch account bio for venue address.
+Tracked as GitHub issues:
+
+- [#8 Deduplication](../../issues/8) — Before creating an event, query Google Calendar for events with similar titles in the same date range. Fuzzy match to catch duplicates from different sources.
+- [#3 Image attachment](../../issues/3) — Upload the source image to Google Drive, attach it to the calendar event so the original poster/screenshot is reviewable alongside the parsed data.
+- [#6 Weekly digest](../../issues/6) — Scheduled n8n workflow that runs Monday mornings: queries the events calendar for the next 7 days, formats a summary, sends via email or Telegram.
+- [#5 Venue enrichment](../../issues/5) — If `address` is null but `venue` is present, hit Google Places Text Search API to resolve the full address and Google Maps link.
+- [#7 Category tagging](../../issues/7) — Extend the Claude prompt to classify events (exhibition, music, theatre, food/drink, workshop, talk). Could map to colour-coded calendars or description prefixes.
+- [#2 Confidence gating](../../issues/2) — If Claude returns `confidence: low`, send a review notification instead of auto-creating the event.
+- [#4 Price extraction](../../issues/4) — Add a `price` field (free / £amount / unknown) to the Claude prompt.
+- [#1 Instagram URL path](../../issues/1) — Accept Instagram post URLs, resolve via oEmbed API, extract image and caption for parsing. Optionally fetch account bio for venue address.
 
 ## Development notes
 
