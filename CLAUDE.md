@@ -25,7 +25,8 @@ The user's flow: see a poster or Instagram post → share the image → tap "Cap
 | `ScreenshotToCalendar.js` | Scriptable script that runs on iPhone. Handles three input modes: via iOS Shortcut (receives base64 string), via Scriptable Share Sheet (receives image directly), or manual run (photo picker). POSTs to the n8n webhook and displays the result. |
 | `screenshot-to-calendar-workflow.json` | n8n workflow JSON — import into n8n via Workflows → Import. This is the version from initial development; the live workflow in n8n may have diverged. **Always re-export from n8n before making changes here.** |
 | `docker-compose.yml` | Docker Compose config for the self-hosted n8n instance. Mounts `~/.n8n` for persistent data. |
-| `test-image.jpg` | A test image of an event poster, used during development for testing the pipeline via curl. |
+| `images/test-image.jpg` | A test image of an event poster, used during development for testing the pipeline via curl. |
+| `images/ios-shortcut-setup.png` | Screenshot of the iOS Shortcut configuration, referenced in the README. |
 
 ## n8n workflow nodes (in execution order)
 
