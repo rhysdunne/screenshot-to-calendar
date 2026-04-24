@@ -27,6 +27,10 @@ Share an event poster or Instagram post from your iPhone → tap "Capture Event"
 - [Anthropic API key](https://console.anthropic.com) — for Claude Vision
 - Google Calendar — via OAuth in n8n
 
+## iOS Shortcut
+
+![iOS Shortcut configuration](images/ios-shortcut-setup.png)
+
 ## Setup
 
 See [CLAUDE.md](CLAUDE.md#first-time-setup) for full setup instructions.
