@@ -8,8 +8,8 @@ Built to solve the universal habit of screenshotting things you want to do and t
 
 ```
 iPhone Share Sheet
-  → iOS Shortcut (resizes image, base64 encodes it)
-    → Scriptable (POSTs to n8n webhook, shows result)
+  → iOS Shortcut (base64 encodes the image)
+    → Scriptable (resizes image, POSTs to n8n webhook, shows result)
       → n8n Webhook (receives base64 image)
         → Claude Vision API (extracts structured event data as JSON)
           → Google Calendar (creates event with title, dates, venue, description)
