@@ -8,8 +8,8 @@ An automation pipeline that turns screenshots and photos of event posters, flyer
 
 ```
 iPhone Share Sheet
-  → iOS Shortcut (resizes image, base64 encodes it)
-    → Scriptable (POSTs to n8n webhook, shows result)
+  → iOS Shortcut (base64 encodes the image)
+    → Scriptable (resizes image, POSTs to n8n webhook, shows result)
       → n8n Webhook (receives base64 image)
         → Claude Vision API (extracts structured event data as JSON)
           → Google Calendar (creates event with title, dates, venue, description)
@@ -43,12 +43,12 @@ The user's flow: see a poster or Instagram post → share the image → tap "Cap
 The Shortcut is called "Capture Event" and appears at the top level of the iOS Share Sheet.
 
 Actions:
-1. Receive **Images** from Share Sheet
-2. **Resize Image** to width 1500 (important: this converts to PNG regardless of input format)
-3. **Base64 Encode** the resized image
-4. **Run Script** "ScreenshotToCalendar" in Scriptable, passing the base64 string as text input
+1. Receive **Images** from Share Sheet (if no input: Ask For Photos — allows the Shortcut to be run directly from the Shortcuts app)
+2. **Connect to Tailscale network** — no-op if already connected, so no conditional check needed
+3. **Base64 Encode** the Shortcut Input
+4. **Run Script** "ScreenshotToCalendar" in Scriptable, passing the Base64 Encoded string as text input
 
-Note: The Shortcut passes text (base64) to Scriptable because Scriptable's "Run Script" action from Shortcuts silently drops image inputs — it only supports text via `args.shortcutParameter`.
+Note: The Shortcut passes text (base64) to Scriptable because Scriptable's "Run Script" action from Shortcuts silently drops image inputs — it only supports text via `args.shortcutParameter`. Resizing to longest edge 1000px is handled inside Scriptable after decoding, keeping the Shortcut as simple as possible.
 
 ## Infrastructure
 
@@ -94,7 +94,7 @@ make deploy  # copies ScreenshotToCalendar.js to Scriptable's iCloud folder
 
 ### 5. iOS Shortcut
 - Create a Shortcut called "Capture Event" (or similar) in the Share Sheet
-- Actions: Receive Images → Resize Image (width 1500) → Base64 Encode → Run Script "ScreenshotToCalendar" in Scriptable
+- Actions: Receive Images (Ask For Photos if no input) → Connect to Tailscale → Base64 Encode → Run Script "ScreenshotToCalendar" in Scriptable
 
 ### Subsequent use
 - `make pull` before editing the workflow JSON, `make push` to deploy changes
@@ -122,10 +122,10 @@ Key prompt rules: infer end dates from "until" / "runs through" phrasing, resolv
 
 ## Known issues and quirks
 
-- **iOS Shortcuts "Resize Image" outputs PNG** regardless of input format. The n8n Code node detects format from base64 magic bytes to set the correct `media_type` for the Anthropic API.
+- **Base64 encoding in Shortcuts outputs PNG** regardless of input format. The n8n Code node detects format from base64 magic bytes to set the correct `media_type` for the Anthropic API.
 - **n8n Google Calendar node v1.3**: `summary`, `description`, `location`, and `allday` must be inside `additionalFields`, not top-level params. `allday` accepts string values `"yes"` / `"no"`, not booleans.
 - **Webhook paths**: `/webhook/screenshot-to-calendar` only works when workflow is Active. `/webhook-test/screenshot-to-calendar` only works for a single request while the editor is listening.
-- **Large images**: iPhone photos can be 10MB+, base64 inflates by ~33%. The Shortcut's resize step mitigates this, but very large screenshots could still hit payload limits.
+- **Large images**: iPhone photos can be 10MB+, base64 inflates by ~33%. Scriptable resizes to longest edge 1000px before POSTing, which keeps payloads manageable.
 - **Anthropic API key in Claude Vision API node**: The node uses a Header Auth credential reference — do not also add an `x-api-key` header parameter manually. Having both causes the key to be stored in plaintext in the workflow JSON, which will be exposed by `make pull`. The credential reference alone is sufficient.
 - **`make pull` strips metadata**: The pull target uses `jq` to keep only `name`, `nodes`, `connections`, `settings`, and `staticData` from the n8n API response. The raw response includes personal account data and internal IDs that shouldn't be committed.
 - **n8n PUT API rejects certain settings fields**: `availableInMCP` and `timeSavedMode` are returned by the GET endpoint but rejected by PUT. The `make push` target strips them via `jq` before sending.
@@ -138,7 +138,7 @@ Key prompt rules: infer end dates from "until" / "runs through" phrasing, resolv
 
 ## Things still to parameterise
 
-- `MAX_IMAGE_WIDTH` in `ScreenshotToCalendar.js`
+- `MAX_LONGEST_EDGE` in `ScreenshotToCalendar.js`
 - Claude model name in the "Prepare Vision Request" Code node
 - Google Calendar ID (currently targeting the `ig-events` calendar)
 
@@ -154,7 +154,7 @@ Tracked as GitHub issues:
 - [#2 Confidence gating](../../issues/2) — If Claude returns `confidence: low`, send a review notification instead of auto-creating the event.
 - [#4 Price extraction](../../issues/4) — Add a `price` field (free / £amount / unknown) to the Claude prompt.
 - [#1 Instagram URL path](../../issues/1) — Accept Instagram post URLs, resolve via oEmbed API, extract image and caption for parsing. Optionally fetch account bio for venue address.
-- [#9 Simplify iOS Shortcut](../../issues/9) — Move image resizing and base64 encoding from the Shortcut into Scriptable, reducing the Shortcut to just two steps: receive image → run script.
+- [#9 Simplify iOS Shortcut](../../issues/9) ✓ — Resizing moved into Scriptable (`resizeAndEncode` helper, longest edge 1000px). Shortcut is now: Receive Images → Base64 Encode → Run Script.
 
 ## Development notes
 
