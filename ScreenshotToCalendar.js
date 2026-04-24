@@ -1,8 +1,8 @@
 // Event Capture — Scriptable Script
-// Receives a base64 image string from a Shortcut, or an image
-// from the Share Sheet, sends to n8n webhook for parsing.
+// Receives a base64 image string from a Shortcut (decodes, resizes, and re-encodes it),
+// or an image from the Share Sheet or photo library, sends to n8n webhook for parsing.
 
-const MAX_IMAGE_WIDTH = 1500;
+const MAX_LONGEST_EDGE = 1000;
 
 // Host and port are stored in the iOS Keychain — set them once by running this script
 // manually with no image input, or via:
@@ -29,43 +29,37 @@ if (!n8nHost) {
 
 const N8N_WEBHOOK_URL = `http://${n8nHost}:${n8nPort}/webhook/screenshot-to-calendar`;
 
+function resizeAndEncode(img) {
+  let { width, height } = img.size;
+  let longestEdge = Math.max(width, height);
+  if (longestEdge > MAX_LONGEST_EDGE) {
+    let scale = MAX_LONGEST_EDGE / longestEdge;
+    let newSize = new Size(Math.round(width * scale), Math.round(height * scale));
+    let ctx = new DrawContext();
+    ctx.size = newSize;
+    ctx.drawImageInRect(img, new Rect(0, 0, newSize.width, newSize.height));
+    img = ctx.getImage();
+  }
+  return Data.fromJPEG(img, 0.8).toBase64String();
+}
+
 async function main() {
   let base64;
 
   if (args.shortcutParameter && typeof args.shortcutParameter === "string") {
-    // Called from Shortcut — input is already a base64 string
-    base64 = args.shortcutParameter;
+    // Called from Shortcut — input is base64 encoded by the Shortcut; decode, resize, re-encode
+    let img = Image.fromData(Data.fromBase64String(args.shortcutParameter));
+    base64 = resizeAndEncode(img);
 
   } else if (args.images && args.images.length > 0) {
-    // Called directly from Share Sheet — need to process the image
-    let img = args.images[0];
-    let size = img.size;
-    if (size.width > MAX_IMAGE_WIDTH) {
-      let scale = MAX_IMAGE_WIDTH / size.width;
-      let newSize = new Size(MAX_IMAGE_WIDTH, Math.round(size.height * scale));
-      let ctx = new DrawContext();
-      ctx.size = newSize;
-      ctx.drawImageInRect(img, new Rect(0, 0, newSize.width, newSize.height));
-      img = ctx.getImage();
-    }
-    let data = Data.fromJPEG(img, 0.8);
-    base64 = data.toBase64String();
+    // Called directly from Share Sheet — image passed directly
+    base64 = resizeAndEncode(args.images[0]);
 
   } else {
     // Manual run — pick from photo library
     try {
       let img = await Photos.fromLibrary();
-      let size = img.size;
-      if (size.width > MAX_IMAGE_WIDTH) {
-        let scale = MAX_IMAGE_WIDTH / size.width;
-        let newSize = new Size(MAX_IMAGE_WIDTH, Math.round(size.height * scale));
-        let ctx = new DrawContext();
-        ctx.size = newSize;
-        ctx.drawImageInRect(img, new Rect(0, 0, newSize.width, newSize.height));
-        img = ctx.getImage();
-      }
-      let data = Data.fromJPEG(img, 0.8);
-      base64 = data.toBase64String();
+      base64 = resizeAndEncode(img);
     } catch (e) {
       let alert = new Alert();
       alert.title = "No Image";
