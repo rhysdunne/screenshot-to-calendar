@@ -29,7 +29,14 @@ Share an event poster or Instagram post from your iPhone → tap "Capture Event"
 
 ## iOS Shortcut
 
-![iOS Shortcut configuration](images/ios-shortcut-setup.png)
+The Shortcut appears in the Share Sheet and handles passing the image to Scriptable. Create it with these four actions:
+
+1. **Receive Images** from Share Sheet (if no input: Ask For Photos)
+2. **Connect to Tailscale network** — no-op if already connected
+3. **Encode Shortcut Input** with base64
+4. **Run Script** "ScreenshotToCalendar" in Scriptable, passing Base64 Encoded as input
+
+<img src="images/ios-shortcut-setup.png" width="350" alt="iOS Shortcut configuration">
 
 ## Setup
 
