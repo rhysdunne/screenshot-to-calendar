@@ -126,6 +126,9 @@ Key prompt rules: infer end dates from "until" / "runs through" phrasing, resolv
 - **n8n Google Calendar node v1.3**: `summary`, `description`, `location`, and `allday` must be inside `additionalFields`, not top-level params. `allday` accepts string values `"yes"` / `"no"`, not booleans.
 - **Webhook paths**: `/webhook/screenshot-to-calendar` only works when workflow is Active. `/webhook-test/screenshot-to-calendar` only works for a single request while the editor is listening.
 - **Large images**: iPhone photos can be 10MB+, base64 inflates by ~33%. The Shortcut's resize step mitigates this, but very large screenshots could still hit payload limits.
+- **Anthropic API key in Claude Vision API node**: The node uses a Header Auth credential reference — do not also add an `x-api-key` header parameter manually. Having both causes the key to be stored in plaintext in the workflow JSON, which will be exposed by `make pull`. The credential reference alone is sufficient.
+- **`make pull` strips metadata**: The pull target uses `jq` to keep only `name`, `nodes`, `connections`, `settings`, and `staticData` from the n8n API response. The raw response includes personal account data and internal IDs that shouldn't be committed.
+- **n8n PUT API rejects certain settings fields**: `availableInMCP` and `timeSavedMode` are returned by the GET endpoint but rejected by PUT. The `make push` target strips them via `jq` before sending.
 
 ## Configuration
 
