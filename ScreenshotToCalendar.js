@@ -47,8 +47,13 @@ async function main() {
   let base64;
 
   if (args.shortcutParameter && typeof args.shortcutParameter === "string") {
-    // Called from Shortcut — input is base64 encoded by the Shortcut; decode, resize, re-encode
-    let img = Image.fromData(Data.fromBase64String(args.shortcutParameter));
+    // Called from Shortcut — input is base64 encoded by the Shortcut; decode, resize, re-encode.
+    // iOS Shortcuts' Base64 Encode action inserts newlines; strip them before decoding.
+    let cleanBase64 = args.shortcutParameter.replace(/\s/g, "");
+    let data = Data.fromBase64String(cleanBase64);
+    if (!data) { throw new Error("Failed to decode base64 input from Shortcut"); }
+    let img = Image.fromData(data);
+    if (!img) { throw new Error("Failed to create image from decoded data"); }
     base64 = resizeAndEncode(img);
 
   } else if (args.images && args.images.length > 0) {
