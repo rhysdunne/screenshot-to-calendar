@@ -51,14 +51,9 @@ async function main() {
     let raw = args.shortcutParameter;
     let cleanBase64 = raw.replace(/\s/g, ""); // strip any stray whitespace
     let data = Data.fromBase64String(cleanBase64);
-    if (!data) {
-      throw new Error(
-        `Base64 decode failed.\nLength: ${raw.length}\nFirst 80 chars: "${raw.substring(0, 80)}"`
-      );
-    }
-    let img = Image.fromData(data);
-    if (!img) { throw new Error("Decoded data is not a valid image"); }
-    base64 = resizeAndEncode(img);
+    let img = data ? Image.fromData(data) : null;
+    // If Scriptable can't decode the image (e.g. HEIC or unsupported format), send as-is without resizing
+    base64 = img ? resizeAndEncode(img) : cleanBase64;
 
   } else if (args.images && args.images.length > 0) {
     // Called directly from Share Sheet — image passed directly
