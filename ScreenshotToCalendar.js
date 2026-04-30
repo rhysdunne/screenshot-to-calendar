@@ -1,3 +1,6 @@
+// Variables used by Scriptable.
+// These must be at the very top of the file. Do not edit.
+// icon-color: teal; icon-glyph: calendar-check;
 // Event Capture — Scriptable Script
 // Receives a base64 image string from a Shortcut (decodes, resizes, and re-encodes it),
 // or an image from the Share Sheet or photo library, sends to n8n webhook for parsing.
