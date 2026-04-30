@@ -7,7 +7,7 @@ export
 .PHONY: deploy up down logs pull push
 
 deploy:
-	cp ScreenshotToCalendar.js "$(SCRIPTABLE_DIR)/ScreenshotToCalendar.js"
+	cp screenshot-to-calendar.js "$(SCRIPTABLE_DIR)/screenshot-to-calendar.js"
 	@echo "Copied to Scriptable iCloud folder — sync to iPhone may take a few seconds."
 
 up:
