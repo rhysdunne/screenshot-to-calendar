@@ -54,6 +54,14 @@ async function main() {
     // (Resizing in Scriptable would require decoding a ~2MB base64 string via args.shortcutParameter,
     // which exceeds the Shortcuts→Scriptable text size limit for large screenshots.)
     base64 = args.shortcutParameter.replace(/\s/g, "");
+    if (!base64) {
+      let alert = new Alert();
+      alert.title = "No Image";
+      alert.message = "The Shortcut passed an empty string. Check the Base64 Encode step.";
+      alert.addAction("OK");
+      await alert.present();
+      return;
+    }
 
   } else if (args.images && args.images.length > 0) {
     // Called directly from Share Sheet — image passed directly
@@ -88,6 +96,15 @@ async function main() {
 
   try {
     let response = await req.loadJSON();
+
+    if (!response || typeof response.status === "undefined") {
+      let alert = new Alert();
+      alert.title = "Unexpected Response";
+      alert.message = "n8n returned an unexpected response. Check the workflow is active.";
+      alert.addAction("OK");
+      await alert.present();
+      return;
+    }
 
     let notif = new Notification();
     notif.title = "Event Captured";
