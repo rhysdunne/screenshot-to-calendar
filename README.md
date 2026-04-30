@@ -34,7 +34,7 @@ The Shortcut appears in the Share Sheet and handles passing the image to Scripta
 1. **Receive Images** from Share Sheet (if no input: Ask For Photos)
 2. **Connect to Tailscale network** — no-op if already connected
 3. **Encode Shortcut Input** with base64
-4. **Run Script** "ScreenshotToCalendar" in Scriptable, passing Base64 Encoded as input
+4. **Run Script** "screenshot-to-calendar" in Scriptable, passing Base64 Encoded as input
 
 <img src="images/ios-shortcut-setup.png" width="350" alt="iOS Shortcut configuration">
 
@@ -59,7 +59,7 @@ make deploy  # copy Scriptable script to iCloud
 | `make up` | Start n8n via Docker Compose |
 | `make down` | Stop n8n |
 | `make logs` | Tail n8n logs |
-| `make deploy` | Copy `ScreenshotToCalendar.js` to Scriptable's iCloud folder |
+| `make deploy` | Copy `screenshot-to-calendar.js` to Scriptable's iCloud folder |
 | `make pull` | Fetch the live workflow from n8n and save to `screenshot-to-calendar-workflow.json` |
 | `make push` | Deploy `screenshot-to-calendar-workflow.json` to n8n |
 
