@@ -8,8 +8,8 @@ Built to solve the universal habit of screenshotting things you want to do and t
 
 ```
 iPhone Share Sheet
-  → iOS Shortcut (base64 encodes the image)
-    → Scriptable (resizes image, POSTs to n8n webhook, shows result)
+  → iOS Shortcut (resizes image, base64 encodes it)
+    → Scriptable (POSTs to n8n webhook, shows result)
       → n8n Webhook (receives base64 image)
         → Claude Vision API (extracts structured event data as JSON)
           → Google Calendar (creates event with title, dates, venue, description)
@@ -29,12 +29,13 @@ Share an event poster or Instagram post from your iPhone → tap "Capture Event"
 
 ## iOS Shortcut
 
-The Shortcut appears in the Share Sheet and handles passing the image to Scriptable. Create it with these four actions:
+The Shortcut appears in the Share Sheet and handles passing the image to Scriptable. Create it with these five actions:
 
 1. **Receive Images** from Share Sheet (if no input: Ask For Photos)
 2. **Connect to Tailscale network** — no-op if already connected
-3. **Encode Shortcut Input** with base64
-4. **Run Script** "screenshot-to-calendar" in Scriptable, passing Base64 Encoded as input
+3. **Resize Image** to Longest Edge 1000
+4. **Encode Resized Image** with base64
+5. **Run Script** "screenshot-to-calendar" in Scriptable, passing Base64 Encoded as input
 
 <img src="images/ios-shortcut-setup.png" width="350" alt="iOS Shortcut configuration">
 
