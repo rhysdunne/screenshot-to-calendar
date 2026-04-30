@@ -12,22 +12,38 @@ const MAX_LONGEST_EDGE = 1000;
 //   Keychain.set("n8n_host", "YOUR_HOST")
 //   Keychain.set("n8n_port", "5678")  // optional, defaults to 5678
 let n8nHost = Keychain.contains("n8n_host") ? Keychain.get("n8n_host") : null;
-const n8nPort = Keychain.contains("n8n_port") ? Keychain.get("n8n_port") : "5678";
+let n8nPort = Keychain.contains("n8n_port") ? Keychain.get("n8n_port") : "5678";
 
-if (!n8nHost) {
+async function promptForConnection(currentHost, currentPort) {
   let alert = new Alert();
-  alert.title = "Setup Required";
-  alert.message = "Enter your n8n hostname (e.g. myhost.ts.net):";
-  alert.addTextField("YOUR_HOST");
+  alert.title = "n8n Connection";
+  alert.message = "Enter your n8n hostname and port:";
+  alert.addTextField("Hostname (e.g. myhost.ts.net)", currentHost || "");
+  alert.addTextField("Port", currentPort || "5678");
   alert.addAction("Save");
   alert.addCancelAction("Cancel");
   let idx = await alert.present();
-  if (idx === -1) {
-    Script.complete();
-    return;
+  if (idx === -1) return false;
+  let host = alert.textFieldValue(0).trim();
+  let port = alert.textFieldValue(1).trim() || "5678";
+  if (!host) {
+    let err = new Alert();
+    err.title = "Hostname Required";
+    err.message = "Please enter a valid hostname.";
+    err.addAction("OK");
+    await err.present();
+    return false;
   }
-  n8nHost = alert.textFieldValue(0).trim();
-  Keychain.set("n8n_host", n8nHost);
+  Keychain.set("n8n_host", host);
+  Keychain.set("n8n_port", port);
+  n8nHost = host;
+  n8nPort = port;
+  return true;
+}
+
+if (!n8nHost) {
+  let saved = await promptForConnection(null, "5678");
+  if (!saved) { Script.complete(); return; }
 }
 
 const N8N_WEBHOOK_URL = `http://${n8nHost}:${n8nPort}/webhook/screenshot-to-calendar`;
@@ -68,7 +84,20 @@ async function main() {
     base64 = resizeAndEncode(args.images[0]);
 
   } else {
-    // Manual run — pick from photo library
+    // Manual run — show connection confirmation, then pick from photo library
+    let confirm = new Alert();
+    confirm.title = "n8n Connection";
+    confirm.message = `${n8nHost}:${n8nPort}`;
+    confirm.addAction("Run");
+    confirm.addDestructiveAction("Change");
+    confirm.addCancelAction("Cancel");
+    let idx = await confirm.present();
+    if (idx === -1) return;
+    if (idx === 1) {
+      let saved = await promptForConnection(n8nHost, n8nPort);
+      if (!saved) return;
+    }
+
     try {
       let img = await Photos.fromLibrary();
       base64 = resizeAndEncode(img);
