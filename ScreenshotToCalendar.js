@@ -47,9 +47,10 @@ async function main() {
   let base64;
 
   if (args.shortcutParameter && typeof args.shortcutParameter === "string") {
-    // Called from Shortcut — input is base64 encoded by the Shortcut; decode, resize, re-encode
-    let img = Image.fromData(Data.fromBase64String(args.shortcutParameter));
-    base64 = resizeAndEncode(img);
+    // Called from Shortcut — image already resized by the Shortcut before encoding, so use as-is.
+    // (Resizing in Scriptable would require decoding a ~2MB base64 string via args.shortcutParameter,
+    // which exceeds the Shortcuts→Scriptable text size limit for large screenshots.)
+    base64 = args.shortcutParameter.replace(/\s/g, "");
 
   } else if (args.images && args.images.length > 0) {
     // Called directly from Share Sheet — image passed directly
