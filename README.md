@@ -60,7 +60,7 @@ make deploy  # copy Scriptable script to iCloud
 | `make up` | Start n8n via Docker Compose |
 | `make down` | Stop n8n |
 | `make logs` | Tail n8n logs |
-| `make deploy` | Copy `screenshot-to-calendar.js` to Scriptable's iCloud folder |
+| `make deploy` | Copy `scriptable/screenshot-to-calendar.js` to Scriptable's iCloud folder |
 | `make pull` | Fetch the live workflow from n8n and save to `n8n/workflow.json` |
 | `make push` | Deploy `n8n/workflow.json` to n8n |
 
