@@ -61,8 +61,8 @@ make deploy  # copy Scriptable script to iCloud
 | `make down` | Stop n8n |
 | `make logs` | Tail n8n logs |
 | `make deploy` | Copy `screenshot-to-calendar.js` to Scriptable's iCloud folder |
-| `make pull` | Fetch the live workflow from n8n and save to `screenshot-to-calendar-workflow.json` |
-| `make push` | Deploy `screenshot-to-calendar-workflow.json` to n8n |
+| `make pull` | Fetch the live workflow from n8n and save to `n8n/workflow.json` |
+| `make push` | Deploy `n8n/workflow.json` to n8n |
 
 ## Configuration
 
