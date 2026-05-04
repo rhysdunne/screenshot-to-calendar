@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Extracts the promptTemplate content from nodes/prepare-vision-request.js
+"""Extracts the promptTemplate content from n8n/nodes/prepare-vision-request.js
 to stdout, then replaces it with the {{PROMPT}} placeholder in the JS file."""
 import re, sys
 
-path = 'nodes/prepare-vision-request.js'
+path = 'n8n/nodes/prepare-vision-request.js'
 code = open(path).read()
 
 m = re.search(r'const promptTemplate = `(.*?)`;', code, re.DOTALL)
