@@ -27,17 +27,21 @@ pull:
 	  jq '{name, nodes, connections, settings, staticData}' > screenshot-to-calendar-workflow.json
 	jq -r '.nodes[] | select(.name == "Prepare Vision Request") | .parameters.jsCode' \
 	  screenshot-to-calendar-workflow.json > nodes/prepare-vision-request.js
+	python3 scripts/pull-prompt.py > prompts/extract-event.md
 	@echo "Workflow saved to screenshot-to-calendar-workflow.json"
-	@echo "Node code extracted to nodes/prepare-vision-request.js"
+	@echo "Prompt extracted to prompts/extract-event.md"
 
 push:
 	@test -n "$(N8N_API_KEY)" || (echo "N8N_API_KEY not set in .env"; exit 1)
 	@test -n "$(N8N_WORKFLOW_ID)" || (echo "N8N_WORKFLOW_ID not set in .env"; exit 1)
-	jq --rawfile nodecode nodes/prepare-vision-request.js \
-	  '{name, nodes: [.nodes[] | if .name == "Prepare Vision Request" then .parameters.jsCode = ($$nodecode | rtrimstr("\n")) else . end], connections, settings: (.settings | del(.availableInMCP, .timeSavedMode)), staticData}' \
-	  screenshot-to-calendar-workflow.json | \
-	curl -s -X PUT $(N8N_BASE_URL)/api/v1/workflows/$(N8N_WORKFLOW_ID) \
-	  -H "X-N8N-API-KEY: $(N8N_API_KEY)" \
-	  -H "Content-Type: application/json" \
-	  -d @- | jq .
+	@tmpjs=$$(mktemp) && \
+	  python3 scripts/push-prompt.py > $$tmpjs && \
+	  jq --rawfile nodecode $$tmpjs \
+	    '{name, nodes: [.nodes[] | if .name == "Prepare Vision Request" then .parameters.jsCode = ($$nodecode | rtrimstr("\n")) else . end], connections, settings: (.settings | del(.availableInMCP, .timeSavedMode)), staticData}' \
+	    screenshot-to-calendar-workflow.json | \
+	  curl -s -X PUT $(N8N_BASE_URL)/api/v1/workflows/$(N8N_WORKFLOW_ID) \
+	    -H "X-N8N-API-KEY: $(N8N_API_KEY)" \
+	    -H "Content-Type: application/json" \
+	    -d @- | jq . && \
+	  rm $$tmpjs
 	@echo "Workflow deployed to n8n"
