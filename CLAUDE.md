@@ -24,7 +24,10 @@ The user's flow: see a poster or Instagram post → share the image → tap "Cap
 |------|---------|
 | `screenshot-to-calendar.js` | Scriptable script that runs on iPhone. Handles three input modes: via iOS Shortcut (receives base64 string), via Scriptable Share Sheet (receives image directly), or manual run (photo picker). POSTs to the n8n webhook and displays the result. |
 | `screenshot-to-calendar-workflow.json` | n8n workflow JSON — import into n8n via Workflows → Import. The live workflow in n8n may have diverged. **Always `make pull` before making changes here.** |
-| `nodes/prepare-vision-request.js` | JavaScript code for the Prepare Vision Request n8n node, extracted by `make pull`. Edit this file to change the prompt or request logic, then `make push` to deploy. This is the source of truth for that node — `make push` injects it into the workflow JSON before deploying. |
+| `nodes/prepare-vision-request.js` | JavaScript code for the Prepare Vision Request n8n node, extracted by `make pull`. Contains `{{PROMPT}}` placeholder — do not edit the prompt here, edit `prompts/extract-event.md` instead. `make push` injects the prompt and deploys. |
+| `prompts/extract-event.md` | The Claude Vision prompt. Edit this to change what Claude extracts or how. Uses `{{TODAY}}` as a placeholder for today's date, injected at runtime. |
+| `scripts/pull-prompt.py` | Extracts the prompt from `nodes/prepare-vision-request.js` to `prompts/extract-event.md` and restores the `{{PROMPT}}` placeholder. Called by `make pull`. |
+| `scripts/push-prompt.py` | Injects `prompts/extract-event.md` into `nodes/prepare-vision-request.js` and writes the result to stdout. Called by `make push`. |
 | `docker-compose.yml` | Docker Compose config for the self-hosted n8n instance. Mounts `~/.n8n` for persistent data. |
 | `images/test-image.jpg` | A test image of an event poster, used during development for testing the pipeline via curl. |
 | `images/ios-shortcut-setup.png` | Screenshot of the iOS Shortcut configuration, referenced in the README. |
@@ -105,7 +108,7 @@ make deploy  # copies screenshot-to-calendar.js to Scriptable's iCloud folder
 
 ## Claude Vision prompt
 
-The prompt in the "Prepare Vision Request" node asks Claude to extract:
+The prompt lives in `prompts/extract-event.md`. It asks Claude to extract:
 ```json
 {
   "title": "event or exhibition name",
@@ -161,7 +164,7 @@ Tracked as GitHub issues:
 
 ## Development notes
 
-- Use `make pull` before editing — it fetches the live workflow, strips metadata, and extracts `nodes/prepare-vision-request.js`. Edit that file to change the prompt or node logic, then `make push` to deploy. Do not edit the workflow JSON directly.
+- Use `make pull` before editing — it fetches the live workflow, extracts `nodes/prepare-vision-request.js`, and extracts the prompt to `prompts/extract-event.md`. To change the prompt, edit `prompts/extract-event.md`. To change request logic, edit `nodes/prepare-vision-request.js`. Then `make push` to deploy. Do not edit the workflow JSON directly.
 - Use `make deploy` to copy `screenshot-to-calendar.js` to the Scriptable iCloud folder. iCloud sync to the iPhone takes a few seconds.
 - Use `make up` / `make down` / `make logs` to manage the n8n Docker container.
 - To test the webhook locally: `curl -X POST http://localhost:5678/webhook/screenshot-to-calendar -H "Content-Type: application/json" -d '{"type":"image","image":"<base64>"}'`
