@@ -23,7 +23,8 @@ The user's flow: see a poster or Instagram post → share the image → tap "Cap
 | File | Purpose |
 |------|---------|
 | `screenshot-to-calendar.js` | Scriptable script that runs on iPhone. Handles three input modes: via iOS Shortcut (receives base64 string), via Scriptable Share Sheet (receives image directly), or manual run (photo picker). POSTs to the n8n webhook and displays the result. |
-| `screenshot-to-calendar-workflow.json` | n8n workflow JSON — import into n8n via Workflows → Import. This is the version from initial development; the live workflow in n8n may have diverged. **Always re-export from n8n before making changes here.** |
+| `screenshot-to-calendar-workflow.json` | n8n workflow JSON — import into n8n via Workflows → Import. The live workflow in n8n may have diverged. **Always `make pull` before making changes here.** |
+| `nodes/prepare-vision-request.js` | JavaScript code for the Prepare Vision Request n8n node, extracted by `make pull`. Edit this file to change the prompt or request logic, then `make push` to deploy. This is the source of truth for that node — `make push` injects it into the workflow JSON before deploying. |
 | `docker-compose.yml` | Docker Compose config for the self-hosted n8n instance. Mounts `~/.n8n` for persistent data. |
 | `images/test-image.jpg` | A test image of an event poster, used during development for testing the pipeline via curl. |
 | `images/ios-shortcut-setup.png` | Screenshot of the iOS Shortcut configuration, referenced in the README. |
@@ -160,7 +161,7 @@ Tracked as GitHub issues:
 
 ## Development notes
 
-- Use `make pull` before editing the workflow JSON — it fetches the live workflow and strips metadata. Use `make push` to deploy changes back to n8n.
+- Use `make pull` before editing — it fetches the live workflow, strips metadata, and extracts `nodes/prepare-vision-request.js`. Edit that file to change the prompt or node logic, then `make push` to deploy. Do not edit the workflow JSON directly.
 - Use `make deploy` to copy `screenshot-to-calendar.js` to the Scriptable iCloud folder. iCloud sync to the iPhone takes a few seconds.
 - Use `make up` / `make down` / `make logs` to manage the n8n Docker container.
 - To test the webhook locally: `curl -X POST http://localhost:5678/webhook/screenshot-to-calendar -H "Content-Type: application/json" -d '{"type":"image","image":"<base64>"}'`
