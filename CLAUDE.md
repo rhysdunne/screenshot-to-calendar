@@ -22,7 +22,7 @@ The user's flow: see a poster or Instagram post → share the image → tap "Cap
 
 | File | Purpose |
 |------|---------|
-| `screenshot-to-calendar.js` | Scriptable script that runs on iPhone. Handles three input modes: via iOS Shortcut (receives base64 string), via Scriptable Share Sheet (receives image directly), or manual run (photo picker). POSTs to the n8n webhook and displays the result. |
+| `scriptable/screenshot-to-calendar.js` | Scriptable script that runs on iPhone. Handles three input modes: via iOS Shortcut (receives base64 string), via Scriptable Share Sheet (receives image directly), or manual run (photo picker). POSTs to the n8n webhook and displays the result. |
 | `n8n/workflow.json` | n8n workflow JSON — import into n8n via Workflows → Import. The live workflow in n8n may have diverged. **Always `make pull` before making changes here.** |
 | `n8n/nodes/prepare-vision-request.js` | JavaScript code for the Prepare Vision Request n8n node, extracted by `make pull`. Contains `{{PROMPT}}` placeholder — do not edit the prompt here, edit `n8n/prompts/extract-event.md` instead. `make push` injects the prompt and deploys. |
 | `n8n/prompts/extract-event.md` | The Claude Vision prompt. Edit this to change what Claude extracts or how. Uses `{{TODAY}}` as a placeholder for today's date, injected at runtime. |
@@ -104,7 +104,7 @@ make deploy  # copies screenshot-to-calendar.js to Scriptable's iCloud folder
 
 ### Subsequent use
 - `make pull` before editing the workflow JSON, `make push` to deploy changes
-- `make deploy` after editing `screenshot-to-calendar.js`
+- `make deploy` after editing `scriptable/screenshot-to-calendar.js`
 
 ## Claude Vision prompt
 
@@ -138,13 +138,13 @@ Key prompt rules: infer end dates from "until" / "runs through" phrasing, resolv
 
 ## Configuration
 
-- **Scriptable (iPhone)**: `n8n_host` and `n8n_port` are stored in the Scriptable Keychain. Set once by running `screenshot-to-calendar.js` manually with no image — it will prompt for the hostname. Port defaults to `5678`.
+- **Scriptable (iPhone)**: `n8n_host` and `n8n_port` are stored in the Scriptable Keychain. Set once by running `scriptable/screenshot-to-calendar.js` manually with no image — it will prompt for the hostname. Port defaults to `5678`.
 - **Docker**: `N8N_WEBHOOK_URL`, `N8N_API_KEY`, and `N8N_WORKFLOW_ID` are set in `.env` (gitignored). See `.env.example`.
 - **n8n**: Anthropic API key and Google Calendar OAuth are stored in n8n's credential store (`~/.n8n/database.sqlite`), not in this repo.
 
 ## Things still to parameterise
 
-- `MAX_LONGEST_EDGE` in `screenshot-to-calendar.js`
+- `MAX_LONGEST_EDGE` in `scriptable/screenshot-to-calendar.js`
 - Claude model name in the "Prepare Vision Request" Code node
 - Google Calendar ID (currently targeting the `ig-events` calendar)
 
@@ -165,7 +165,7 @@ Tracked as GitHub issues:
 ## Development notes
 
 - Use `make pull` before editing — it fetches the live workflow, extracts `n8n/nodes/prepare-vision-request.js`, and extracts the prompt to `n8n/prompts/extract-event.md`. To change the prompt, edit `n8n/prompts/extract-event.md`. To change request logic, edit `n8n/nodes/prepare-vision-request.js`. Then `make push` to deploy. Do not edit the workflow JSON directly.
-- Use `make deploy` to copy `screenshot-to-calendar.js` to the Scriptable iCloud folder. iCloud sync to the iPhone takes a few seconds.
+- Use `make deploy` to copy `scriptable/screenshot-to-calendar.js` to the Scriptable iCloud folder. iCloud sync to the iPhone takes a few seconds.
 - Use `make up` / `make down` / `make logs` to manage the n8n Docker container.
 - To test the webhook locally: `curl -X POST http://localhost:5678/webhook/screenshot-to-calendar -H "Content-Type: application/json" -d '{"type":"image","image":"<base64>"}'`
 - n8n credentials (Anthropic API key, Google Calendar OAuth) are stored in n8n's database (`~/.n8n/database.sqlite`) and are not in this repo.
