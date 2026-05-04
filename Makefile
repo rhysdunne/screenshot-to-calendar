@@ -27,7 +27,7 @@ pull:
 	  jq '{name, nodes, connections, settings, staticData}' > n8n/workflow.json
 	jq -r '.nodes[] | select(.name == "Prepare Vision Request") | .parameters.jsCode' \
 	  n8n/workflow.json > n8n/nodes/prepare-vision-request.js
-	python3 scripts/pull-prompt.py > n8n/prompts/extract-event.md
+	python3 n8n/scripts/pull-prompt.py > n8n/prompts/extract-event.md
 	@echo "Workflow saved to n8n/workflow.json"
 	@echo "Prompt extracted to n8n/prompts/extract-event.md"
 
@@ -35,7 +35,7 @@ push:
 	@test -n "$(N8N_API_KEY)" || (echo "N8N_API_KEY not set in .env"; exit 1)
 	@test -n "$(N8N_WORKFLOW_ID)" || (echo "N8N_WORKFLOW_ID not set in .env"; exit 1)
 	@tmpjs=$$(mktemp) && \
-	  python3 scripts/push-prompt.py > $$tmpjs && \
+	  python3 n8n/scripts/push-prompt.py > $$tmpjs && \
 	  jq --rawfile nodecode $$tmpjs \
 	    '{name, nodes: [.nodes[] | if .name == "Prepare Vision Request" then .parameters.jsCode = ($$nodecode | rtrimstr("\n")) else . end], connections, settings: (.settings | del(.availableInMCP, .timeSavedMode)), staticData}' \
 	    n8n/workflow.json | \
