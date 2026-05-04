@@ -26,8 +26,8 @@ The user's flow: see a poster or Instagram post → share the image → tap "Cap
 | `n8n/workflow.json` | n8n workflow JSON — import into n8n via Workflows → Import. The live workflow in n8n may have diverged. **Always `make pull` before making changes here.** |
 | `n8n/nodes/prepare-vision-request.js` | JavaScript code for the Prepare Vision Request n8n node, extracted by `make pull`. Contains `{{PROMPT}}` placeholder — do not edit the prompt here, edit `n8n/prompts/extract-event.md` instead. `make push` injects the prompt and deploys. |
 | `n8n/prompts/extract-event.md` | The Claude Vision prompt. Edit this to change what Claude extracts or how. Uses `{{TODAY}}` as a placeholder for today's date, injected at runtime. |
-| `scripts/pull-prompt.py` | Extracts the prompt from `n8n/nodes/prepare-vision-request.js` to `n8n/prompts/extract-event.md` and restores the `{{PROMPT}}` placeholder. Called by `make pull`. |
-| `scripts/push-prompt.py` | Injects `n8n/prompts/extract-event.md` into `n8n/nodes/prepare-vision-request.js` and writes the result to stdout. Called by `make push`. |
+| `n8n/scripts/pull-prompt.py` | Extracts the prompt from `n8n/nodes/prepare-vision-request.js` to `n8n/prompts/extract-event.md` and restores the `{{PROMPT}}` placeholder. Called by `make pull`. |
+| `n8n/scripts/push-prompt.py` | Injects `n8n/prompts/extract-event.md` into `n8n/nodes/prepare-vision-request.js` and writes the result to stdout. Called by `make push`. |
 | `docker-compose.yml` | Docker Compose config for the self-hosted n8n instance. Mounts `~/.n8n` for persistent data. |
 | `images/test-image.jpg` | A test image of an event poster, used during development for testing the pipeline via curl. |
 | `images/ios-shortcut-setup.png` | Screenshot of the iOS Shortcut configuration, referenced in the README. |
