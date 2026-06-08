@@ -25,6 +25,8 @@ The user's flow: see a poster or Instagram post → share the image → tap "Cap
 | `scriptable/screenshot-to-calendar.js` | Scriptable script that runs on iPhone. Handles three input modes: via iOS Shortcut (receives base64 string), via Scriptable Share Sheet (receives image directly), or manual run (photo picker). POSTs to the n8n webhook and displays the result. |
 | `n8n/workflow.json` | n8n workflow JSON — import into n8n via Workflows → Import. The live workflow in n8n may have diverged. **Always `make pull` before making changes here.** |
 | `n8n/nodes/prepare-vision-request.js` | JavaScript code for the Prepare Vision Request n8n node, extracted by `make pull`. Contains `{{PROMPT}}` placeholder — do not edit the prompt here, edit `n8n/prompts/extract-event.md` instead. `make push` injects the prompt and deploys. |
+| `n8n/nodes/parse-event-data.js` | JavaScript code for the Parse Event Data n8n node, round-tripped by `make pull` / `make push`. Refactored into pure functions (`extractEventData`, `mapEventToCalendar`) so it can be unit-tested; `typeof $input` / `typeof module` guards let n8n run it as a bare script while `node --test` imports the functions. Edit this file (not the workflow JSON) to change parse logic. |
+| `n8n/nodes/parse-event-data.test.js` | Unit tests for the Parse Event Data logic (`make test`). Covers date-mapping edge cases (end-date-only → starts today, no-dates → throws, late-night end clamp) and response parsing. |
 | `n8n/prompts/extract-event.md` | The Claude Vision prompt. Edit this to change what Claude extracts or how. Uses `{{TODAY}}` as a placeholder for today's date, injected at runtime. |
 | `n8n/scripts/pull-prompt.py` | Extracts the prompt from `n8n/nodes/prepare-vision-request.js` to `n8n/prompts/extract-event.md` and restores the `{{PROMPT}}` placeholder. Called by `make pull`. |
 | `n8n/scripts/push-prompt.py` | Injects `n8n/prompts/extract-event.md` into `n8n/nodes/prepare-vision-request.js` and writes the result to stdout. Called by `make push`. |
@@ -164,7 +166,8 @@ Tracked as GitHub issues:
 
 ## Development notes
 
-- Use `make pull` before editing — it fetches the live workflow, extracts `n8n/nodes/prepare-vision-request.js`, and extracts the prompt to `n8n/prompts/extract-event.md`. To change the prompt, edit `n8n/prompts/extract-event.md`. To change request logic, edit `n8n/nodes/prepare-vision-request.js`. Then `make push` to deploy. Do not edit the workflow JSON directly.
+- Use `make pull` before editing — it fetches the live workflow and extracts the editable node code: `n8n/nodes/prepare-vision-request.js`, `n8n/nodes/parse-event-data.js`, and the prompt to `n8n/prompts/extract-event.md`. To change the prompt, edit `n8n/prompts/extract-event.md`. To change vision-request logic, edit `prepare-vision-request.js`. To change parse/calendar-mapping logic, edit `parse-event-data.js`. Then `make push` to deploy. Do not edit the workflow JSON directly.
+- Use `make test` to run the Parse Event Data unit tests (`node --test`, no dependencies). Run it after editing `parse-event-data.js`.
 - Use `make deploy` to copy `scriptable/screenshot-to-calendar.js` to the Scriptable iCloud folder. iCloud sync to the iPhone takes a few seconds.
 - Use `make up` / `make down` / `make logs` to manage the n8n Docker container.
 - To test the webhook locally: `curl -X POST http://localhost:5678/webhook/screenshot-to-calendar -H "Content-Type: application/json" -d '{"type":"image","image":"<base64>"}'`
