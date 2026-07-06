@@ -96,7 +96,7 @@ final class ShareViewController: UIViewController {
         }
 
         let config = URLSessionConfiguration.background(
-            withIdentifier: "com.rhysdunne.s2c.upload.\(UUID().uuidString)")
+            withIdentifier: "digital.callaeas.s2c.upload.\(UUID().uuidString)")
         config.sharedContainerIdentifier = AppConfig.appGroupId
         config.isDiscretionary = false
         let session = URLSession(configuration: config)

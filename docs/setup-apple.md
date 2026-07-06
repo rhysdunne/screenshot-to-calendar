@@ -29,12 +29,12 @@ Xcode resolves the GoogleSignIn Swift package on first open.
 ## 2. Signing & capabilities
 
 With Automatic signing and your team selected, Xcode registers both bundle
-ids (`com.rhysdunne.s2c`, `com.rhysdunne.s2c.share`) and provisions the
+ids (`digital.callaeas.s2c`, `digital.callaeas.s2c.share`) and provisions the
 capabilities declared in the entitlements files:
 
-- **App Groups**: `group.com.rhysdunne.s2c` (both targets)
+- **App Groups**: `group.digital.callaeas.s2c` (both targets)
 - **Associated Domains**: `applinks:<cloudfront-domain>` (app target)
-- **Keychain Sharing**: `com.rhysdunne.s2c.shared` (both targets)
+- **Keychain Sharing**: `digital.callaeas.s2c.shared` (both targets)
 
 If the Associated Domains capability errors, enable it for the App ID in
 [developer.apple.com](https://developer.apple.com/account/resources/identifiers)
@@ -51,7 +51,7 @@ and let Xcode retry.
    the capture (universal link). If Safari opens instead: universal links
    cache aggressively — reinstall the app, or check
    `https://<domain>/.well-known/apple-app-site-association` is reachable and
-   contains your `TEAMID.com.rhysdunne.s2c`.
+   contains your `TEAMID.digital.callaeas.s2c`.
 
 ## 4. TestFlight
 
