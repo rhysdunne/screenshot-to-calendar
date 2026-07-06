@@ -1,73 +1,100 @@
 # screenshot-to-calendar
 
-An automation pipeline that turns screenshots and photos of event posters, flyers, and Instagram posts into Google Calendar events.
+Turn screenshots and photos of event posters, flyers, and Instagram posts into
+Google Calendar events. Share an image from your iPhone → the app classifies it,
+extracts the event with Claude, resolves the venue with Google Places, checks for
+duplicates, and creates a calendar event with a link back to the source image.
 
-Built to solve the universal habit of screenshotting things you want to do and then never acting on them.
+Built to solve the universal habit of screenshotting things you want to do and
+then never acting on them.
 
-## How it works
+## Architecture
 
 ```
-iPhone Share Sheet
-  → iOS Shortcut (resizes image, base64 encodes it)
-    → Scriptable (POSTs to n8n webhook, shows result)
-      → n8n Webhook (receives base64 image)
-        → Claude Vision API (extracts structured event data as JSON)
-          → Google Calendar (creates event with title, dates, venue, description)
-            → Response back to Scriptable (confirmation alert with "Open in Calendar" option)
+iOS app (SwiftUI) ── Share Extension receives image, resizes, uploads
+   │
+   ▼
+API Gateway (HTTP API) ── JWT auth (Sign in with Google)
+   │
+   ▼
+Lambda: captures-create ──► S3 (image) + DynamoDB (capture) + SQS
+                                                                │
+                                                                ▼
+                                              Lambda: process-capture
+                                                classify (Claude Haiku)
+                                                extract  (Claude Sonnet, structured output)
+                                                resolve venue (Google Places)
+                                                dedup    (fuzzy title + date window)
+                                                create Google Calendar event
+                                                  └─ description links back to the app
 ```
 
-Share an event poster or Instagram post from your iPhone → tap "Capture Event" → a calendar event is created automatically.
+Everything runs in **eu-west-2** on the AWS free tier (Lambda + DynamoDB on-demand +
+S3 + SQS + CloudFront). Steady-state cost is ≲ $2/month plus ~$0.01 of Anthropic
+API per capture.
 
-## Requirements
+## Repository layout
 
-- [n8n](https://n8n.io) — self-hosted via Docker
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — to run n8n
-- [Tailscale](https://tailscale.com) — to expose n8n to your iPhone over a private network
-- [Scriptable](https://scriptable.app) — iOS app to run the webhook script
-- [Anthropic API key](https://console.anthropic.com) — for Claude Vision
-- Google Calendar — via OAuth in n8n
+| Directory | What it is |
+|---|---|
+| `backend/` | TypeScript Lambda application: handlers, pure pipeline functions, prompt files, AWS/Google/Anthropic clients. `npm test` runs the full suite. |
+| `infra/` | AWS CDK app (TypeScript). `BackendStack` (DynamoDB, S3, SQS, Lambdas, HTTP API) + `WebStack` (CloudFront for universal links, privacy policy, capture fallback pages). |
+| `evals/` | Eval harness for the AI pipeline: synthetic poster generator (Playwright), labeled dataset, field-level scoring, model comparison reports. |
+| `tools/prompt-improvement/` | Offline pipeline that turns user corrections into candidate prompt changes, gated by the eval suite and human PR review. |
+| `ios/` | Native SwiftUI app + Share Extension. Project generated with [XcodeGen](https://github.com/yonaskolb/XcodeGen) from `project.yml`. |
+| `docs/` | Setup guides (AWS, Google Cloud, Apple), architecture notes, privacy policy, terms of service. |
+| `archive/` | The original n8n + Scriptable pipeline this replaced. Reference only. |
 
-## iOS Shortcut
+## Getting started
 
-The Shortcut appears in the Share Sheet and handles passing the image to Scriptable. Create it with these five actions:
+Three one-time setup guides, in order:
 
-1. **Receive Images** from Share Sheet (if no input: Ask For Photos)
-2. **Connect to Tailscale network** — no-op if already connected
-3. **Resize Image** to Longest Edge 1000
-4. **Encode Resized Image** with base64
-5. **Run Script** "screenshot-to-calendar" in Scriptable, passing Base64 Encoded as input
+1. **[docs/setup-aws.md](docs/setup-aws.md)** — AWS account, CDK bootstrap, secrets in
+   SSM Parameter Store, deploy staging + prod.
+2. **[docs/setup-google.md](docs/setup-google.md)** — Google Cloud project, Calendar +
+   Places APIs, OAuth consent screen and clients. Read the note about publishing the
+   consent screen — it prevents refresh tokens expiring every 7 days.
+3. **[docs/setup-apple.md](docs/setup-apple.md)** — generate the Xcode project, configure
+   signing and capabilities, ship to TestFlight.
 
-<img src="images/ios-shortcut-setup.png" width="350" alt="iOS Shortcut configuration">
-
-## Setup
-
-See [CLAUDE.md](CLAUDE.md#first-time-setup) for full setup instructions.
-
-Quick start:
+Day-to-day development:
 
 ```bash
-cp .env.example .env
-# Fill in your values
-make up      # start n8n
-make push    # deploy the workflow
-make deploy  # copy Scriptable script to iCloud
+cd backend && npm ci && npm test        # backend unit + handler tests
+cd infra   && npm ci && npm test        # CDK synth + assertions
+cd evals   && npm ci && npm test        # scoring + generator tests
+cd evals   && npm run generate          # regenerate synthetic eval posters
+cd evals   && npm run eval -- --models claude-haiku-4-5   # live eval (needs ANTHROPIC_API_KEY)
 ```
 
-## Make targets
+Deployment is via GitHub Actions (`deploy.yml`, manual dispatch per stage) or locally
+with `cd infra && npx cdk deploy` — see [docs/deploy.md](docs/deploy.md).
 
-| Target | Description |
-|--------|-------------|
-| `make up` | Start n8n via Docker Compose |
-| `make down` | Stop n8n |
-| `make logs` | Tail n8n logs |
-| `make deploy` | Copy `scriptable/screenshot-to-calendar.js` to Scriptable's iCloud folder |
-| `make pull` | Fetch the live workflow from n8n and save to `n8n/workflow.json` |
-| `make push` | Deploy `n8n/workflow.json` to n8n |
+## The AI pipeline
 
-## Configuration
+Two Claude calls per capture, configured in `backend/src/lib/models.ts`:
 
-| Location | What's stored |
-|----------|---------------|
-| `.env` | n8n webhook URL, API key, workflow ID |
-| Scriptable Keychain (iPhone) | n8n hostname (`n8n_host`) and port (`n8n_port`, default `5678`) |
-| n8n credential store | Anthropic API key, Google Calendar OAuth tokens |
+1. **Classify** (`claude-haiku-4-5`): is this an event poster / event screenshot /
+   ticket / other scrapbook content? Non-events are kept in the library but skip
+   calendar creation — groundwork for the scrapbooking direction.
+2. **Extract** (`claude-sonnet-5`, structured outputs): title, venue, address, dates,
+   times, description, URL, confidence. Prompt lives in
+   `backend/src/prompts/extract-event.v2.md` and is versioned — the active version is
+   pinned in `backend/src/prompts/prompts.ts`.
+
+**Which model is good enough?** Run the eval harness — it scores each model
+field-by-field against a labeled dataset and reports accuracy, hallucination rate,
+latency, and cost per 100 images. See [evals/README.md](evals/README.md).
+
+**Corrections make the prompt better.** Edits made in the app are stored (original
+extraction preserved) and a monthly job clusters them into failure patterns, asks
+Claude to propose a minimal prompt change, and opens a PR — only if the eval suite
+shows no regressions. Corrections only enter this pipeline from users who opted in,
+and every change is human-reviewed. See `tools/prompt-improvement/`.
+
+## Privacy
+
+Images and extracted data are stored encrypted at rest in eu-west-2, used only to
+provide the service, and never used for evals or prompt improvement without explicit
+opt-in. In-app: export all data, delete account (removes images, records, and revokes
+Google access). Full policy: [docs/privacy-policy.md](docs/privacy-policy.md).
