@@ -20,8 +20,8 @@ enum AppConfig {
     /// The CloudFront web domain (universal links host), without scheme.
     static let webDomain = "REPLACE_ME_CLOUDFRONT_DOMAIN"
 
-    static let appGroupId = "group.com.rhysdunne.s2c"
-    static let keychainAccessGroupSuffix = "com.rhysdunne.s2c.shared"
+    static let appGroupId = "group.digital.callaeas.s2c"
+    static let keychainAccessGroupSuffix = "digital.callaeas.s2c.shared"
 
     /// Longest edge for images before upload — the v1 convention, kept because
     /// it keeps payloads ~300KB while remaining plenty for Claude vision.

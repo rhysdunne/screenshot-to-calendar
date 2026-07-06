@@ -81,7 +81,7 @@ cd evals   && npm run eval -- --models claude-haiku-4-5,claude-sonnet-5 --datase
 
 - Stages: `staging` and `prod`, same AWS account, resources suffixed with the stage.
 - Deploy: GitHub Actions `deploy.yml` (workflow_dispatch, OIDC role) or
-  `cd infra && npx cdk deploy S2c-{stage}`.
+  `cd infra && npx cdk deploy S2cWeb-{stage} S2cBackend-{stage}`.
 - The iOS app points at prod; Debug builds can flip to staging in `AppConfig.swift`.
 
 ## Gotchas

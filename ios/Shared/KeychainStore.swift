@@ -4,7 +4,7 @@ import Security
 /// Session token storage in the shared keychain access group, so the share
 /// extension can authenticate uploads without the app running.
 enum KeychainStore {
-    private static let service = "com.rhysdunne.s2c.session"
+    private static let service = "digital.callaeas.s2c.session"
     private static let account = "jwt"
 
     private static var accessGroup: String {
