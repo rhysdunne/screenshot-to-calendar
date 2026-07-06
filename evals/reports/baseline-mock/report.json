@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-07-06T14:25:27.665Z",
+  "dataset": "synthetic",
+  "promptVersion": "pinned",
+  "mock": true,
+  "reports": [
+    {
+      "model": "claude-haiku-4-5",
+      "cases": 44,
+      "aggregate": 1,
+      "fieldAccuracy": {
+        "title": 1,
+        "venue": 1,
+        "address": 1,
+        "start_date": 1,
+        "end_date": 1,
+        "start_time": 1,
+        "end_time": 1,
+        "url": 1
+      },
+      "hallucinationRate": 0,
+      "missRate": 0,
+      "classificationAccuracy": 1,
+      "meanLatencyMs": 0,
+      "p95LatencyMs": 0,
+      "costPer100Images": 0,
+      "errors": 0
+    }
+  ]
+}
