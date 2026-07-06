@@ -47,7 +47,9 @@ API per capture.
 
 ## Getting started
 
-Three one-time setup guides, in order:
+**Deploying for the first time? Follow [SHIPPING.md](SHIPPING.md)** — the
+single ordered checklist from empty AWS account to TestFlight. It links into
+the three detailed guides:
 
 1. **[docs/setup-aws.md](docs/setup-aws.md)** — AWS account, CDK bootstrap, secrets in
    SSM Parameter Store, deploy staging + prod.

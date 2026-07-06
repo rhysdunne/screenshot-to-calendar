@@ -20,7 +20,8 @@ for the port map).
 | `evals/` | Synthetic poster generator (Playwright), labeled datasets, scoring, model-comparison harness. |
 | `tools/prompt-improvement/` | Corrections → clustered failure patterns → proposed prompt version → eval gate → PR. |
 | `ios/` | SwiftUI app + Share Extension. `project.yml` is the source of truth (XcodeGen); no .xcodeproj is committed. |
-| `docs/` | Setup guides, architecture, privacy policy, ToS. |
+| `docs/` | Setup guides, architecture, privacy policy, ToS. `design-semantic-search.md` is the designed-but-not-built scrapbook search layer. |
+| `SHIPPING.md` | The ordered first-deploy runbook (AWS → Google → deploy → baseline eval → TestFlight). |
 
 ## Commands
 
