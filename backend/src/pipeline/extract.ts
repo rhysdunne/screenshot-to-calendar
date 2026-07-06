@@ -1,4 +1,4 @@
-import type { ExtractedEvent } from './types.js';
+import { EVENT_CATEGORIES, type EventCategory, type ExtractedEvent } from './types.js';
 import { isValidHm, isValidYmd } from './dates.js';
 
 // Minimal shape of an Anthropic Messages API response we parse from.
@@ -56,6 +56,10 @@ export function normalizeEventData(raw: unknown): ExtractedEvent {
       ? o.confidence
       : 'low';
 
+  const category = EVENT_CATEGORIES.includes(o.category as EventCategory)
+    ? (o.category as EventCategory)
+    : null;
+
   return {
     title: str(o.title),
     venue: str(o.venue),
@@ -67,5 +71,8 @@ export function normalizeEventData(raw: unknown): ExtractedEvent {
     description: str(o.description),
     url: str(o.url),
     confidence,
+    // v3 fields: present-but-null on v2 responses is fine downstream.
+    price: str(o.price),
+    category,
   };
 }

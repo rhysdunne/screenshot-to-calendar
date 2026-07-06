@@ -18,6 +18,9 @@ import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
+import * as sns from 'aws-cdk-lib/aws-sns';
+import * as snsSubscriptions from 'aws-cdk-lib/aws-sns-subscriptions';
 import type { Construct } from 'constructs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +31,8 @@ export interface BackendStackProps extends StackProps {
   /** CloudFront domain of the web stack — deep links in calendar descriptions. */
   deepLinkBaseUrl: string;
   googleClientId: string;
+  /** Email for operational alerts; subscription is skipped for placeholder values. */
+  alertEmail?: string;
 }
 
 export class BackendStack extends Stack {
@@ -180,6 +185,9 @@ export class BackendStack extends Stack {
     const capturesUpdateFn = makeFn('CapturesUpdate', 'captures-update.ts', 'handler', {
       timeout: 30,
     });
+    const capturesApproveFn = makeFn('CapturesApprove', 'captures-approve.ts', 'handler', {
+      timeout: 30,
+    });
     const capturesDeleteFn = makeFn('CapturesDelete', 'captures-delete.ts', 'handler', {
       timeout: 30,
     });
@@ -229,6 +237,7 @@ export class BackendStack extends Stack {
     route(apigwv2.HttpMethod.GET, '/v1/captures/{id}', capturesGetFn);
     route(apigwv2.HttpMethod.GET, '/v1/captures/{id}/image', captureImageUrlFn);
     route(apigwv2.HttpMethod.PATCH, '/v1/captures/{id}', capturesUpdateFn);
+    route(apigwv2.HttpMethod.POST, '/v1/captures/{id}/approve', capturesApproveFn);
     route(apigwv2.HttpMethod.DELETE, '/v1/captures/{id}', capturesDeleteFn);
     route(apigwv2.HttpMethod.GET, '/v1/calendars', calendarsListFn);
     route(apigwv2.HttpMethod.POST, '/v1/calendars', calendarsCreateFn);
@@ -240,7 +249,18 @@ export class BackendStack extends Stack {
 
     // ---- Observability ---------------------------------------------------
 
-    new cloudwatch.Alarm(this, 'DlqAlarm', {
+    // Alarms are useless if nobody hears them: everything notifies this topic.
+    const alertsTopic = new sns.Topic(this, 'AlertsTopic', {
+      topicName: `s2c-alerts-${stage}`,
+    });
+    if (props.alertEmail && !props.alertEmail.startsWith('REPLACE_ME')) {
+      alertsTopic.addSubscription(
+        new snsSubscriptions.EmailSubscription(props.alertEmail),
+      );
+    }
+    const notify = new cloudwatchActions.SnsAction(alertsTopic);
+
+    const dlqAlarm = new cloudwatch.Alarm(this, 'DlqAlarm', {
       alarmName: `s2c-dlq-not-empty-${stage}`,
       metric: dlq.metricApproximateNumberOfMessagesVisible({
         period: Duration.minutes(5),
@@ -251,6 +271,44 @@ export class BackendStack extends Stack {
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
       alarmDescription: 'A capture failed processing 3 times and landed on the DLQ.',
     });
+    dlqAlarm.addAlarmAction(notify);
+
+    for (const [name, fn] of [
+      ['Processor', processor],
+      ['AuthGoogle', authFn],
+    ] as const) {
+      const alarm = new cloudwatch.Alarm(this, `${name}ErrorAlarm`, {
+        alarmName: `s2c-${name.toLowerCase()}-errors-${stage}`,
+        metric: fn.metricErrors({ period: Duration.minutes(5) }),
+        threshold: 1,
+        evaluationPeriods: 1,
+        comparisonOperator:
+          cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+        alarmDescription: `${name} Lambda reported errors.`,
+      });
+      alarm.addAlarmAction(notify);
+    }
+
+    // Daily AI spend guardrail — the metric is emitted by lib/anthropic.ts
+    // (EMF via powertools) on every Claude call. A runaway processing loop
+    // trips this within a day instead of showing up on the invoice.
+    const aiSpendAlarm = new cloudwatch.Alarm(this, 'AiSpendAlarm', {
+      alarmName: `s2c-ai-spend-${stage}`,
+      metric: new cloudwatch.Metric({
+        namespace: 's2c',
+        metricName: 'AiCostUsd',
+        dimensionsMap: { stage },
+        statistic: 'Sum',
+        period: Duration.hours(24),
+      }),
+      threshold: 2,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      alarmDescription: 'Anthropic spend exceeded $2 in 24h — check for a processing loop.',
+    });
+    aiSpendAlarm.addAlarmAction(notify);
 
     this.apiUrl = new CfnOutput(this, 'ApiUrl', { value: api.apiEndpoint });
   }

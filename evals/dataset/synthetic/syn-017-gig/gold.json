@@ -1,12 +1,14 @@
 {
-  "title": "Analogue Sunset",
-  "venue": "Peckham Levels",
+  "title": "Future Ruins",
+  "venue": "Cafe OTO",
   "address": null,
-  "start_date": "2026-07-17",
+  "start_date": "2026-07-11",
   "end_date": null,
-  "start_time": "19:00",
-  "end_time": "22:30",
+  "start_time": "20:00",
+  "end_time": null,
   "description": null,
   "url": "https://www.eventsite.co.uk",
-  "confidence": "high"
+  "confidence": "high",
+  "price": "£12.50",
+  "category": "film"
 }

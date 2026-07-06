@@ -33,6 +33,7 @@ export interface EventCase {
     timeText: string | null;
     handle: string | null;
     url: string | null;
+    priceText: string | null;
     tagline: string;
   };
 }
@@ -56,11 +57,21 @@ const EVENT_NAMES = [
   'The Colour of Pomegranates', 'Slow Light', 'Wire & Wool', 'Static Bloom',
 ] as const;
 
+// Taglines carry the event genre — when a template renders the tagline, the
+// genre is readable from the image and goes into gold.category; ambiguous
+// taglines (category: null) leave category unscored.
 const TAGLINES = [
-  'A group exhibition of new work', 'Live music all night', 'DJs till late',
-  'Talks, tastings and records', 'One night only', 'Free entry, donations welcome',
-  'A celebration of independent makers', 'New commissions and rare screenings',
+  { text: 'A group exhibition of new work', category: 'exhibition' },
+  { text: 'Live music all night', category: 'music' },
+  { text: 'DJs till late', category: 'club_night' },
+  { text: 'Talks, tastings and records', category: null },
+  { text: 'One night only', category: null },
+  { text: 'Free entry, donations welcome', category: null },
+  { text: 'A celebration of independent makers', category: 'market' },
+  { text: 'New commissions and rare screenings', category: 'film' },
 ] as const;
+
+const PRICES = ['Free', '£5', '£10', '£12.50', null, null] as const;
 
 const HANDLES = ['@southlondonlistings', '@nightflowerspresents', '@ldn_art_diary', null, null] as const;
 const URLS = ['tickets.example.com/e/4821', 'www.eventsite.co.uk', null, null] as const;
@@ -164,16 +175,23 @@ export const TEMPLATE_NAMES = [
 ] as const;
 
 // What each template actually renders — gold labels must only contain facts
-// visible in the image, so anything a template omits is null in gold.
-const TEMPLATE_CAPS: Record<string, { address: boolean; url: boolean }> = {
-  gallery: { address: true, url: true },
-  gig: { address: true, url: true },
-  'club-night': { address: false, url: false },
-  'ig-post': { address: true, url: true },
-  'ig-story': { address: true, url: false },
-  market: { address: true, url: true },
-  talk: { address: true, url: true },
-  'hard-mode': { address: false, url: false },
+// visible in the image, so anything a template omits is null (or, for the
+// v3 optional fields, absent) in gold.
+interface TemplateCaps {
+  address: boolean;
+  url: boolean;
+  price: boolean;
+  tagline: boolean;
+}
+const TEMPLATE_CAPS: Record<string, TemplateCaps> = {
+  gallery: { address: true, url: true, price: false, tagline: true },
+  gig: { address: true, url: true, price: true, tagline: true },
+  'club-night': { address: false, url: false, price: false, tagline: false },
+  'ig-post': { address: true, url: true, price: true, tagline: true },
+  'ig-story': { address: true, url: false, price: false, tagline: false },
+  market: { address: true, url: true, price: true, tagline: true },
+  talk: { address: true, url: true, price: true, tagline: true },
+  'hard-mode': { address: false, url: false, price: false, tagline: false },
 };
 
 export function makeEventCase(random: () => number, index: number, today = FROZEN_TODAY): EventCase {
@@ -183,8 +201,11 @@ export function makeEventCase(random: () => number, index: number, today = FROZE
   const tagline = pick(random, TAGLINES);
   const handle = pick(random, HANDLES);
   const url = pick(random, URLS);
+  const price = pick(random, PRICES);
   const spec = makeDateSpec(random, today);
-  const caps = TEMPLATE_CAPS[template] ?? { address: false, url: false };
+  const caps = TEMPLATE_CAPS[template] ?? {
+    address: false, url: false, price: false, tagline: false,
+  };
   const showAddress = caps.address && venue.address !== null && random() > 0.35;
   const showUrl = caps.url && url !== null;
 
@@ -197,6 +218,10 @@ export function makeEventCase(random: () => number, index: number, today = FROZE
     url: showUrl ? `https://${url}` : null,
     confidence: 'high',
   };
+  // v3 optional fields carry a key only when the fact is decidable from the
+  // image; absent keys are skipped by the scorer (pre-v3 gold stays valid).
+  if (caps.price) gold.price = price;
+  if (caps.tagline && tagline.category) gold.category = tagline.category;
 
   return {
     id: `syn-${String(index).padStart(3, '0')}-${template}`,
@@ -215,7 +240,8 @@ export function makeEventCase(random: () => number, index: number, today = FROZE
       timeText: spec.timeText,
       handle,
       url: showUrl ? url : null,
-      tagline,
+      priceText: caps.price ? price : null,
+      tagline: tagline.text,
     },
   };
 }
@@ -232,7 +258,7 @@ export function makeNonEventCase(index: number): EventCase {
     goldClassification: { category: 'other_scrapbook', is_event: false, confidence: 'high' },
     display: {
       title: 'Lunch Menu', venue: null, address: null, dateText: '', timeText: null,
-      handle: null, url: null, tagline: '',
+      handle: null, url: null, priceText: null, tagline: '',
     },
   };
 }

@@ -88,6 +88,7 @@ describe('mapEventToCalendar (ported v1 cases)', () => {
         venue: 'The Windmill',
         address: '22 Blenheim Gardens, London SW2 5BZ',
         url: 'https://example.com/tickets',
+        price: '£8 adv',
       }),
       { ...OPTS, captureLink: 'https://d123.cloudfront.net/c/abc' },
     );
@@ -96,6 +97,7 @@ describe('mapEventToCalendar (ported v1 cases)', () => {
         'A great gig',
         'Venue: The Windmill',
         'Address: 22 Blenheim Gardens, London SW2 5BZ',
+        'Price: £8 adv',
         'Link: https://example.com/tickets',
         'View capture: https://d123.cloudfront.net/c/abc',
         '\n[Auto-captured · Confidence: high]',
@@ -129,6 +131,27 @@ describe('extractEventData (ported v1 cases)', () => {
     expect(() => extractEventData({ foo: 1 } as never)).toThrow(
       /Unexpected API response structure/,
     );
+  });
+
+  it('normalizes v3 price/category fields; unknown categories become null', () => {
+    const result = extractEventData(
+      wrap(
+        JSON.stringify({
+          title: 'X',
+          start_date: '2026-08-01',
+          price: '£12.50',
+          category: 'club_night',
+          confidence: 'high',
+        }),
+      ),
+    );
+    expect(result.price).toBe('£12.50');
+    expect(result.category).toBe('club_night');
+
+    const bad = extractEventData(
+      wrap(JSON.stringify({ title: 'X', start_date: '2026-08-01', category: 'rave', confidence: 'high' })),
+    );
+    expect(bad.category).toBeNull();
   });
 
   it('normalizes malformed dates/times to null instead of propagating garbage', () => {

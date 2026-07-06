@@ -3,14 +3,15 @@
 // Pure logic lives in src/pipeline/; this file sequences I/O.
 import type { SQSHandler } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
-import { loadPrompt, renderPrompt } from '../prompts/prompts.js';
-import { CLASSIFY_IMAGE_SCHEMA, EXTRACT_EVENT_SCHEMA } from '../prompts/schemas.js';
+import { extractSchemaFor, loadPrompt, renderPrompt } from '../prompts/prompts.js';
+import { CLASSIFY_IMAGE_SCHEMA } from '../prompts/schemas.js';
 import { extractEventData, normalizeEventData } from '../pipeline/extract.js';
 import { mapEventToCalendar } from '../pipeline/map-to-calendar.js';
 import { addDays, todayInZone } from '../pipeline/dates.js';
 import { findDuplicate } from '../pipeline/dedup.js';
-import { NoDateError, type Classification } from '../pipeline/types.js';
+import { NoDateError, type Classification, type ExtractedEvent } from '../pipeline/types.js';
 import type { ImageMediaType } from '../pipeline/image.js';
+import type { CaptureRecord, UserRecord } from '../lib/ddb.js';
 import { logger } from '../lib/logger.js';
 
 export interface ProcessMessage {
@@ -32,6 +33,10 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
   }
 
   await store.updateCapture(msg.userId, msg.captureId, { status: 'processing' });
+
+  // Kept in scope so a failure can persist what the model actually said —
+  // otherwise debugging a bad extraction means reproducing the call.
+  let rawExtractOutput: string | undefined;
 
   try {
     const imageBase64 = (await images.getImage(capture.imageKey)).toString('base64');
@@ -77,7 +82,7 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       prompt: renderPrompt(loadPrompt('extract-event'), { today, timeZone }),
       imageBase64,
       mediaType,
-      schema: EXTRACT_EVENT_SCHEMA,
+      schema: extractSchemaFor(),
       maxTokens: 1024,
       stage: 'extract',
     });
@@ -87,6 +92,10 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       userId: msg.userId,
       captureId: msg.captureId,
     });
+    rawExtractOutput = (extractCall.response.content ?? [])
+      .filter((b) => b.type === 'text')
+      .map((b) => (b as { text?: string }).text ?? '')
+      .join('');
     let event = extractEventData(extractCall.response);
 
     // 3. Resolve venue → address via Places when missing (non-fatal).
@@ -100,63 +109,25 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       }
     }
 
-    const captureLink = `${config.deepLinkBase}/c/${msg.captureId}`;
-    const calendarBody = mapEventToCalendar(event, { today, timeZone, captureLink });
-
-    const calendarId = user.settings.calendarId;
-    if (!calendarId) {
+    // 4. Confidence gate (issue #2): low-confidence extractions wait for the
+    // user to review/approve in the app instead of auto-creating an event.
+    if (event.confidence === 'low') {
       await store.updateCapture(msg.userId, msg.captureId, {
-        status: 'failed',
+        status: 'needs_review',
         classification,
         event,
-        costUsd: totalCost,
-        error: 'No target calendar selected — open the app and pick a calendar in Settings.',
-      });
-      return;
-    }
-
-    // 4. Dedup against existing events in a ±1 day window around the event.
-    const accessToken = await deps.googleAccessToken(user);
-    const windowStart = 'date' in calendarBody.start
-      ? calendarBody.start.date
-      : calendarBody.start.dateTime.slice(0, 10);
-    const windowEnd = 'date' in calendarBody.end
-      ? calendarBody.end.date
-      : calendarBody.end.dateTime.slice(0, 10);
-    const existing = await deps.calendar.listEventsInWindow(
-      accessToken,
-      calendarId,
-      `${addDays(windowStart, -1)}T00:00:00Z`,
-      `${addDays(windowEnd, 1)}T23:59:59Z`,
-    );
-    const verdict = findDuplicate(calendarBody, existing);
-
-    if (verdict.kind === 'duplicate') {
-      await store.updateCapture(msg.userId, msg.captureId, {
-        status: 'duplicate',
-        classification,
-        event,
-        calendarEventId: verdict.event.id,
-        calendarId,
-        eventLink: verdict.event.htmlLink,
         costUsd: totalCost,
       });
       return;
     }
 
-    // 5. Create the event.
-    const created = await deps.calendar.insertEvent(accessToken, calendarId, calendarBody);
+    // 5. Dedup + create (shared with the approve endpoint).
+    const updates = await createCalendarEntry(deps, user, msg.captureId, event);
     await store.updateCapture(msg.userId, msg.captureId, {
-      status: 'completed',
       classification,
       event,
-      calendarEventId: created.id,
-      calendarId,
-      eventLink: created.htmlLink,
       costUsd: totalCost,
-      ...(verdict.kind === 'possible'
-        ? { possibleDuplicateOf: verdict.event.id }
-        : {}),
+      ...updates,
     });
   } catch (e) {
     const message =
@@ -167,11 +138,72 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
     await store.updateCapture(msg.userId, msg.captureId, {
       status: 'failed',
       error: message,
+      // Debugging aid, never shown in the app (excluded from captureView).
+      ...(rawExtractOutput ? { rawModelOutput: rawExtractOutput.slice(0, 4000) } : {}),
     });
     // NoDateError is terminal — retrying won't conjure a date. Anything else
     // rethrows so SQS retries (×3) and then parks the message on the DLQ.
     if (!(e instanceof NoDateError)) throw e;
   }
+}
+
+/**
+ * Map → dedup → insert, returning the capture updates to store. Shared by the
+ * processor (auto path) and the approve endpoint (needs_review path). Throws
+ * NoDateError when the event has no dates; the caller decides terminality.
+ */
+export async function createCalendarEntry(
+  deps: Deps,
+  user: UserRecord,
+  captureId: string,
+  event: ExtractedEvent,
+): Promise<Partial<CaptureRecord>> {
+  const timeZone = user.settings.timezone || 'Europe/London';
+  const today = todayInZone(timeZone);
+  const captureLink = `${deps.config.deepLinkBase}/c/${captureId}`;
+  const calendarBody = mapEventToCalendar(event, { today, timeZone, captureLink });
+
+  const calendarId = user.settings.calendarId;
+  if (!calendarId) {
+    return {
+      status: 'failed',
+      error: 'No target calendar selected — open the app and pick a calendar in Settings.',
+    };
+  }
+
+  // Dedup against existing events in a ±1 day window around the event.
+  const accessToken = await deps.googleAccessToken(user);
+  const windowStart = 'date' in calendarBody.start
+    ? calendarBody.start.date
+    : calendarBody.start.dateTime.slice(0, 10);
+  const windowEnd = 'date' in calendarBody.end
+    ? calendarBody.end.date
+    : calendarBody.end.dateTime.slice(0, 10);
+  const existing = await deps.calendar.listEventsInWindow(
+    accessToken,
+    calendarId,
+    `${addDays(windowStart, -1)}T00:00:00Z`,
+    `${addDays(windowEnd, 1)}T23:59:59Z`,
+  );
+  const verdict = findDuplicate(calendarBody, existing);
+
+  if (verdict.kind === 'duplicate') {
+    return {
+      status: 'duplicate',
+      calendarEventId: verdict.event.id,
+      calendarId,
+      eventLink: verdict.event.htmlLink,
+    };
+  }
+
+  const created = await deps.calendar.insertEvent(accessToken, calendarId, calendarBody);
+  return {
+    status: 'completed',
+    calendarEventId: created.id,
+    calendarId,
+    eventLink: created.htmlLink,
+    ...(verdict.kind === 'possible' ? { possibleDuplicateOf: verdict.event.id } : {}),
+  };
 }
 
 function extractClassification(response: {

@@ -10,8 +10,8 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { callClaude } from '../../backend/src/lib/anthropic.js';
-import { loadPrompt, renderPrompt } from '../../backend/src/prompts/prompts.js';
-import { CLASSIFY_IMAGE_SCHEMA, EXTRACT_EVENT_SCHEMA } from '../../backend/src/prompts/schemas.js';
+import { extractSchemaFor, loadPrompt, renderPrompt } from '../../backend/src/prompts/prompts.js';
+import { CLASSIFY_IMAGE_SCHEMA } from '../../backend/src/prompts/schemas.js';
 import { extractEventData } from '../../backend/src/pipeline/extract.js';
 import { detectMediaType } from '../../backend/src/pipeline/image.js';
 import type { Classification, ExtractedEvent } from '../../backend/src/pipeline/types.js';
@@ -135,7 +135,7 @@ async function runCase(
     }),
     imageBase64: c.imageBase64,
     mediaType,
-    schema: EXTRACT_EVENT_SCHEMA,
+    schema: extractSchemaFor(opts.promptVersion),
     maxTokens: 1024,
     stage: 'extract',
   });

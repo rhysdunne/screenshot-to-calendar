@@ -1,12 +1,13 @@
 {
-  "title": "Soft Machines",
+  "title": "Salt & Signal",
   "venue": "Corsica Studios",
   "address": null,
-  "start_date": null,
-  "end_date": "2026-08-16",
+  "start_date": "2026-08-07",
+  "end_date": null,
   "start_time": null,
   "end_time": null,
   "description": null,
-  "url": "https://tickets.example.com/e/4821",
-  "confidence": "high"
+  "url": "https://www.eventsite.co.uk",
+  "confidence": "high",
+  "price": null
 }

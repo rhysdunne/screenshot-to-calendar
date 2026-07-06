@@ -27,6 +27,7 @@ export function mapEventToCalendar(
   if (eventData.description) descParts.push(eventData.description);
   if (eventData.venue) descParts.push(`Venue: ${eventData.venue}`);
   if (eventData.address) descParts.push(`Address: ${eventData.address}`);
+  if (eventData.price) descParts.push(`Price: ${eventData.price}`);
   if (eventData.url) descParts.push(`Link: ${eventData.url}`);
   if (opts.captureLink) descParts.push(`View capture: ${opts.captureLink}`);
   descParts.push(`\n[Auto-captured · Confidence: ${eventData.confidence || 'unknown'}]`);

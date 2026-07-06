@@ -1,12 +1,13 @@
 {
-  "title": "Future Ruins",
-  "venue": "Cafe OTO",
-  "address": "18-22 Ashwin St, London E8 3DL",
-  "start_date": "2026-07-15",
-  "end_date": "2026-07-24",
-  "start_time": null,
+  "title": "Soft Machines",
+  "venue": "The Windmill",
+  "address": "22 Blenheim Gardens, London SW2 5BZ",
+  "start_date": "2026-08-03",
+  "end_date": null,
+  "start_time": "21:00",
   "end_time": null,
   "description": null,
   "url": null,
-  "confidence": "high"
+  "confidence": "high",
+  "price": null
 }

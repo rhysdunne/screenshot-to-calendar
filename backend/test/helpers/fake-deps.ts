@@ -50,12 +50,22 @@ export class FakeStore implements Store {
       .sort((a, b) => (a.captureId < b.captureId ? 1 : -1));
     return { items, cursor: undefined };
   }
-  async updateCapture(userId: string, captureId: string, updates: Partial<CaptureRecord>) {
+  async updateCapture(
+    userId: string,
+    captureId: string,
+    updates: { [K in keyof CaptureRecord]?: CaptureRecord[K] | null },
+  ) {
     const key = `${userId}/${captureId}`;
     const capture = this.captures.get(key);
-    if (capture) {
-      this.captures.set(key, { ...capture, ...updates, updatedAt: new Date().toISOString() });
+    if (!capture) return;
+    const next = { ...capture } as Record<string, unknown>;
+    for (const [k, v] of Object.entries(updates)) {
+      if (v === undefined) continue;
+      if (v === null) delete next[k]; // mirrors the DDB REMOVE semantics
+      else next[k] = v;
     }
+    next.updatedAt = new Date().toISOString();
+    this.captures.set(key, next as unknown as CaptureRecord);
   }
   async deleteCapture(userId: string, captureId: string, imageSha256: string) {
     this.captures.delete(`${userId}/${captureId}`);

@@ -15,9 +15,12 @@ struct ExtractedEvent: Codable, Equatable {
     var description: String?
     var url: String?
     var confidence: String?
+    // v3 prompt fields (absent on v2 extractions):
+    var price: String?
+    var category: String?
 
     enum CodingKeys: String, CodingKey {
-        case title, venue, address, description, url, confidence
+        case title, venue, address, description, url, confidence, price, category
         case startDate = "start_date"
         case endDate = "end_date"
         case startTime = "start_time"
@@ -39,6 +42,7 @@ struct Classification: Codable, Equatable {
 enum CaptureStatus: String, Codable {
     case queued, processing, completed, failed, duplicate
     case notEvent = "not_event"
+    case needsReview = "needs_review"
 
     var label: String {
         switch self {
@@ -48,6 +52,7 @@ enum CaptureStatus: String, Codable {
         case .failed: return "Failed"
         case .duplicate: return "Already in calendar"
         case .notEvent: return "Saved (not an event)"
+        case .needsReview: return "Check details"
         }
     }
 

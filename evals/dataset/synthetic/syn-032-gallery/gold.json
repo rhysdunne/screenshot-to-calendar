@@ -1,12 +1,13 @@
 {
-  "title": "Midnight Botany",
-  "venue": "Corsica Studios",
-  "address": "4/5 Elephant Road, London SE17 1LB",
-  "start_date": "2026-07-26",
+  "title": "Static Bloom",
+  "venue": "The Old Operating Theatre",
+  "address": null,
+  "start_date": "2026-07-30",
   "end_date": null,
-  "start_time": null,
+  "start_time": "21:00",
   "end_time": null,
   "description": null,
-  "url": "https://tickets.example.com/e/4821",
-  "confidence": "high"
+  "url": "https://www.eventsite.co.uk",
+  "confidence": "high",
+  "category": "exhibition"
 }

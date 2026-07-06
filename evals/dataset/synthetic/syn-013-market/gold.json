@@ -1,12 +1,13 @@
 {
   "title": "The Colour of Pomegranates",
-  "venue": "Cafe OTO",
-  "address": null,
-  "start_date": "2026-08-05",
+  "venue": "Whitechapel Gallery",
+  "address": "77-82 Whitechapel High St, London E1 7QX",
+  "start_date": "2026-08-07",
   "end_date": null,
-  "start_time": "21:00",
-  "end_time": null,
+  "start_time": "19:00",
+  "end_time": "22:30",
   "description": null,
-  "url": "https://tickets.example.com/e/4821",
-  "confidence": "high"
+  "url": null,
+  "confidence": "high",
+  "price": "£10"
 }

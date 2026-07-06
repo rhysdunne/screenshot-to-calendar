@@ -31,6 +31,23 @@ export const EXTRACT_EVENT_SCHEMA = {
   additionalProperties: false,
 } as const;
 
+/** v3 adds price + event-genre category (issues #4 and #7). */
+export const EXTRACT_EVENT_SCHEMA_V3 = {
+  ...EXTRACT_EVENT_SCHEMA,
+  properties: {
+    ...EXTRACT_EVENT_SCHEMA.properties,
+    price: { type: ['string', 'null'] },
+    category: {
+      type: ['string', 'null'],
+      enum: [
+        'exhibition', 'music', 'theatre', 'club_night', 'food_drink',
+        'market', 'workshop', 'talk', 'film', 'other', null,
+      ],
+    },
+  },
+  required: [...EXTRACT_EVENT_SCHEMA.required, 'price', 'category'],
+} as const;
+
 export const CLASSIFY_IMAGE_SCHEMA = {
   type: 'object',
   properties: {

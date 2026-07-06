@@ -1,11 +1,11 @@
 {
-  "title": "Garden of Forking Paths",
-  "venue": "The Windmill",
+  "title": "The Paper Architects",
+  "venue": "The Old Operating Theatre",
   "address": null,
-  "start_date": "2026-08-06",
-  "end_date": "2026-08-10",
-  "start_time": null,
-  "end_time": null,
+  "start_date": "2026-08-15",
+  "end_date": null,
+  "start_time": "19:00",
+  "end_time": "22:30",
   "description": null,
   "url": null,
   "confidence": "high"

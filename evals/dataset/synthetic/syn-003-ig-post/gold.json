@@ -1,12 +1,14 @@
 {
-  "title": "Midnight Botany",
-  "venue": "The Old Operating Theatre",
-  "address": null,
-  "start_date": "2026-07-30",
+  "title": "The Paper Architects",
+  "venue": "Round Chapel",
+  "address": "1D Glenarm Rd, London E5 0LY",
+  "start_date": "2026-07-21",
   "end_date": null,
   "start_time": "21:00",
   "end_time": null,
   "description": null,
-  "url": "https://tickets.example.com/e/4821",
-  "confidence": "high"
+  "url": null,
+  "confidence": "high",
+  "price": "£10",
+  "category": "exhibition"
 }

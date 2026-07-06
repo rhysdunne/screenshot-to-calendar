@@ -6,6 +6,7 @@
   "description": "Corrections → clustered failure patterns → candidate prompt → eval gate → PR",
   "scripts": {
     "aggregate": "tsx src/aggregate-corrections.ts",
+    "materialize": "tsx src/materialize-eval-cases.ts",
     "propose": "tsx src/propose-prompt.ts",
     "gate": "tsx src/run-gate.ts",
     "test": "vitest run",

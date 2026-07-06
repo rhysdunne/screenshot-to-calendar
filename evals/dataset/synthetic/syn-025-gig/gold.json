@@ -1,12 +1,13 @@
 {
-  "title": "Soft Machines",
-  "venue": "The Windmill",
-  "address": "22 Blenheim Gardens, London SW2 5BZ",
-  "start_date": "2026-08-10",
+  "title": "Border Crossings",
+  "venue": "Studio 9294",
+  "address": null,
+  "start_date": "2026-07-20",
   "end_date": null,
-  "start_time": null,
-  "end_time": null,
+  "start_time": "19:00",
+  "end_time": "22:30",
   "description": null,
-  "url": null,
-  "confidence": "high"
+  "url": "https://www.eventsite.co.uk",
+  "confidence": "high",
+  "price": "Free"
 }

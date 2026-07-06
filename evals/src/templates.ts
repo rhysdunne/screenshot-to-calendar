@@ -43,6 +43,7 @@ const gig: Template = (c) => page(
     <p class="venue">${esc(c.display.venue)}</p>
     ${c.display.address ? `<p class="addr">${esc(c.display.address)}</p>` : ''}
     <p class="tag">${esc(c.display.tagline)}</p>
+    ${c.display.priceText ? `<p class="price">${esc(c.display.priceText)}</p>` : ''}
     ${c.display.url ? `<p class="url">TICKETS: ${esc(c.display.url)}</p>` : ''}
   </div>`,
   `.poster { height: 100%; background: #111; color: #fdf351; padding: 70px 50px; font-family: 'Arial Black', sans-serif; text-transform: uppercase; }
@@ -52,6 +53,7 @@ const gig: Template = (c) => page(
    .venue { font-size: 44px; color: #fff; }
    .addr { font-size: 22px; color: #aaa; margin-top: 10px; }
    .tag { font-size: 20px; color: #888; margin-top: 40px; }
+   .price { font-size: 28px; color: #fff; margin-top: 20px; }
    .url { font-size: 24px; color: #fdf351; margin-top: 30px; }`,
 );
 
@@ -82,6 +84,7 @@ const igPost: Template = (c) => page(
     <div class="caption"><b>${esc((c.display.handle ?? '@venue.events').replace('@', ''))}</b>
       ${esc(c.display.tagline)}. ${esc(c.display.dateText)} at ${esc(c.display.venue)}.
       ${c.display.address ? esc(c.display.address) + '.' : ''}
+      ${c.display.priceText ? esc(c.display.priceText) + '.' : ''}
       ${c.display.url ? `Tickets: ${esc(c.display.url)}` : 'Link in bio.'}</div>
   </div>`,
   `.chrome { height: 100%; background: #fff; font-family: -apple-system, Helvetica, sans-serif; }
@@ -118,6 +121,7 @@ const market: Template = (c) => page(
     <div class="grid">
       <div><p class="label">When</p><p>${esc(c.display.dateText)}${c.display.timeText ? `<br>${esc(c.display.timeText)}` : ''}</p></div>
       <div><p class="label">Where</p><p>${esc(c.display.venue)}${c.display.address ? `<br>${esc(c.display.address)}` : ''}</p></div>
+      ${c.display.priceText ? `<div><p class="label">Entry</p><p>${esc(c.display.priceText)}</p></div>` : ''}
     </div>
     ${c.display.url ? `<p class="url">${esc(c.display.url)}</p>` : ''}
   </div>`,
@@ -135,6 +139,7 @@ const talk: Template = (c) => page(
     <h1>${esc(c.display.title)}</h1>
     <p class="meta">${esc(c.display.dateText)}${c.display.timeText ? `, ${esc(c.display.timeText)}` : ''}</p>
     <p class="meta">${esc(c.display.venue)}${c.display.address ? `, ${esc(c.display.address)}` : ''}</p>
+    ${c.display.priceText ? `<p class="meta">${esc(c.display.priceText)}</p>` : ''}
     <p class="tag">${esc(c.display.tagline)}</p>
     ${c.display.url ? `<p class="url">Register: ${esc(c.display.url)}</p>` : ''}
   </div>`,

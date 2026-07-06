@@ -1,12 +1,14 @@
 {
-  "title": "Concrete Poetry Now",
-  "venue": "Corsica Studios",
-  "address": "4/5 Elephant Road, London SE17 1LB",
-  "start_date": "2026-08-04",
+  "title": "Static Bloom",
+  "venue": "Studio 9294",
+  "address": null,
+  "start_date": "2026-07-24",
   "end_date": null,
-  "start_time": "21:00",
+  "start_time": null,
   "end_time": null,
   "description": null,
-  "url": "https://www.eventsite.co.uk",
-  "confidence": "high"
+  "url": null,
+  "confidence": "high",
+  "price": null,
+  "category": "market"
 }

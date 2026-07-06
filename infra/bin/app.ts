@@ -12,6 +12,7 @@ const env = {
 const googleClientId = app.node.tryGetContext('googleClientId') as string;
 const appleTeamId = app.node.tryGetContext('appleTeamId') as string;
 const iosBundleId = app.node.tryGetContext('iosBundleId') as string;
+const alertEmail = app.node.tryGetContext('alertEmail') as string | undefined;
 
 for (const stage of ['staging', 'prod'] as const) {
   const web = new WebStack(app, `S2cWeb-${stage}`, {
@@ -24,6 +25,7 @@ for (const stage of ['staging', 'prod'] as const) {
     stage,
     env,
     googleClientId,
+    alertEmail,
     deepLinkBaseUrl: `https://${web.distribution.distributionDomainName}`,
   });
 }
