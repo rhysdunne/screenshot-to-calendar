@@ -2,4 +2,20 @@
 .env
 *.log
 node_modules/
-test-image.jpg
+dist/
+coverage/
+
+# CDK
+infra/cdk.out/
+
+# Evals: reports are generated; baselines are committed explicitly
+evals/reports/*
+!evals/reports/baseline/
+
+# iOS: project is generated from project.yml by XcodeGen
+ios/*.xcodeproj
+ios/DerivedData/
+ios/.build/
+
+# Playwright
+test-results/
