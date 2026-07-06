@@ -75,7 +75,7 @@ the article *argues*, which is what you'll remember when searching.
 
 - **Provider: Voyage AI** (`voyage-3.5-lite`, `output_dimension: 512`) —
   Anthropic's recommended embeddings partner; a few cents per thousand
-  captures. Key at `/s2c/{stage}/voyage-api-key` (SSM SecureString, same
+  captures. Key at `/s2c/{stage}/voyage-api-key` (Parameter Store SecureString, same
   pattern as the others). Alternative if a second AI vendor is unwanted:
   Google's `text-embedding` API (GCP project already exists).
 - New `backend/src/lib/embeddings.ts` mirroring `lib/anthropic.ts`: single

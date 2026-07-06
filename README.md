@@ -52,7 +52,7 @@ single ordered checklist from empty AWS account to TestFlight. It links into
 the three detailed guides:
 
 1. **[docs/setup-aws.md](docs/setup-aws.md)** — AWS account, CDK bootstrap, secrets in
-   SSM Parameter Store, deploy staging + prod.
+   AWS Systems Manager Parameter Store, deploy staging + prod.
 2. **[docs/setup-google.md](docs/setup-google.md)** — Google Cloud project, Calendar +
    Places APIs, OAuth consent screen and clients. Read the note about publishing the
    consent screen — it prevents refresh tokens expiring every 7 days.
