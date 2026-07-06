@@ -1,0 +1,26 @@
+{
+  "name": "s2c-prompt-improvement",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Corrections → clustered failure patterns → candidate prompt → eval gate → PR",
+  "scripts": {
+    "aggregate": "tsx src/aggregate-corrections.ts",
+    "propose": "tsx src/propose-prompt.ts",
+    "gate": "tsx src/run-gate.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.110.0",
+    "@aws-sdk/client-dynamodb": "^3.700.0",
+    "@aws-sdk/client-s3": "^3.700.0",
+    "@aws-sdk/lib-dynamodb": "^3.700.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
