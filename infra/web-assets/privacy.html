@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Screenshot to Calendar</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 42rem; margin: 3rem auto; padding: 0 1.5rem; color: #1a1a1a; line-height: 1.65; }
+  h1 { font-size: 1.5rem; } h2 { font-size: 1.15rem; margin-top: 2rem; }
+</style>
+</head>
+<body>
+<h1>Privacy Policy</h1>
+<p>Last updated: July 2026. This policy covers the Screenshot to Calendar app
+and its backend service.</p>
+
+<h2>What we store</h2>
+<ul>
+<li><strong>Your Google account identity</strong>: email address and Google
+account ID, obtained when you sign in with Google.</li>
+<li><strong>A Google Calendar refresh token</strong>, encrypted at rest
+(AES-256-GCM), used solely to create and update calendar events you ask for.</li>
+<li><strong>Images you share into the app</strong> and the event data
+extracted from them, stored encrypted at rest in AWS (eu-west-2, London).</li>
+<li><strong>Corrections you make</strong> to extracted event data.</li>
+</ul>
+
+<h2>How images are processed</h2>
+<p>Images are sent to Anthropic's Claude API to classify them and extract
+event details, and venue names may be sent to Google's Places API to resolve
+addresses. Images are used only to provide the service.</p>
+
+<h2>Improving the product (opt-in only)</h2>
+<p>If — and only if — you enable "Help improve extraction" in Settings, your
+corrections and the associated images may be added to our internal evaluation
+dataset to improve the extraction prompt. This is off by default, and the
+consent state is recorded per correction at the time you make it.</p>
+
+<h2>Your rights (GDPR)</h2>
+<ul>
+<li><strong>Export</strong>: Settings → Export my data produces a complete
+copy of everything stored about you.</li>
+<li><strong>Deletion</strong>: Settings → Delete account permanently removes
+all images and records and revokes the app's access to your Google account.</li>
+</ul>
+
+<h2>What we never do</h2>
+<p>We do not sell data, run third-party ads or analytics, or read calendar
+events other than in the date window checked for duplicates in the calendar
+you selected.</p>
+
+<h2>Contact</h2>
+<p>Data controller: the operator of this app instance. Contact details are
+provided inside the app's Settings screen.</p>
+</body>
+</html>

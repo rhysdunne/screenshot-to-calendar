@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directories:
+      - /backend
+      - /infra
+      - /evals
+      - /tools/prompt-improvement
+    schedule:
+      interval: monthly
+    groups:
+      aws-sdk:
+        patterns: ["@aws-sdk/*", "aws-cdk*"]
+      dev-tooling:
+        patterns: ["typescript", "vitest", "tsx", "esbuild", "@types/*", "aws-sdk-client-mock"]
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
