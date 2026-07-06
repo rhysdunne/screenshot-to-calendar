@@ -3,9 +3,13 @@
 // claim against the user's current tokenVersion — bumping the version (sign
 // out everywhere, account deletion) invalidates all outstanding tokens.
 import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
-import { getSecret } from './config.js';
+import type { getSecret } from './config.js';
 import { TokenError, verifySession } from './jwt.js';
-import type { DdbStore, UserRecord } from './ddb.js';
+import type { UserRecord } from './ddb.js';
+
+interface UserLookup {
+  getUser(userId: string): Promise<UserRecord | null>;
+}
 
 export function json(statusCode: number, body: unknown): APIGatewayProxyResultV2 {
   return {
@@ -54,13 +58,14 @@ export function parseBody<T>(event: APIGatewayProxyEventV2): T {
  */
 export async function authenticate(
   event: APIGatewayProxyEventV2,
-  store: DdbStore,
+  store: UserLookup,
+  secrets: typeof getSecret,
 ): Promise<UserRecord> {
   const header = event.headers?.authorization ?? event.headers?.Authorization;
   if (!header?.startsWith('Bearer ')) {
     throw new HttpError(401, 'Missing bearer token', 'unauthorized');
   }
-  const secret = await getSecret('jwt-secret');
+  const secret = await secrets('jwt-secret');
   const claims = verifySession(header.slice('Bearer '.length), secret);
   const user = await store.getUser(claims.sub);
   if (!user) throw new HttpError(401, 'Unknown user', 'unauthorized');

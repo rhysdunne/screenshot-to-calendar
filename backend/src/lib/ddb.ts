@@ -161,8 +161,8 @@ export class DdbStore {
 
   async createCapture(
     capture: Omit<CaptureRecord, 'captureId' | 'createdAt' | 'updatedAt'>,
+    captureId: string = ulid(),
   ): Promise<CaptureRecord> {
-    const captureId = ulid();
     const now = new Date().toISOString();
     const record: CaptureRecord = { ...capture, captureId, createdAt: now, updatedAt: now };
     await this.doc.send(
