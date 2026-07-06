@@ -55,6 +55,8 @@ export interface CaptureRecord {
   eventLink?: string;
   possibleDuplicateOf?: string;
   error?: string;
+  /** Raw model text kept when extraction failed — debugging only. */
+  rawModelOutput?: string;
   costUsd?: number;
   createdAt: string;
   updatedAt: string;
@@ -82,6 +84,9 @@ export interface AiCallRecord {
   costUsd: number;
   latencyMs: number;
 }
+
+/** Partial capture update; null clears the attribute. */
+export type CaptureUpdates = { [K in keyof CaptureRecord]?: CaptureRecord[K] | null };
 
 const userPk = (userId: string) => `USER#${userId}`;
 
@@ -211,22 +216,29 @@ export class DdbStore {
   async updateCapture(
     userId: string,
     captureId: string,
-    updates: Partial<CaptureRecord>,
+    updates: CaptureUpdates,
   ): Promise<void> {
     const names: Record<string, string> = { '#updatedAt': 'updatedAt' };
     const values: Record<string, unknown> = { ':updatedAt': new Date().toISOString() };
     const sets: string[] = ['#updatedAt = :updatedAt'];
+    const removes: string[] = [];
     for (const [k, v] of Object.entries(updates)) {
-      if (k === 'updatedAt') continue;
+      if (k === 'updatedAt' || v === undefined) continue;
       names[`#${k}`] = k;
-      values[`:${k}`] = v;
-      sets.push(`#${k} = :${k}`);
+      if (v === null) {
+        // null means "clear this attribute" (e.g. a stale error after approval).
+        removes.push(`#${k}`);
+      } else {
+        values[`:${k}`] = v;
+        sets.push(`#${k} = :${k}`);
+      }
     }
     await this.doc.send(
       new UpdateCommand({
         TableName: this.tableName,
         Key: { PK: userPk(userId), SK: `CAPTURE#${captureId}` },
-        UpdateExpression: `SET ${sets.join(', ')}`,
+        UpdateExpression:
+          `SET ${sets.join(', ')}` + (removes.length ? ` REMOVE ${removes.join(', ')}` : ''),
         ExpressionAttributeNames: names,
         ExpressionAttributeValues: values,
       }),

@@ -6,16 +6,20 @@ import type { Classification, ExtractedEvent } from '../../backend/src/pipeline/
 
 export type FieldName =
   | 'title' | 'venue' | 'address' | 'start_date' | 'end_date'
-  | 'start_time' | 'end_time' | 'url';
+  | 'start_time' | 'end_time' | 'url' | 'price' | 'category';
 
 export const SCORED_FIELDS: FieldName[] = [
   'title', 'venue', 'address', 'start_date', 'end_date', 'start_time', 'end_time', 'url',
 ];
 
+/** v3 fields — scored only when the gold file carries the key, so pre-v3 gold stays valid. */
+export const OPTIONAL_FIELDS: FieldName[] = ['price', 'category'];
+
 /** Dates are the product — weight them double; the title matters more than metadata. */
 export const FIELD_WEIGHTS: Record<FieldName, number> = {
   start_date: 2, end_date: 2, start_time: 2, end_time: 2,
   title: 1.5, venue: 1, address: 1, url: 1,
+  price: 0.5, category: 0.5,
 };
 
 export type NullOutcome = 'match' | 'hallucination' | 'miss' | 'both_present';
@@ -37,6 +41,10 @@ function normalizeUrl(u: string): string {
 
 function normalizeAddress(a: string): string {
   return a.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function normalizePrice(p: string): string {
+  return p.toLowerCase().replace(/\b(entry|tickets?|admission)\b/g, '').replace(/\s+/g, '');
 }
 
 const POSTCODE = /\b[a-z]{1,2}\d[a-z\d]?\s*\d[a-z]{2}\b/i;
@@ -81,6 +89,12 @@ export function scoreField(
     case 'url':
       score = normalizeUrl(gold) === normalizeUrl(predicted) ? 1 : 0;
       break;
+    case 'price':
+      score = normalizePrice(gold) === normalizePrice(predicted) ? 1 : 0;
+      break;
+    case 'category':
+      score = gold === predicted ? 1 : 0;
+      break;
   }
   return { field, score, nullOutcome: 'both_present' };
 }
@@ -94,7 +108,13 @@ export interface CaseScore {
 }
 
 export function scoreCase(gold: ExtractedEvent, predicted: ExtractedEvent): CaseScore {
-  const fields = SCORED_FIELDS.map((f) => scoreField(f, gold[f], predicted[f]));
+  const scoredFields = [
+    ...SCORED_FIELDS,
+    ...OPTIONAL_FIELDS.filter((f) => f in gold),
+  ];
+  const fields = scoredFields.map((f) =>
+    scoreField(f, (gold[f] ?? null) as string | null, (predicted[f] ?? null) as string | null),
+  );
   let weighted = 0;
   let totalWeight = 0;
   for (const fs of fields) {

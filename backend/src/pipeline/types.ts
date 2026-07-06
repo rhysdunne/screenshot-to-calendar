@@ -18,7 +18,24 @@ export interface ExtractedEvent {
   description: string | null;
   url: string | null;
   confidence: 'high' | 'medium' | 'low';
+  /** v3 prompt fields — optional so v2 extractions stay valid. */
+  price?: string | null;
+  category?: EventCategory | null;
 }
+
+export const EVENT_CATEGORIES = [
+  'exhibition',
+  'music',
+  'theatre',
+  'club_night',
+  'food_drink',
+  'market',
+  'workshop',
+  'talk',
+  'film',
+  'other',
+] as const;
+export type EventCategory = (typeof EVENT_CATEGORIES)[number];
 
 /** Fields a user may correct in the app (subset of ExtractedEvent). */
 export const CORRECTABLE_FIELDS = [
@@ -56,7 +73,9 @@ export type CaptureStatus =
   | 'completed'
   | 'failed'
   | 'duplicate'
-  | 'not_event';
+  | 'not_event'
+  /** Low-confidence extraction — awaiting user review/approval in the app. */
+  | 'needs_review';
 
 /** A calendar event as returned by the Google Calendar list API (subset). */
 export interface ExistingCalendarEvent {

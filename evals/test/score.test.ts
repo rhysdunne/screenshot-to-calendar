@@ -58,6 +58,36 @@ describe('scoreField', () => {
   });
 });
 
+describe('v3 optional fields (price, category)', () => {
+  it('scores price with normalization', () => {
+    expect(scoreField('price', 'Free', 'free entry').score).toBe(1);
+    expect(scoreField('price', '£12.50', '£12.50 tickets').score).toBe(1);
+    expect(scoreField('price', '£5', '£10').score).toBe(0);
+  });
+
+  it('scores category exactly', () => {
+    expect(scoreField('category', 'club_night', 'club_night').score).toBe(1);
+    expect(scoreField('category', 'club_night', 'music').score).toBe(0);
+  });
+
+  it('skips optional fields absent from gold (pre-v3 gold stays valid)', () => {
+    const gold = event({}); // no price/category keys
+    const predicted = { ...event({}), price: '£99', category: 'music' };
+    const result = scoreCase(gold, predicted as never);
+    expect(result.fields.find((f) => f.field === 'price')).toBeUndefined();
+    expect(result.aggregate).toBe(1); // the wild guess isn't penalized or scored
+  });
+
+  it('scores optional fields when gold carries the key — including null', () => {
+    const gold = { ...event({}), price: null } as never;
+    const hallucinated = { ...event({}), price: '£99' } as never;
+    const result = scoreCase(gold, hallucinated);
+    const priceScore = result.fields.find((f) => f.field === 'price');
+    expect(priceScore?.score).toBe(0);
+    expect(priceScore?.nullOutcome).toBe('hallucination');
+  });
+});
+
 describe('scoreCase', () => {
   it('perfect prediction scores 1.0', () => {
     expect(scoreCase(event({}), event({})).aggregate).toBe(1);

@@ -51,6 +51,9 @@ Edit `infra/cdk.json` context values:
 - `appleTeamId` — your Apple Developer Team ID (setup-apple.md)
 - `iosBundleId` — keep `com.rhysdunne.s2c` or change it consistently with
   `ios/project.yml`
+- `alertEmail` — where operational alarms go (DLQ, Lambda errors, daily AI
+  spend > $2). After the first deploy, **confirm the SNS subscription email**
+  AWS sends you, or the alarms notify no one.
 
 ## 5. Deploy
 

@@ -74,6 +74,10 @@ struct CaptureDetailView: View {
                     Text("Confidence: \(confidence)").font(.caption).foregroundStyle(.secondary)
                 }
             }
+            if capture.status == .needsReview {
+                Text("The AI wasn't confident about these details — check them (especially the dates), fix anything wrong, then add to calendar below.")
+                    .font(.callout)
+            }
             if let error = capture.error {
                 Text(error).font(.callout).foregroundStyle(.red)
             }
@@ -107,17 +111,51 @@ struct CaptureDetailView: View {
                     .keyboardType(.numbersAndPunctuation)
             }
             LabeledContent("URL") { TextField("URL", text: binding(\.url)) }
+            // v3 read-only fields (corrections for these are a follow-up):
+            if let price = capture?.effectiveEvent?.price {
+                LabeledContent("Price") { Text(price) }
+            }
+            if let category = capture?.effectiveEvent?.category {
+                LabeledContent("Category") { Text(category.replacingOccurrences(of: "_", with: " ")) }
+            }
         }
     }
 
     private func actionsSection(_ capture: Capture) -> some View {
         Section {
+            if capture.status == .needsReview || (capture.status == .failed && capture.event != nil) {
+                Button {
+                    Task { await approve() }
+                } label: {
+                    Label(isSaving ? "Adding…" : "Looks right — add to calendar",
+                          systemImage: "checkmark.circle.fill")
+                        .fontWeight(.semibold)
+                }
+                .disabled(isSaving || hasChanges) // save edits first, then approve
+                if hasChanges {
+                    Text("Save your edits first, then add to calendar.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
             if let link = capture.eventLink, let url = URL(string: link) {
                 Link(destination: url) { Label("Open in Google Calendar", systemImage: "calendar") }
             }
             Button(role: .destructive) { showDeleteConfirm = true } label: {
                 Label("Delete capture", systemImage: "trash")
             }
+        }
+    }
+
+    private func approve() async {
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            let updated = try await appState.api.approveCapture(id: captureId)
+            capture = updated
+            form = updated.effectiveEvent ?? form
+            await appState.refreshCaptures()
+        } catch {
+            errorMessage = error.localizedDescription
         }
     }
 

@@ -13,6 +13,7 @@
 
     "googleClientId": "REPLACE_ME.apps.googleusercontent.com",
     "appleTeamId": "REPLACE_ME_TEAM_ID",
-    "iosBundleId": "com.rhysdunne.s2c"
+    "iosBundleId": "com.rhysdunne.s2c",
+    "alertEmail": "REPLACE_ME_ALERT_EMAIL"
   }
 }

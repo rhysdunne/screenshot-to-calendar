@@ -117,7 +117,7 @@ struct StatusBadge: View {
     private var color: Color {
         switch status {
         case .completed: return .green
-        case .queued, .processing: return .orange
+        case .queued, .processing, .needsReview: return .orange
         case .failed: return .red
         case .duplicate: return .blue
         case .notEvent: return .secondary

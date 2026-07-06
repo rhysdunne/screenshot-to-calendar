@@ -4,8 +4,21 @@
 // record. The eval harness reuses callClaude with recordUsage disabled so
 // eval results go through the exact production request path.
 import Anthropic from '@anthropic-ai/sdk';
+import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
 import { MODELS, costUsd } from './models.js';
 import { logger } from './logger.js';
+
+// EMF metric backing the s2c-ai-spend alarm (infra/lib/backend-stack.ts).
+// Only emitted when STAGE is set — i.e. in Lambda, not in the eval harness.
+const metrics = new Metrics({ namespace: 's2c', serviceName: 's2c' });
+
+function emitCostMetric(cost: number): void {
+  const stage = process.env.STAGE;
+  if (!stage) return;
+  const single = metrics.singleMetric();
+  single.addDimension('stage', stage);
+  single.addMetric('AiCostUsd', MetricUnit.NoUnit, cost);
+}
 import type { AiCallRecord } from './ddb.js';
 import type { ImageMediaType } from '../pipeline/image.js';
 
@@ -69,5 +82,6 @@ export async function callClaude(opts: ClaudeCallOptions): Promise<ClaudeCallRes
   };
 
   logger.info('claude_call', { ...usage, stopReason: response.stop_reason });
+  emitCostMetric(usage.costUsd);
   return { response, usage };
 }

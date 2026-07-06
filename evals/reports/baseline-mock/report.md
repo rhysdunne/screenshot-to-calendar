@@ -2,7 +2,7 @@
 
 - Dataset: `synthetic`
 - Prompt version: `pinned`
-- Generated: 2026-07-06T14:25:27.665Z
+- Generated: 2026-07-06T15:04:25.724Z
 - ⚠️ MOCK RUN (no API calls — plumbing check only)
 
 ## Summary

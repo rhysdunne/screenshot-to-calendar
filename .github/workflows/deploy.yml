@@ -30,3 +30,17 @@ jobs:
       - name: Deploy ${{ inputs.stage }}
         working-directory: infra
         run: npx cdk deploy S2cWeb-${{ inputs.stage }} S2cBackend-${{ inputs.stage }} --require-approval never
+
+      - name: Verify deployment
+        run: |
+          set -euo pipefail
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name S2cBackend-${{ inputs.stage }} --region eu-west-2 \
+            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+          WEB_DOMAIN=$(aws cloudformation describe-stacks \
+            --stack-name S2cWeb-${{ inputs.stage }} --region eu-west-2 \
+            --query "Stacks[0].Outputs[?OutputKey=='WebDomain'].OutputValue" --output text)
+          echo "Health check: $API_URL/v1/health"
+          curl -fsS "$API_URL/v1/health"
+          echo "AASA check: $WEB_DOMAIN/.well-known/apple-app-site-association"
+          curl -fsS "$WEB_DOMAIN/.well-known/apple-app-site-association" | grep -q applinks

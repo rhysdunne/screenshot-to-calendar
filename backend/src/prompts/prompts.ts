@@ -5,11 +5,18 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EXTRACT_EVENT_SCHEMA, EXTRACT_EVENT_SCHEMA_V3 } from './schemas.js';
 
 export const ACTIVE_VERSIONS = {
   'extract-event': 'v2',
   'classify-image': 'v1',
 } as const;
+
+/** Structured-output schema matching an extract-event prompt version. */
+export function extractSchemaFor(version?: string): object {
+  const v = version ?? ACTIVE_VERSIONS['extract-event'];
+  return v >= 'v3' ? EXTRACT_EVENT_SCHEMA_V3 : EXTRACT_EVENT_SCHEMA;
+}
 
 export type PromptName = keyof typeof ACTIVE_VERSIONS;
 

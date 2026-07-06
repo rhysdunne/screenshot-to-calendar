@@ -76,6 +76,12 @@ struct APIClient {
         try await send(try request("PATCH", "/v1/captures/\(id)", body: fields.mapValues { $0 ?? "" }))
     }
 
+    /// Approve a needs_review capture: creates the calendar event from the
+    /// (possibly corrected) extraction via the normal dedup path.
+    func approveCapture(id: String) async throws -> Capture {
+        try await send(try request("POST", "/v1/captures/\(id)/approve"))
+    }
+
     func deleteCapture(id: String, deleteEvent: Bool) async throws {
         let _: [String: Bool] = try await send(
             try request("DELETE", "/v1/captures/\(id)?deleteEvent=\(deleteEvent)"))

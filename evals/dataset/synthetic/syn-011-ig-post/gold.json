@@ -1,12 +1,14 @@
 {
-  "title": "Tape Loops & Echoes",
-  "venue": "Peckham Levels",
-  "address": null,
-  "start_date": "2026-08-13",
+  "title": "Wire & Wool",
+  "venue": "Round Chapel",
+  "address": "1D Glenarm Rd, London E5 0LY",
+  "start_date": "2026-07-16",
   "end_date": null,
   "start_time": null,
   "end_time": null,
   "description": null,
   "url": null,
-  "confidence": "high"
+  "confidence": "high",
+  "price": "Free",
+  "category": "exhibition"
 }

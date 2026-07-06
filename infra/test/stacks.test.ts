@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { App } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import { BackendStack } from '../lib/backend-stack.js';
 import { WebStack } from '../lib/web-stack.js';
 
@@ -19,6 +19,7 @@ beforeAll(() => {
     stage: 'staging',
     env: { account: '111111111111', region: 'eu-west-2' },
     googleClientId: 'test-client-id.apps.googleusercontent.com',
+    alertEmail: 'ops@example.com',
     deepLinkBaseUrl: 'https://d123.cloudfront.net',
   });
   backend = Template.fromStack(backendStack);
@@ -61,10 +62,11 @@ describe('BackendStack', () => {
     const keys = Object.values(routes).map(
       (r) => (r.Properties as { RouteKey: string }).RouteKey,
     );
-    expect(keys).toHaveLength(14);
+    expect(keys).toHaveLength(15);
     expect(keys).toContain('POST /v1/auth/google');
     expect(keys).toContain('POST /v1/captures');
     expect(keys).toContain('PATCH /v1/captures/{id}');
+    expect(keys).toContain('POST /v1/captures/{id}/approve');
     expect(keys).toContain('DELETE /v1/account');
     expect(keys).toContain('GET /v1/health');
   });
@@ -82,10 +84,35 @@ describe('BackendStack', () => {
     });
   });
 
-  it('alarms when the DLQ is not empty', () => {
+  it('alarms when the DLQ is not empty and notifies the alerts topic', () => {
+    backend.hasResourceProperties('AWS::SNS::Topic', { TopicName: 's2c-alerts-staging' });
     backend.hasResourceProperties('AWS::CloudWatch::Alarm', {
       AlarmName: 's2c-dlq-not-empty-staging',
       Threshold: 1,
+      AlarmActions: [{ Ref: Match.stringLikeRegexp('AlertsTopic') }],
+    });
+  });
+
+  it('subscribes the alert email when configured, skips placeholders', () => {
+    // Test stack uses a real-looking email — subscription must exist.
+    backend.hasResourceProperties('AWS::SNS::Subscription', {
+      Protocol: 'email',
+      Endpoint: 'ops@example.com',
+    });
+  });
+
+  it('alarms on processor errors and daily AI spend', () => {
+    backend.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 's2c-processor-errors-staging',
+      MetricName: 'Errors',
+    });
+    backend.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 's2c-ai-spend-staging',
+      Namespace: 's2c',
+      MetricName: 'AiCostUsd',
+      Statistic: 'Sum',
+      Period: 86400,
+      Threshold: 2,
     });
   });
 

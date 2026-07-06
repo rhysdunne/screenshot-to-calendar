@@ -1,12 +1,14 @@
 {
-  "title": "Garden of Forking Paths",
-  "venue": "Corsica Studios",
+  "title": "Low Tide High Fidelity",
+  "venue": "Peckham Levels",
   "address": null,
-  "start_date": "2026-07-26",
-  "end_date": "2026-07-31",
-  "start_time": null,
+  "start_date": "2026-07-30",
+  "end_date": null,
+  "start_time": "21:00",
   "end_time": null,
   "description": null,
-  "url": "https://www.eventsite.co.uk",
-  "confidence": "high"
+  "url": null,
+  "confidence": "high",
+  "price": "£12.50",
+  "category": "exhibition"
 }

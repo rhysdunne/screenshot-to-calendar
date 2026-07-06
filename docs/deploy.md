@@ -19,6 +19,19 @@ workflow → pick stage). Requires the `AWS_DEPLOY_ROLE_ARN` variable
 The iOS app points at prod in Release builds and staging in Debug builds
 (`ios/Shared/AppConfig.swift`).
 
+## Adopting the v3 prompt (price + category)
+
+`extract-event.v3.md` ships as a **candidate** adding `price` and `category`
+(issues #4/#7); its schema is wired via `extractSchemaFor()` and the eval
+harness/generator already score the new fields. To adopt it:
+
+```bash
+cd tools/prompt-improvement
+ANTHROPIC_API_KEY=... npm run gate -- --candidate v3
+# gate passed → bump ACTIVE_VERSIONS['extract-event'] to 'v3' in
+# backend/src/prompts/prompts.ts, commit with the gate report, deploy
+```
+
 ## Changing the extraction prompt
 
 1. Create `backend/src/prompts/extract-event.v{N+1}.md` (never edit an
