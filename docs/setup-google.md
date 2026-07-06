@@ -43,7 +43,9 @@ One project provides OAuth (sign-in + calendar) and the Places API.
 2. **Web application client** — no redirect URIs needed (the backend
    exchanges server auth codes directly). Copy:
    - client id → `googleClientId` in `infra/cdk.json`
-   - client secret → SSM `/s2c/{stage}/google-oauth-client-secret`
+   - client secret → store it as an AWS Systems Manager Parameter Store
+     SecureString named `/s2c/{stage}/google-oauth-client-secret` (you create it
+     with the `aws ssm put-parameter` command in the AWS setup, step 3)
 
 The iOS app uses both: the **iOS client id** (`GIDClientID`) identifies the
 app to Google, and the **web client id** (`GIDServerClientID`) is what makes
@@ -56,7 +58,9 @@ properties — replace the two placeholders there.
 **Credentials → Create credentials → API key**, then restrict it:
 
 - API restriction: **Places API (New)** only.
-- Store it in SSM: `/s2c/{stage}/places-api-key`.
+- Store it as a Parameter Store SecureString named
+  `/s2c/{stage}/places-api-key` (via `aws ssm put-parameter` in the AWS setup,
+  step 3).
 
 Pricing: the free tier (~10k Essentials calls/month) vastly exceeds personal
 usage; the pipeline calls Places at most once per capture and only when the

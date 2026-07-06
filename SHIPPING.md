@@ -23,9 +23,9 @@ Produces every credential the AWS step then consumes, so it comes before AWS.
       and the app silently breaks
 - [ ] **iOS OAuth client** → client id + reversed id (used in `ios/project.yml`
       at step 7)
-- [ ] **Web OAuth client** → id (→ `infra/cdk.json`, step 3); secret (→ SSM,
-      step 3)
-- [ ] Places API key (restricted to Places API (New)) → SSM, step 3
+- [ ] **Web OAuth client** → id (→ `infra/cdk.json`, step 3); secret (→ AWS
+      Systems Manager Parameter Store, step 3)
+- [ ] Places API key (restricted to Places API (New)) → Parameter Store, step 3
 - [ ] *Deferred:* the consent-screen **privacy/terms URLs** need the deployed
       `WebDomain` — save the screen without them and fill them in after step 4
 
@@ -36,7 +36,7 @@ now completes end to end.
 
 - [ ] AWS account with MFA; CLI configured (`aws sts get-caller-identity`)
 - [ ] `cd infra && npm ci && npx cdk bootstrap aws://<ACCOUNT_ID>/eu-west-2`
-- [ ] Create the 5 SSM SecureStrings **per stage** (staging, then prod):
+- [ ] Create the 5 Parameter Store SecureStrings **per stage** (staging, then prod):
   ```bash
   STAGE=staging
   aws ssm put-parameter --region eu-west-2 --type SecureString --name /s2c/$STAGE/anthropic-api-key --value 'sk-ant-...'

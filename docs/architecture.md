@@ -57,9 +57,10 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 ## Security / auth flow
 
 1. App: GoogleSignIn (scope `auth/calendar`) → `serverAuthCode`.
-2. Backend exchanges the code (web client id + secret from SSM), validates the
-   id_token claims, stores the refresh token encrypted (key in SSM
-   SecureString), and issues an HS256 JWT (`{sub, ver}`, 30 days).
+2. Backend exchanges the code (web client id + secret from AWS Systems Manager
+   Parameter Store), validates the id_token claims, stores the refresh token
+   encrypted (key in Parameter Store SecureString), and issues an HS256 JWT
+   (`{sub, ver}`, 30 days).
 3. Per request: JWT verified + `ver` compared to the user's `tokenVersion`
    (bump = revoke all sessions).
 4. Calendar calls mint short-lived Google access tokens from the refresh
