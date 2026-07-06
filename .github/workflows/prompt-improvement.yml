@@ -60,7 +60,7 @@ jobs:
         run: npm run gate -- --candidate ${{ steps.propose.outputs.candidate }}
 
       - name: Open PR (human review required)
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           branch: prompt-improvement/${{ steps.propose.outputs.candidate }}
           title: "Prompt candidate ${{ steps.propose.outputs.candidate }} (passed eval gate)"
