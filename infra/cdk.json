@@ -1,0 +1,18 @@
+{
+  "app": "npx tsx bin/app.ts",
+  "context": {
+    "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
+    "@aws-cdk/core:checkSecretUsage": true,
+    "@aws-cdk/aws-iam:minimizePolicies": true,
+    "@aws-cdk/core:validateSnapshotRemovalPolicy": true,
+    "@aws-cdk/aws-s3:createDefaultLoggingPolicy": true,
+    "@aws-cdk/aws-apigateway:disableCloudWatchRole": true,
+    "@aws-cdk/core:enablePartitionLiterals": true,
+    "@aws-cdk/aws-iam:standardizedServicePrincipals": true,
+    "@aws-cdk/customresources:installLatestAwsSdkDefault": false,
+
+    "googleClientId": "REPLACE_ME.apps.googleusercontent.com",
+    "appleTeamId": "REPLACE_ME_TEAM_ID",
+    "iosBundleId": "com.rhysdunne.s2c"
+  }
+}
