@@ -1,0 +1,92 @@
+# XcodeGen project spec — run `xcodegen generate` in this directory on a Mac
+# to produce Screenshot2Cal.xcodeproj (never committed). See
+# docs/setup-apple.md for the full walkthrough, including the values to
+# substitute for DEVELOPMENT_TEAM and the CloudFront domain.
+name: Screenshot2Cal
+options:
+  bundleIdPrefix: com.rhysdunne
+  deploymentTarget:
+    iOS: "17.0"
+  xcodeVersion: "16.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    DEVELOPMENT_TEAM: REPLACE_ME_TEAM_ID
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+packages:
+  GoogleSignIn:
+    url: https://github.com/google/GoogleSignIn-iOS
+    from: 8.0.0
+
+targets:
+  Screenshot2Cal:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - Shared
+    dependencies:
+      - package: GoogleSignIn
+        product: GoogleSignIn
+      - target: ShareExtension
+    entitlements:
+      path: App/App.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.rhysdunne.s2c
+        com.apple.developer.associated-domains:
+          - applinks:REPLACE_ME_CLOUDFRONT_DOMAIN
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)com.rhysdunne.s2c.shared
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Screenshot to Calendar
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # Paste the *iOS* OAuth client id from Google Cloud console:
+        GIDClientID: REPLACE_ME_IOS_CLIENT_ID.apps.googleusercontent.com
+        # Paste the *web* OAuth client id — required for serverAuthCode:
+        GIDServerClientID: REPLACE_ME_WEB_CLIENT_ID.apps.googleusercontent.com
+        CFBundleURLTypes:
+          - CFBundleURLSchemes:
+              # The reversed iOS client id, e.g. com.googleusercontent.apps.1234-abc
+              - REPLACE_ME_REVERSED_IOS_CLIENT_ID
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rhysdunne.s2c
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+
+  ShareExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - ShareExtension
+      - Shared
+    entitlements:
+      path: ShareExtension/ShareExtension.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.rhysdunne.s2c
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)com.rhysdunne.s2c.shared
+    info:
+      path: ShareExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Capture Event
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.share-services
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).ShareViewController
+          NSExtensionAttributes:
+            NSExtensionActivationRule:
+              NSExtensionActivationSupportsImageWithMaxCount: 1
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rhysdunne.s2c.share
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"

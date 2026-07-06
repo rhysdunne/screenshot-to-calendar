@@ -1,0 +1,12 @@
+{
+  "source": "synthetic",
+  "template": "menu",
+  "frozenToday": "2026-07-06",
+  "classification": {
+    "category": "other_scrapbook",
+    "is_event": false,
+    "confidence": "high"
+  },
+  "seed": 42,
+  "consent": true
+}

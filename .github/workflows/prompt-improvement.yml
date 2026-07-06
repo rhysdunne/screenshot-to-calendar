@@ -1,0 +1,74 @@
+name: Prompt improvement
+
+# Monthly (or on demand): cluster consented corrections into failure
+# patterns, have Claude propose a minimal prompt revision, run the eval gate,
+# and open a PR if it passes. NEVER auto-merges — a human reviews the diff,
+# the gate report, and the source correction clusters.
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  improve:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'rhysdunne' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-west-2
+      - run: npm ci --prefix backend
+      - run: npm ci --prefix evals
+      - run: npm ci --prefix tools/prompt-improvement
+
+      - name: Materialize consented corrections into eval cases
+        working-directory: tools/prompt-improvement
+        env:
+          TABLE_NAME: s2c-main-prod
+          BUCKET_NAME: s2c-images-${{ vars.AWS_ACCOUNT_ID }}-prod
+        run: npm run materialize
+
+      - name: Aggregate corrections
+        working-directory: tools/prompt-improvement
+        env:
+          TABLE_NAME: s2c-main-prod
+        run: npm run aggregate
+
+      - name: Propose candidate prompt
+        id: propose
+        working-directory: tools/prompt-improvement
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          npm run propose | tee propose.log
+          CANDIDATE=$(ls ../../backend/src/prompts/extract-event.v*.md | sed 's/.*extract-event\.\(v[0-9]*\)\.md/\1/' | sort -V | tail -1)
+          echo "candidate=$CANDIDATE" >> "$GITHUB_OUTPUT"
+
+      - name: Run eval gate
+        working-directory: tools/prompt-improvement
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: npm run gate -- --candidate ${{ steps.propose.outputs.candidate }}
+
+      - name: Open PR (human review required)
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: prompt-improvement/${{ steps.propose.outputs.candidate }}
+          title: "Prompt candidate ${{ steps.propose.outputs.candidate }} (passed eval gate)"
+          commit-message: "Add candidate extraction prompt ${{ steps.propose.outputs.candidate }}"
+          body: |
+            Automated prompt-improvement run.
+
+            - Source: clustered consented corrections (see workflow logs)
+            - Eval gate: PASSED (report artifact attached to the run)
+            - ⚠️ Adopting this requires bumping `ACTIVE_VERSIONS` in
+              `backend/src/prompts/prompts.ts` — review the diff first.
