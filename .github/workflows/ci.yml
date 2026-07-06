@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run: { working-directory: backend }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json }
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  infra:
+    runs-on: ubuntu-latest
+    defaults:
+      run: { working-directory: infra }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: infra/package-lock.json }
+      # Lambda bundling needs the backend's node_modules for esbuild resolution.
+      - run: npm ci --prefix ../backend
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  evals:
+    runs-on: ubuntu-latest
+    defaults:
+      run: { working-directory: evals }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: evals/package-lock.json }
+      - run: npm ci --prefix ../backend
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      # Harness plumbing check against the committed dataset — no API key.
+      - run: npm run eval -- --mock --label ci-smoke
+
+  prompt-tools:
+    runs-on: ubuntu-latest
+    defaults:
+      run: { working-directory: tools/prompt-improvement }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: tools/prompt-improvement/package-lock.json }
+      - run: npm ci --prefix ../../backend
+      - run: npm ci --prefix ../../evals
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+  # iOS builds need macOS runners (billed at 10× on private repos) and
+  # signing configuration; Swift sources are review-only in CI for now.
+  # To enable later: runs-on: macos-15, xcodegen generate, xcodebuild build
+  # -scheme Screenshot2Cal -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO

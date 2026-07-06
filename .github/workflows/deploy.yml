@@ -1,0 +1,32 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: Stage to deploy
+        required: true
+        type: choice
+        options: [staging, prod]
+
+permissions:
+  id-token: write # GitHub OIDC → AWS role
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.stage }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-west-2
+      - run: npm ci --prefix backend
+      - run: npm ci --prefix infra
+      - name: Deploy ${{ inputs.stage }}
+        working-directory: infra
+        run: npx cdk deploy S2cWeb-${{ inputs.stage }} S2cBackend-${{ inputs.stage }} --require-approval never

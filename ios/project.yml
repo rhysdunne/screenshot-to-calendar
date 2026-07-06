@@ -50,6 +50,8 @@ targets:
           - UIInterfaceOrientationPortrait
         # Paste the *iOS* OAuth client id from Google Cloud console:
         GIDClientID: REPLACE_ME_IOS_CLIENT_ID.apps.googleusercontent.com
+        # Paste the *web* OAuth client id — required for serverAuthCode:
+        GIDServerClientID: REPLACE_ME_WEB_CLIENT_ID.apps.googleusercontent.com
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               # The reversed iOS client id, e.g. com.googleusercontent.apps.1234-abc
