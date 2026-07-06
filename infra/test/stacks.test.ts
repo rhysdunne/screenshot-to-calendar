@@ -13,7 +13,7 @@ beforeAll(() => {
     stage: 'staging',
     env: { account: '111111111111', region: 'eu-west-2' },
     appleTeamId: 'TEAM123456',
-    iosBundleId: 'com.rhysdunne.s2c',
+    iosBundleId: 'digital.callaeas.s2c',
   });
   const backendStack = new BackendStack(app, 'S2cBackend-test', {
     stage: 'staging',

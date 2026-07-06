@@ -4,7 +4,7 @@
 # substitute for DEVELOPMENT_TEAM and the CloudFront domain.
 name: Screenshot2Cal
 options:
-  bundleIdPrefix: com.rhysdunne
+  bundleIdPrefix: digital.callaeas
   deploymentTarget:
     iOS: "17.0"
   xcodeVersion: "16.0"
@@ -36,11 +36,11 @@ targets:
       path: App/App.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.rhysdunne.s2c
+          - group.digital.callaeas.s2c
         com.apple.developer.associated-domains:
           - applinks:REPLACE_ME_CLOUDFRONT_DOMAIN
         keychain-access-groups:
-          - $(AppIdentifierPrefix)com.rhysdunne.s2c.shared
+          - $(AppIdentifierPrefix)digital.callaeas.s2c.shared
     info:
       path: App/Info.plist
       properties:
@@ -58,7 +58,7 @@ targets:
               - REPLACE_ME_REVERSED_IOS_CLIENT_ID
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.rhysdunne.s2c
+        PRODUCT_BUNDLE_IDENTIFIER: digital.callaeas.s2c
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
 
@@ -72,9 +72,9 @@ targets:
       path: ShareExtension/ShareExtension.entitlements
       properties:
         com.apple.security.application-groups:
-          - group.com.rhysdunne.s2c
+          - group.digital.callaeas.s2c
         keychain-access-groups:
-          - $(AppIdentifierPrefix)com.rhysdunne.s2c.shared
+          - $(AppIdentifierPrefix)digital.callaeas.s2c.shared
     info:
       path: ShareExtension/Info.plist
       properties:
@@ -87,6 +87,6 @@ targets:
               NSExtensionActivationSupportsImageWithMaxCount: 1
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.rhysdunne.s2c.share
+        PRODUCT_BUNDLE_IDENTIFIER: digital.callaeas.s2c.share
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
