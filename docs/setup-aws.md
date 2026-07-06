@@ -3,6 +3,11 @@
 One-time setup from zero to a deployed backend. Everything runs in
 **eu-west-2** (London) so data stays in the UK/EU.
 
+> **Do the [Apple Team ID](setup-apple.md) and [Google](setup-google.md) setup
+> first.** §3 (secrets) needs the Google OAuth client secret + Places key, and
+> §4 (context) needs the Google **web** client id and your **Apple Team ID** —
+> you cannot finish those AWS steps without them.
+
 ## 1. Account and CLI
 
 1. Create an AWS account (or use an existing one). Enable MFA on the root
@@ -49,8 +54,7 @@ Edit `infra/cdk.json` context values:
 
 - `googleClientId` — the **web** OAuth client id (setup-google.md step 3)
 - `appleTeamId` — your Apple Developer Team ID (setup-apple.md)
-- `iosBundleId` — keep `com.rhysdunne.s2c` or change it consistently with
-  `ios/project.yml`
+- `iosBundleId` — `digital.callaeas.s2c` (must match `ios/project.yml`)
 - `alertEmail` — where operational alarms go (DLQ, Lambda errors, daily AI
   spend > $2). After the first deploy, **confirm the SNS subscription email**
   AWS sends you, or the alarms notify no one.

@@ -2,6 +2,11 @@
 
 One project provides OAuth (sign-in + calendar) and the Places API.
 
+> The consent-screen **privacy/terms URLs** point at the deployed `WebDomain`
+> (`https://<WebDomain>/privacy.html`), which doesn't exist until the deploy
+> step. Save the consent screen without them and fill them in afterwards — this
+> is the one part of Google setup that waits on AWS.
+
 ## 1. Project and APIs
 
 1. [console.cloud.google.com](https://console.cloud.google.com) → New project
@@ -31,7 +36,7 @@ One project provides OAuth (sign-in + calendar) and the Places API.
 
 **APIs & Services → Credentials → Create credentials → OAuth client ID**:
 
-1. **iOS client** — bundle id `com.rhysdunne.s2c`. Copy:
+1. **iOS client** — bundle id `digital.callaeas.s2c`. Copy:
    - the client id → `GIDClientID` in `ios/project.yml`
    - the reversed client id (shown in the console) → URL scheme in
      `ios/project.yml`
