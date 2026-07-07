@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.repository_owner == 'rhysdunne' }} # don't run on forks
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with: { node-version: 22 }
       - run: npm ci --prefix backend
