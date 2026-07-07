@@ -49,8 +49,8 @@ a `s2c-<stage>-<param>` naming convention.
 scripts/secrets.sh set staging anthropic-api-key
 scripts/secrets.sh set staging google-oauth-client-secret
 scripts/secrets.sh set staging places-api-key
-scripts/secrets.sh set staging jwt-secret          # paste `openssl rand -hex 32`
-scripts/secrets.sh set staging token-enc-key       # paste a different one
+scripts/secrets.sh gen staging jwt-secret          # generate + store a random key
+scripts/secrets.sh gen staging token-enc-key       # (a different one, automatically)
 
 # 2. Push all five into Parameter Store in one go (uses --overwrite):
 scripts/secrets.sh push staging                    # repeat: push prod
