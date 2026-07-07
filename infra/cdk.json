@@ -11,7 +11,7 @@
     "@aws-cdk/aws-iam:standardizedServicePrincipals": true,
     "@aws-cdk/customresources:installLatestAwsSdkDefault": false,
 
-    "googleClientId": "REPLACE_ME.apps.googleusercontent.com",
+    "googleClientId": "907447794937-uvs008f9lkvjai2d0l57puhaoldkmhs2.apps.googleusercontent.com",
     "appleTeamId": "REPLACE_ME_TEAM_ID",
     "iosBundleId": "digital.callaeas.s2c",
     "alertEmail": "REPLACE_ME_ALERT_EMAIL"

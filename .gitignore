@@ -1,9 +1,19 @@
 .DS_Store
-.env
 *.log
 node_modules/
 dist/
 coverage/
+
+# Env files — .env* is ignored except the tracked template
+.env
+.env.*
+!.env.example
+
+# Local secret staging — real values live in Parameter Store / macOS Keychain,
+# never in git. See docs/secrets.md.
+*.secret.txt
+.web-application-client-secret.txt
+.places-api-key.txt
 
 # CDK
 infra/cdk.out/

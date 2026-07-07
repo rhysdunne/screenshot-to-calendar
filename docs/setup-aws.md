@@ -48,6 +48,10 @@ aws ssm put-parameter --region eu-west-2 --type SecureString \
 > means users must sign in again; leaking it plus a DB dump exposes tokens —
 > treat it like a password.
 
+See [secrets.md](secrets.md) for a macOS Keychain helper (`scripts/secrets.sh`)
+that stores these locally and pushes all five here in one command, plus which
+secrets are regenerable if lost.
+
 ## 4. Configure context
 
 Edit `infra/cdk.json` context values:
