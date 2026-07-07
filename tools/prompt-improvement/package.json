@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Corrections → clustered failure patterns → candidate prompt → eval gate → PR",
+  "description": "Corrections \u2192 clustered failure patterns \u2192 candidate prompt \u2192 eval gate \u2192 PR",
   "scripts": {
     "aggregate": "tsx src/aggregate-corrections.ts",
     "materialize": "tsx src/materialize-eval-cases.ts",
@@ -19,9 +19,9 @@
     "@aws-sdk/lib-dynamodb": "^3.700.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "^26.1.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
   }
 }
