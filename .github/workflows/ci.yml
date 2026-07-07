@@ -12,7 +12,7 @@ jobs:
       run: { working-directory: backend }
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with: { node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json }
       - run: npm ci
       - run: npm run typecheck
@@ -24,7 +24,7 @@ jobs:
       run: { working-directory: infra }
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with: { node-version: 22, cache: npm, cache-dependency-path: infra/package-lock.json }
       # Lambda bundling needs the backend's node_modules for esbuild resolution.
       - run: npm ci --prefix ../backend
@@ -38,7 +38,7 @@ jobs:
       run: { working-directory: evals }
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with: { node-version: 22, cache: npm, cache-dependency-path: evals/package-lock.json }
       - run: npm ci --prefix ../backend
       - run: npm ci
@@ -53,7 +53,7 @@ jobs:
       run: { working-directory: tools/prompt-improvement }
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with: { node-version: 22, cache: npm, cache-dependency-path: tools/prompt-improvement/package-lock.json }
       - run: npm ci --prefix ../../backend
       - run: npm ci --prefix ../../evals

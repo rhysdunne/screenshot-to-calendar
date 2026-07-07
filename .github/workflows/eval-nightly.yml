@@ -13,7 +13,7 @@ jobs:
     if: ${{ github.repository_owner == 'rhysdunne' }} # don't run on forks
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with: { node-version: 22 }
       - run: npm ci --prefix backend
       - run: npm ci --prefix evals
