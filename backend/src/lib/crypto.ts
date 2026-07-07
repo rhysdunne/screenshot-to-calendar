@@ -1,6 +1,6 @@
 // AES-256-GCM envelope for Google refresh tokens at rest in DynamoDB.
-// The key is a 32-byte hex SSM SecureString (/s2c/{stage}/token-enc-key),
-// itself KMS-encrypted by SSM. A dedicated KMS CMK is the documented upgrade
+// The key is a 32-byte hex Parameter Store SecureString (/s2c/{stage}/token-enc-key),
+// itself KMS-encrypted by Parameter Store. A dedicated KMS CMK is the documented upgrade
 // if per-key audit trails are ever needed.
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 

@@ -13,7 +13,7 @@ for the port map).
 | Path | Purpose |
 |---|---|
 | `backend/src/pipeline/` | **Pure functions, no AWS/network imports.** Date math (`dates.ts` — all arithmetic in the user's IANA timezone, never bare `new Date()`), extraction parsing, calendar mapping, image sniffing, dedup. Unit tests mirror in `backend/test/pipeline/`. |
-| `backend/src/lib/` | Clients and cross-cutting: `models.ts` (ALL model IDs + prices — the only place models are configured), `anthropic.ts` (single Claude entry point, logs cost per call), `google-*.ts`, `crypto.ts` (AES-256-GCM refresh-token encryption), `jwt.ts`, `ddb.ts`, `s3.ts`, `config.ts` (SSM SecureString cache), `http.ts` (JWT middleware + response helpers), `logger.ts`. |
+| `backend/src/lib/` | Clients and cross-cutting: `models.ts` (ALL model IDs + prices — the only place models are configured), `anthropic.ts` (single Claude entry point, logs cost per call), `google-*.ts`, `crypto.ts` (AES-256-GCM refresh-token encryption), `jwt.ts`, `ddb.ts`, `s3.ts`, `config.ts` (Parameter Store SecureString cache), `http.ts` (JWT middleware + response helpers), `logger.ts`. |
 | `backend/src/handlers/` | One file per Lambda. `process-capture.ts` is the pipeline orchestrator (SQS-triggered); everything else is an API route. |
 | `backend/src/prompts/` | Versioned prompt files (`extract-event.v2.md`, `classify-image.v1.md`) + `prompts.ts` which pins the ACTIVE version. Prompt changes = new version file + bump the pin; never edit an existing version in place (eval baselines reference them). |
 | `infra/` | CDK app. `lib/backend-stack.ts` = the whole AWS shape; `lib/web-stack.ts` = CloudFront (AASA for universal links, /c/* fallback, privacy/terms). |
@@ -53,7 +53,7 @@ cd evals   && npm run eval -- --models claude-haiku-4-5,claude-sonnet-5 --datase
 - **DynamoDB single table** `s2c-main-{stage}`: `USER#<id>` partition; sort keys
   `PROFILE`, `CAPTURE#<ulid>`, `IMGHASH#<sha256>`, `CORRECTION#<ulid>`, `AICALL#<ulid>`.
   GSI1 = `GSUB#<googleSub>` → user lookup at sign-in. ULIDs give time-ordering for free.
-- **Secrets**: SSM SecureStrings under `/s2c/{stage}/…`, cached in `lib/config.ts`.
+- **Secrets**: AWS Systems Manager Parameter Store SecureStrings under `/s2c/{stage}/…`, cached in `lib/config.ts`.
   Never put secrets in Lambda env vars or CDK code.
 - **API contract**: JSON shapes shared with iOS live in `docs/architecture.md` and are
   mirrored by `ios/Shared/Models.swift` — change both together.

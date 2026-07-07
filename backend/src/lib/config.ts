@@ -1,4 +1,4 @@
-// Secrets come from SSM Parameter Store SecureStrings under /s2c/{stage}/…,
+// Secrets come from AWS Systems Manager Parameter Store SecureStrings under /s2c/{stage}/…,
 // cached in memory for the lifetime of the Lambda container (with a TTL so
 // rotations propagate within ~5 minutes). Non-secret config is plain env vars
 // set by the CDK stack.
@@ -25,7 +25,7 @@ export async function getSecret(name: SecretName): Promise<string> {
     new GetParameterCommand({ Name: key, WithDecryption: true }),
   );
   const value = result.Parameter?.Value;
-  if (!value) throw new Error(`SSM parameter ${key} is empty or missing`);
+  if (!value) throw new Error(`Parameter Store parameter ${key} is empty or missing`);
   cache.set(key, { value, fetchedAt: Date.now() });
   return value;
 }

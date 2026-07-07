@@ -26,7 +26,7 @@ cd infra && npm ci
 npx cdk bootstrap aws://<ACCOUNT_ID>/eu-west-2
 ```
 
-## 3. Secrets (SSM Parameter Store)
+## 3. Secrets (AWS Systems Manager Parameter Store)
 
 Create the five SecureStrings per stage. Generate the two random keys locally:
 
