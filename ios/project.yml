@@ -49,13 +49,13 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         # Paste the *iOS* OAuth client id from Google Cloud console:
-        GIDClientID: REPLACE_ME_IOS_CLIENT_ID.apps.googleusercontent.com
+        GIDClientID: 907447794937-uq3mpclcbo673ojt653ntjdarl2g2dmv.apps.googleusercontent.com
         # Paste the *web* OAuth client id — required for serverAuthCode:
-        GIDServerClientID: REPLACE_ME_WEB_CLIENT_ID.apps.googleusercontent.com
+        GIDServerClientID: 907447794937-uvs008f9lkvjai2d0l57puhaoldkmhs2.apps.googleusercontent.com
         CFBundleURLTypes:
           - CFBundleURLSchemes:
               # The reversed iOS client id, e.g. com.googleusercontent.apps.1234-abc
-              - REPLACE_ME_REVERSED_IOS_CLIENT_ID
+              - com.googleusercontent.apps.907447794937-uq3mpclcbo673ojt653ntjdarl2g2dmv
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: digital.callaeas.s2c

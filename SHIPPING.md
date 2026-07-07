@@ -45,6 +45,8 @@ now completes end to end.
   aws ssm put-parameter --region eu-west-2 --type SecureString --name /s2c/$STAGE/jwt-secret --value "$(openssl rand -hex 32)"
   aws ssm put-parameter --region eu-west-2 --type SecureString --name /s2c/$STAGE/token-enc-key --value "$(openssl rand -hex 32)"
   ```
+  > Tip: `scripts/secrets.sh push <stage>` stores these in your macOS Keychain
+  > and pushes all five at once — see [docs/secrets.md](docs/secrets.md).
 - [ ] Fill `infra/cdk.json` context: `googleClientId` (web id, step 2),
       `appleTeamId` (step 1), `alertEmail`. `iosBundleId` is already
       `digital.callaeas.s2c`.
