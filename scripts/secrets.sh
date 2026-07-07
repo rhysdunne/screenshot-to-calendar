@@ -8,12 +8,14 @@
 #
 # Usage:
 #   scripts/secrets.sh set  <stage> <param>   # store a secret (hidden prompt)
+#   scripts/secrets.sh gen  <stage> <param>   # generate + store a random 32-byte hex key
 #   scripts/secrets.sh get  <stage> <param>   # print a secret to stdout
 #   scripts/secrets.sh push <stage>           # push all 5 params -> Parameter Store
 #   scripts/secrets.sh env  <stage>           # print `export ANTHROPIC_API_KEY=…`
 #
 # Examples:
 #   scripts/secrets.sh set staging anthropic-api-key
+#   scripts/secrets.sh gen staging jwt-secret        # for jwt-secret / token-enc-key
 #   scripts/secrets.sh push staging                  # keychain -> Parameter Store
 #   eval "$(scripts/secrets.sh env staging)"         # load key for a local eval run
 #
@@ -42,6 +44,14 @@ cmd_set() {
   [[ -n "$value" ]] || die "empty value, nothing stored"
   security add-generic-password -U -a "$USER" -s "$(svc "$stage" "$param")" -w "$value"
   echo "stored $(svc "$stage" "$param") in the login keychain" >&2
+}
+
+cmd_gen() {
+  local stage="${1:?usage: gen <stage> <param>}" param="${2:?usage: gen <stage> <param>}"
+  local value
+  value="$(openssl rand -hex 32)"
+  security add-generic-password -U -a "$USER" -s "$(svc "$stage" "$param")" -w "$value"
+  echo "generated + stored $(svc "$stage" "$param") (random 32-byte hex) in the login keychain" >&2
 }
 
 cmd_get() {
@@ -73,10 +83,11 @@ main() {
   local sub="${1:-}"; shift || true
   case "$sub" in
     set)  cmd_set  "$@" ;;
+    gen)  cmd_gen  "$@" ;;
     get)  cmd_get  "$@" ;;
     push) cmd_push "$@" ;;
     env)  cmd_env  "$@" ;;
-    *) die "usage: secrets.sh {set|get|push|env} <stage> [param]  (see docs/secrets.md)" ;;
+    *) die "usage: secrets.sh {set|gen|get|push|env} <stage> [param]  (see docs/secrets.md)" ;;
   esac
 }
 
