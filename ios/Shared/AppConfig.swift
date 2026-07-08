@@ -22,7 +22,7 @@ enum AppConfig {
 
     /// Contact address for privacy/data-protection requests. Must match the
     /// controller contact named in privacy.html.
-    static let supportEmail = "REPLACE_ME_CONTACT_EMAIL"
+    static let supportEmail = "rhys.dunne@gmail.com"
 
     static let appGroupId = "group.digital.callaeas.s2c"
     static let keychainAccessGroupSuffix = "digital.callaeas.s2c.shared"
