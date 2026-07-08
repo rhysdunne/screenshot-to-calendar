@@ -51,6 +51,9 @@ export class BackendStack extends Stack {
       sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: isProd },
+      // Only items that carry `expiresAt` age out (currently AICALL# telemetry,
+      // 90 days). Captures/corrections omit the attribute and are never expired.
+      timeToLiveAttribute: 'expiresAt',
       removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
     });
     table.addGlobalSecondaryIndex({
