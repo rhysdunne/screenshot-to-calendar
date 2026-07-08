@@ -27,12 +27,15 @@ struct SignInView: View {
             .buttonStyle(.borderedProminent)
             .padding(.horizontal, 32)
 
-            Text("Calendar access is used only to create and update events you capture. [Privacy policy](https://\(AppConfig.webDomain)/privacy.html)")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-                .padding(.bottom, 24)
+            VStack(spacing: 6) {
+                Text("Calendar access is used only to create and update events you capture. Images you share are sent to Anthropic's Claude to extract event details.")
+                Text("By continuing, you agree to our [Terms of Service](https://\(AppConfig.webDomain)/terms.html) and [Privacy Policy](https://\(AppConfig.webDomain)/privacy.html).")
+            }
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 32)
+            .padding(.bottom, 24)
         }
         .alert("Sign-in failed", isPresented: .constant(appState.lastError != nil)) {
             Button("OK") { appState.lastError = nil }
