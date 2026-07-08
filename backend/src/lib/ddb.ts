@@ -90,6 +90,15 @@ export type CaptureUpdates = { [K in keyof CaptureRecord]?: CaptureRecord[K] | n
 
 const userPk = (userId: string) => `USER#${userId}`;
 
+// AI-call log items are operational telemetry (tokens/cost), not user-facing
+// content, so they carry a DynamoDB TTL and age out. Captures/corrections have
+// no TTL — they are the user's history and only leave on explicit deletion.
+// `expiresAt` is a Unix epoch (seconds); the table's timeToLiveAttribute points
+// at it. This is a system clock, not user-timezone date math, so bare Date.now
+// is correct here (unlike pipeline/dates.ts).
+const AICALL_TTL_DAYS = 90;
+const aiCallExpiry = () => Math.floor(Date.now() / 1000) + AICALL_TTL_DAYS * 24 * 60 * 60;
+
 export class DdbStore {
   private readonly doc: DynamoDBDocumentClient;
 
@@ -346,6 +355,7 @@ export class DdbStore {
           SK: `AICALL#${ulid()}`,
           ...call,
           createdAt: new Date().toISOString(),
+          expiresAt: aiCallExpiry(),
         },
       }),
     );
