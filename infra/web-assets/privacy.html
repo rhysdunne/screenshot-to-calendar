@@ -12,7 +12,15 @@
 <body>
 <h1>Privacy Policy</h1>
 <p>Last updated: July 2026. This policy covers the Screenshot to Calendar app
-and its backend service.</p>
+and its backend service, and explains what personal data we process, why, for
+how long, and the rights you have under UK GDPR.</p>
+
+<!-- TODO before publishing: replace [CONTROLLER LEGAL NAME] and [CONTACT EMAIL]
+     throughout with the real operating entity and a monitored address. -->
+<h2>Who is responsible for your data</h2>
+<p>The data controller is <strong>[CONTROLLER LEGAL NAME]</strong>. For any
+privacy question or to exercise a right below, contact
+<strong>[CONTACT EMAIL]</strong>.</p>
 
 <h2>What we store</h2>
 <ul>
@@ -21,27 +29,84 @@ account ID, obtained when you sign in with Google.</li>
 <li><strong>A Google Calendar refresh token</strong>, encrypted at rest
 (AES-256-GCM), used solely to create and update calendar events you ask for.</li>
 <li><strong>Images you share into the app</strong> and the event data
-extracted from them, stored encrypted at rest in AWS (eu-west-2, London).</li>
+extracted from them. These are stored encrypted at rest in AWS (eu-west-2,
+London); see "International transfers" below for where they are processed.</li>
 <li><strong>Corrections you make</strong> to extracted event data.</li>
 </ul>
 
 <h2>How images are processed</h2>
-<p>Images are sent to Anthropic's Claude API to classify them and extract
-event details, and venue names may be sent to Google's Places API to resolve
-addresses. Images are used only to provide the service.</p>
+<p>To turn a screenshot into an event, the image is sent to Anthropic's Claude
+API to classify it and extract the event details, and venue names may be sent
+to Google's Places API to resolve addresses. Images are used only to provide
+the service. Extraction is automated; low-confidence results are held for you
+to review and approve in the app before any calendar event is created.</p>
+
+<h2>Our lawful basis (UK GDPR Article 6)</h2>
+<ul>
+<li><strong>Performance of a contract</strong> (Art. 6(1)(b)) for the core
+service: storing your images, extracting event details, and creating the
+calendar events you request.</li>
+<li><strong>Consent</strong> (Art. 6(1)(a)) for the optional "Help improve
+extraction" use described below. You can withdraw it at any time in Settings.</li>
+<li><strong>Legitimate interests</strong> (Art. 6(1)(f)) for keeping the
+service secure and preventing abuse.</li>
+</ul>
 
 <h2>Improving the product (opt-in only)</h2>
 <p>If — and only if — you enable "Help improve extraction" in Settings, your
 corrections and the associated images may be added to our internal evaluation
 dataset to improve the extraction prompt. This is off by default, and the
-consent state is recorded per correction at the time you make it.</p>
+consent state is recorded per correction at the time you make it. Turning it
+off stops any future correction from being used.</p>
 
-<h2>Your rights (GDPR)</h2>
+<h2>International transfers</h2>
+<p>Your data is stored in the UK (AWS London, eu-west-2). However, when an
+image is processed it is transmitted to <strong>Anthropic in the United
+States</strong>, and venue lookups and calendar operations involve
+<strong>Google</strong>. These transfers outside the UK are covered by the
+UK International Data Transfer Agreement / Standard Contractual Clauses in our
+agreements with those providers.</p>
+
+<h2>Sub-processors</h2>
 <ul>
-<li><strong>Export</strong>: Settings → Export my data produces a complete
-copy of everything stored about you.</li>
-<li><strong>Deletion</strong>: Settings → Delete account permanently removes
-all images and records and revokes the app's access to your Google account.</li>
+<li><strong>Anthropic</strong> (US) — image classification and event extraction.</li>
+<li><strong>Google</strong> — sign-in (OAuth), Calendar, and Places (venue → address).</li>
+<li><strong>Amazon Web Services</strong> (UK, eu-west-2) — hosting and storage.</li>
+</ul>
+
+<h2>How long we keep it</h2>
+<ul>
+<li><strong>Your account, images, events, and corrections</strong> are kept for
+as long as your account exists. You can delete any capture, or your whole
+account, at any time (see "Your rights").</li>
+<li><strong>Operational AI-usage logs</strong> (token and cost records, no image
+content) are automatically deleted after 90 days.</li>
+<li><strong>Data exports</strong> you generate expire after 7 days.</li>
+<li><strong>Backups</strong> of our database are retained on a rolling basis for
+up to 35 days and then overwritten. Deleted data is not restored into the live
+service; if a backup is ever restored, your deletion is re-applied.</li>
+</ul>
+
+<h2>Automated processing</h2>
+<p>Event extraction is automated, but you remain in control: results you can
+act on are shown in the app, low-confidence extractions wait for your review
+and approval, and you can edit or delete any event. Because creating a calendar
+entry has no legal or similarly significant effect and you review the outcome,
+this is not solely-automated decision-making under Article 22.</p>
+
+<h2>Your rights (UK GDPR)</h2>
+<ul>
+<li><strong>Access &amp; portability</strong>: Settings → Export my data produces
+a machine-readable copy of everything stored about you, including links to your
+source images.</li>
+<li><strong>Erasure</strong>: Settings → Delete account permanently removes all
+images and records and revokes the app's access to your Google account.</li>
+<li><strong>Rectification</strong>: correct extracted details in the app at any
+time.</li>
+<li><strong>Objection, restriction, and withdrawal of consent</strong>: contact
+us, or toggle "Help improve extraction" off, at any time.</li>
+<li><strong>Complaint</strong>: you can lodge a complaint with the UK
+Information Commissioner's Office (ICO) at <a href="https://ico.org.uk">ico.org.uk</a>.</li>
 </ul>
 
 <h2>What we never do</h2>
@@ -50,7 +115,7 @@ events other than in the date window checked for duplicates in the calendar
 you selected.</p>
 
 <h2>Contact</h2>
-<p>Data controller: the operator of this app instance. Contact details are
-provided inside the app's Settings screen.</p>
+<p>Data controller: <strong>[CONTROLLER LEGAL NAME]</strong>. Contact for any
+privacy request: <strong>[CONTACT EMAIL]</strong>.</p>
 </body>
 </html>
