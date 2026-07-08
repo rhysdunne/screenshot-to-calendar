@@ -8,7 +8,7 @@ import { exchangeAuthCode } from '../lib/google-auth.js';
 import { encrypt } from '../lib/crypto.js';
 import { signSession } from '../lib/jwt.js';
 import type { UserRecord } from '../lib/ddb.js';
-import { logger } from '../lib/logger.js';
+import { logger, safeError } from '../lib/logger.js';
 
 interface AuthRequest {
   serverAuthCode: string;
@@ -69,7 +69,7 @@ export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
         },
       });
     } catch (e) {
-      logger.error('auth_google_failed', { error: String(e) });
+      logger.error('auth_google_failed', { error: safeError(e) });
       return errorResponse(e);
     }
   };
