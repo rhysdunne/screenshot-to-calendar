@@ -5,6 +5,7 @@ import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2, Context
 import { makeHandler as makeCreateHandler } from '../../src/handlers/captures-create.js';
 import { makeHandler as makeUpdateHandler } from '../../src/handlers/captures-update.js';
 import { makeGetHandler } from '../../src/handlers/captures-read.js';
+import { makeExportHandler, makeDeleteHandler } from '../../src/handlers/account.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
 import { signSession } from '../../src/lib/jwt.js';
 import type { ExtractedEvent } from '../../src/pipeline/types.js';
@@ -213,5 +214,63 @@ describe('captures-read', () => {
       apiEvent({ token, pathParameters: { id: 'cap-owned-by-2' } }),
     );
     expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('account export/delete (GDPR)', () => {
+  async function seedUserWithCaptures(fake: ReturnType<typeof makeFakeDeps>) {
+    await fake.store.putUser(testUser());
+    for (const n of [1, 2]) {
+      await fake.store.createCapture(
+        {
+          userId: 'user-1',
+          status: 'completed',
+          imageKey: `users/user-1/captures/c${n}.png`,
+          imageSha256: `sha-${n}`,
+          mediaType: 'image/png',
+        },
+        `c${n}`,
+      );
+      fake.images.objects.set(`users/user-1/captures/c${n}.png`, Buffer.from('img'));
+    }
+  }
+
+  it('export bundles image download URLs and never leaks the refresh token', async () => {
+    const fake = makeFakeDeps();
+    await seedUserWithCaptures(fake);
+    const token = signSession('user-1', 1, JWT_SECRET);
+
+    const res = await invoke(makeExportHandler(fake.deps), apiEvent({ token }));
+    expect(res.statusCode).toBe(200);
+
+    const exportKey = [...fake.images.objects.keys()].find((k) => k.startsWith('exports/'));
+    const bundle = JSON.parse(fake.images.objects.get(exportKey!)!.toString()) as {
+      items: unknown[];
+      images: { captureId: string; imageKey: string; downloadUrl: string }[];
+    };
+
+    // One download URL per capture image, each a presigned link.
+    expect(bundle.images).toHaveLength(2);
+    expect(bundle.images.map((i) => i.captureId).sort()).toEqual(['c1', 'c2']);
+    for (const img of bundle.images) {
+      expect(img.downloadUrl).toContain('signed.example.com');
+    }
+    // The encrypted refresh token must never appear anywhere in the export.
+    expect(JSON.stringify(bundle)).not.toContain('encRefreshToken');
+  });
+
+  it('delete removes every S3 object and DynamoDB record for the user', async () => {
+    const fake = makeFakeDeps();
+    await seedUserWithCaptures(fake);
+    const token = signSession('user-1', 1, JWT_SECRET);
+
+    const res = await invoke(makeDeleteHandler(fake.deps), apiEvent({ token }));
+    expect(res.statusCode).toBe(200);
+    expect(res.body.deleted).toBe(true);
+    expect([...fake.images.objects.keys()].some((k) => k.startsWith('users/user-1/'))).toBe(
+      false,
+    );
+    expect(await fake.store.getUser('user-1')).toBeNull();
+    expect((await fake.store.listCaptures('user-1')).items).toHaveLength(0);
   });
 });

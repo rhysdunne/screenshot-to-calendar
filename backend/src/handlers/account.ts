@@ -10,7 +10,7 @@ import { realDeps, type Deps } from './deps.js';
 import { authenticate, errorResponse, json } from '../lib/http.js';
 import { decrypt } from '../lib/crypto.js';
 import { revokeToken } from '../lib/google-auth.js';
-import { logger } from '../lib/logger.js';
+import { logger, safeError } from '../lib/logger.js';
 
 export function makeExportHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   return async (event) => {
@@ -22,11 +22,34 @@ export function makeExportHandler(deps: Deps): APIGatewayProxyHandlerV2 {
         const { encRefreshToken, PK, SK, GSI1PK, GSI1SK, ...rest } = item;
         return rest;
       });
+      // Portability (Art. 15/20): the JSON above holds only metadata, so also
+      // give the user their source images. Capture items are the only ones
+      // carrying both imageKey and imageSha256 (corrections reference an image
+      // but have no sha). Links are short-lived — the export UI tells the user
+      // to download promptly.
+      const images = await Promise.all(
+        items
+          .filter(
+            (item) =>
+              typeof item.imageKey === 'string' && typeof item.imageSha256 === 'string',
+          )
+          .map(async (item) => ({
+            captureId: item.captureId as string,
+            imageKey: item.imageKey as string,
+            downloadUrl: await deps.images.presignGet(item.imageKey as string, 3600),
+          })),
+      );
       const exportId = ulid();
       const key = await deps.images.putExport(
         user.userId,
         exportId,
-        Buffer.from(JSON.stringify({ exportedAt: new Date().toISOString(), items: sanitized }, null, 2)),
+        Buffer.from(
+          JSON.stringify(
+            { exportedAt: new Date().toISOString(), items: sanitized, images },
+            null,
+            2,
+          ),
+        ),
       );
       const url = await deps.images.presignGet(key, 3600);
       logger.info('account_exported', { userId: user.userId, exportId });
@@ -48,7 +71,7 @@ export function makeDeleteHandler(deps: Deps): APIGatewayProxyHandlerV2 {
           const encKey = await deps.getSecret('token-enc-key');
           await revokeToken(decrypt(user.encRefreshToken, encKey));
         } catch (e) {
-          logger.warn('google_revoke_failed', { userId: user.userId, error: String(e) });
+          logger.warn('google_revoke_failed', { userId: user.userId, error: safeError(e) });
         }
       }
 
