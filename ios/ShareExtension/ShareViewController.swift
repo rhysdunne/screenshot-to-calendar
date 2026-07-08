@@ -34,7 +34,7 @@ final class ShareViewController: UIViewController {
     private func finish(message: String, after seconds: Double = 1.2) {
         statusLabel.text = message
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
-            self?.extensionContext?.completeRequest(returningItemsToContext: nil)
+            self?.extensionContext?.completeRequest(returningItems: nil)
         }
     }
 
