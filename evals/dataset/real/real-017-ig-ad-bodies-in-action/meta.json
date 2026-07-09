@@ -1,0 +1,12 @@
+{
+  "source": "user",
+  "frozenToday": "2026-05-12",
+  "classification": {
+    "category": "event_screenshot",
+    "is_event": true,
+    "confidence": "high"
+  },
+  "notes": "Instagram ad (video trailer). No explicit show title in the caption -> title made descriptive ('Bodies in Action Dance (premiere)'). Venue resolved from @thesourcestratford -> 'The Source, Stratford'. Explicit date 'May 23rd' + '19:30'. Title is the uncertain part; dates are firm.",
+  "consent": true,
+  "sourceFile": "IMG_6064.jpeg"
+}
