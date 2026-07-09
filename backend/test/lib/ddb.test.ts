@@ -38,6 +38,27 @@ describe('DdbStore', () => {
     expect(put.Item?.SK).toBe(`CAPTURE#${record.captureId}`);
   });
 
+  it('putAiCall stamps a future TTL (expiresAt) so telemetry ages out', async () => {
+    ddbMock.on(PutCommand).resolves({});
+    const nowSec = Math.floor(Date.now() / 1000);
+    await store.putAiCall('u1', {
+      userId: 'u1',
+      captureId: 'cap1',
+      stage: 'extract',
+      model: 'claude-sonnet-5',
+      inputTokens: 10,
+      outputTokens: 5,
+      costUsd: 0.001,
+      latencyMs: 12,
+    });
+    const put = ddbMock.commandCalls(PutCommand)[0]!.args[0].input;
+    expect(String(put.Item?.SK)).toMatch(/^AICALL#/);
+    const expiresAt = put.Item?.expiresAt as number;
+    // ~90 days out (allow a wide band so the test isn't clock-flaky).
+    expect(expiresAt).toBeGreaterThan(nowSec + 89 * 24 * 60 * 60);
+    expect(expiresAt).toBeLessThan(nowSec + 91 * 24 * 60 * 60);
+  });
+
   it('listCaptures queries newest-first', async () => {
     ddbMock.on(QueryCommand).resolves({ Items: [] });
     await store.listCaptures('u1');

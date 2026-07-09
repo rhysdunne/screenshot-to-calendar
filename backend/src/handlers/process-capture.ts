@@ -12,7 +12,7 @@ import { findDuplicate } from '../pipeline/dedup.js';
 import { NoDateError, type Classification, type ExtractedEvent } from '../pipeline/types.js';
 import type { ImageMediaType } from '../pipeline/image.js';
 import type { CaptureRecord, UserRecord } from '../lib/ddb.js';
-import { logger } from '../lib/logger.js';
+import { logger, safeError } from '../lib/logger.js';
 
 export interface ProcessMessage {
   userId: string;
@@ -105,7 +105,7 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
         const place = await deps.resolveVenue(placesKey, event.venue);
         if (place) event = { ...event, address: place.formattedAddress };
       } catch (e) {
-        logger.warn('places_lookup_failed', { error: String(e) });
+        logger.warn('places_lookup_failed', { error: safeError(e) });
       }
     }
 
@@ -134,12 +134,13 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       e instanceof NoDateError
         ? 'No date could be read from this image.'
         : `Processing failed: ${(e as Error).message}`;
-    logger.error('process_capture_failed', { ...msg, error: String(e) });
+    logger.error('process_capture_failed', { ...msg, error: safeError(e) });
     await store.updateCapture(msg.userId, msg.captureId, {
       status: 'failed',
       error: message,
-      // Debugging aid, never shown in the app (excluded from captureView).
-      ...(rawExtractOutput ? { rawModelOutput: rawExtractOutput.slice(0, 4000) } : {}),
+      // Debugging aid, never shown in the app (excluded from captureView) and
+      // removed by account erasure. Kept short to minimise event content at rest.
+      ...(rawExtractOutput ? { rawModelOutput: rawExtractOutput.slice(0, 1000) } : {}),
     });
     // NoDateError is terminal — retrying won't conjure a date. Anything else
     // rethrows so SQS retries (×3) and then parks the message on the DLQ.

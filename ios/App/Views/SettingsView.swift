@@ -43,6 +43,8 @@ struct SettingsView: View {
                      destination: URL(string: "https://\(AppConfig.webDomain)/privacy.html")!)
                 Link("Terms of service",
                      destination: URL(string: "https://\(AppConfig.webDomain)/terms.html")!)
+                Link("Contact us",
+                     destination: URL(string: "mailto:\(AppConfig.supportEmail)")!)
                 Button("Sign out") { appState.signOutLocally() }
             }
         }
@@ -102,8 +104,10 @@ private struct SafariLink: View {
     var body: some View {
         VStack(spacing: 16) {
             Text("Your export is ready").font(.headline).padding(.top, 32)
-            Text("The download link is valid for one hour.")
+            Text("The download link, and the image links inside it, are valid for one hour — download soon.")
                 .font(.callout).foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 24)
             Link("Download export", destination: url)
                 .buttonStyle(.borderedProminent)
             Spacer()

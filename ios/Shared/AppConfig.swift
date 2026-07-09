@@ -20,6 +20,10 @@ enum AppConfig {
     /// The CloudFront web domain (universal links host), without scheme.
     static let webDomain = "REPLACE_ME_CLOUDFRONT_DOMAIN"
 
+    /// Contact address for privacy/data-protection requests. Must match the
+    /// controller contact named in privacy.html.
+    static let supportEmail = "rhys.dunne@gmail.com"
+
     static let appGroupId = "group.digital.callaeas.s2c"
     static let keychainAccessGroupSuffix = "digital.callaeas.s2c.shared"
 
