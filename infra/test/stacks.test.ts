@@ -45,6 +45,7 @@ describe('BackendStack', () => {
           Projection: { ProjectionType: 'ALL' },
         },
       ],
+      TimeToLiveSpecification: { AttributeName: 'expiresAt', Enabled: true },
     });
   });
 
