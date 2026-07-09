@@ -94,6 +94,17 @@ Claude to propose a minimal prompt change, and opens a PR — only if the eval s
 shows no regressions. Corrections only enter this pipeline from users who opted in,
 and every change is human-reviewed. See `tools/prompt-improvement/`.
 
+## Development & project hygiene
+
+This repo is built to be a legible example of AI-assisted development.
+[CONTRIBUTING.md](CONTRIBUTING.md) explains the working model: the three memory
+tiers, where each kind of work lives, and how AI-authored change is kept safe (CI
+gate, eval gate, prompt-improvement PR loop). In short:
+
+- **Bugs / ideas** → GitHub Issues (`bug`, `enhancement`, `chore`, `docs`, `prompt-eval`).
+- **Big reversible decisions** → [Architecture Decision Records](docs/decisions/).
+- **Rules the AI must follow** → invariants in [CLAUDE.md](CLAUDE.md).
+
 ## Privacy
 
 Images and extracted data are stored encrypted at rest in eu-west-2, used only to
