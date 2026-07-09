@@ -38,10 +38,10 @@ export const EXTRACT_EVENT_SCHEMA_V3 = {
     ...EXTRACT_EVENT_SCHEMA.properties,
     price: { type: ['string', 'null'] },
     category: {
-      type: ['string', 'null'],
+      type: 'string',
       enum: [
         'exhibition', 'music', 'theatre', 'club_night', 'food_drink',
-        'market', 'workshop', 'talk', 'film', 'other', null,
+        'market', 'workshop', 'talk', 'film', 'other',
       ],
     },
   },
