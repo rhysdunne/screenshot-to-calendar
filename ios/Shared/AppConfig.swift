@@ -5,9 +5,9 @@ import Foundation
 /// domain here (values are printed by `cdk deploy` as stack outputs).
 enum AppConfig {
     /// API Gateway endpoint for the prod stack, e.g. "https://abc123.execute-api.eu-west-2.amazonaws.com"
-    static let prodApiBase = URL(string: "https://REPLACE_ME_PROD_API.execute-api.eu-west-2.amazonaws.com")!
+    static let prodApiBase = URL(string: "https://6qnbz31qk6.execute-api.eu-west-2.amazonaws.com")!
     /// Staging endpoint — used automatically by Debug builds.
-    static let stagingApiBase = URL(string: "https://REPLACE_ME_STAGING_API.execute-api.eu-west-2.amazonaws.com")!
+    static let stagingApiBase = URL(string: "https://fbwzvtz244.execute-api.eu-west-2.amazonaws.com")!
 
     static var apiBase: URL {
         #if DEBUG
@@ -18,7 +18,7 @@ enum AppConfig {
     }
 
     /// The CloudFront web domain (universal links host), without scheme.
-    static let webDomain = "REPLACE_ME_CLOUDFRONT_DOMAIN"
+    static let webDomain = "d1n6hy34w2a6gq.cloudfront.net"
 
     /// Contact address for privacy/data-protection requests. Must match the
     /// controller contact named in privacy.html.
