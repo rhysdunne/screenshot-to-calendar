@@ -1,0 +1,12 @@
+{
+  "source": "user",
+  "frozenToday": "2026-04-06",
+  "classification": {
+    "category": "event_screenshot",
+    "is_event": true,
+    "confidence": "high"
+  },
+  "notes": "Instagram story. Venue Rio Cinema and full address with postcode printed ('Screening at the Rio Cinema, 107 Kingsland High St, E8 2PB') -> address populated. Explicit date 'Sunday 12 April' (weekday confirms 2026) + 13.00. Film screening with live score -> category film.",
+  "consent": true,
+  "sourceFile": "redacted"
+}

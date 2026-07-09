@@ -1,0 +1,12 @@
+{
+  "source": "user",
+  "frozenToday": "2026-06-06",
+  "classification": {
+    "category": "event_poster",
+    "is_event": true,
+    "confidence": "high"
+  },
+  "notes": "Instagram post; designed exhibition poster -> event_poster. Exhibition run '21 May - 9 Aug 2026' with explicit year (so the start being before frozenToday is fine, no relative resolution). Venue Somerset House. 'FREE EXHIBITION' -> price 'Free'. category exhibition.",
+  "consent": true,
+  "sourceFile": "redacted"
+}

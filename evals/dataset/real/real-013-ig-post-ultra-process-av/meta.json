@@ -1,0 +1,12 @@
+{
+  "source": "user",
+  "frozenToday": "2026-04-17",
+  "classification": {
+    "category": "event_screenshot",
+    "is_event": true,
+    "confidence": "high"
+  },
+  "notes": "Instagram post (evanraskob_art and 2 others). Novel 'nutrition label' poster. Venue 'Folklore' printed with 'LONDON E2 7QL' (postcode only, no street) -> address 'London E2 7QL'. Date 'April 27, 2026' explicit. Start time 19:30 inferred from the caption schedule's first slot '7:30-7:55pm' -> confidence medium. URL https://luma.com/47ev6cto in the caption.",
+  "consent": true,
+  "sourceFile": "redacted"
+}
