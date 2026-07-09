@@ -12,7 +12,7 @@ Extract the following and return ONLY valid JSON with no markdown formatting:
   "description": "brief one-sentence summary of the event",
   "url": "any website or ticket link visible, otherwise null",
   "price": "ticket price as shown, e.g. \"Free\" or \"£12.50\", otherwise null",
-  "category": "exhibition | music | theatre | club_night | food_drink | market | workshop | talk | film | other | null",
+  "category": "exhibition | music | theatre | club_night | food_drink | market | workshop | talk | film | other",
   "confidence": "high/medium/low — how confident you are in the extracted dates"
 }
 
@@ -24,5 +24,5 @@ Rules:
 - If you see an Instagram handle or account name, include it in the description.
 - Do not guess a venue or address that is not visible in the image — use null.
 - Price: "free entry" or "free" means "Free"; if multiple prices are shown (e.g. advance/door), use the lowest with its label, e.g. "£8 adv". Null if no price is shown.
-- Category: pick the single best fit from the list based on what the event is, not where it is; null only if genuinely unclear.
+- Category: pick the single best fit from the list based on what the event is, not where it is; use "other" if genuinely unclear.
 - Return ONLY the JSON object, no explanation or markdown.
