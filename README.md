@@ -80,8 +80,8 @@ Two Claude calls per capture, configured in `backend/src/lib/models.ts`:
    ticket / other scrapbook content? Non-events are kept in the library but skip
    calendar creation — groundwork for the scrapbooking direction.
 2. **Extract** (`claude-sonnet-5`, structured outputs): title, venue, address, dates,
-   times, description, URL, confidence. Prompt lives in
-   `backend/src/prompts/extract-event.v2.md` and is versioned — the active version is
+   times, description, URL, price, category, confidence. Prompt lives in
+   `backend/src/prompts/extract-event.v3.md` and is versioned — the active version is
    pinned in `backend/src/prompts/prompts.ts`.
 
 **Which model is good enough?** Run the eval harness — it scores each model

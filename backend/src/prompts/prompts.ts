@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { EXTRACT_EVENT_SCHEMA, EXTRACT_EVENT_SCHEMA_V3 } from './schemas.js';
 
 export const ACTIVE_VERSIONS = {
-  'extract-event': 'v2',
+  'extract-event': 'v3',
   'classify-image': 'v1',
 } as const;
 
