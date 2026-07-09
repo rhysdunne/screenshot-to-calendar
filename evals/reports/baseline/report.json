@@ -1,0 +1,52 @@
+{
+  "generatedAt": "2026-07-09T14:22:36.231Z",
+  "dataset": "all",
+  "promptVersion": "pinned",
+  "mock": false,
+  "reports": [
+    {
+      "model": "claude-haiku-4-5",
+      "cases": 76,
+      "aggregate": 0.8644634377967709,
+      "fieldAccuracy": {
+        "title": 0.9097222222222222,
+        "venue": 0.8958333333333334,
+        "address": 0.9305555555555556,
+        "start_date": 0.9305555555555556,
+        "end_date": 0.625,
+        "start_time": 0.9861111111111112,
+        "end_time": 0.9722222222222222,
+        "url": 0.9444444444444444
+      },
+      "hallucinationRate": 0.5138888888888888,
+      "missRate": 1,
+      "classificationAccuracy": 0.6710526315789473,
+      "meanLatencyMs": 3985.7631578947367,
+      "p95LatencyMs": 8727,
+      "costPer100Images": 0.3702355263157893,
+      "errors": 0
+    },
+    {
+      "model": "claude-sonnet-5",
+      "cases": 76,
+      "aggregate": 0.9494499841722058,
+      "fieldAccuracy": {
+        "title": 0.9861111111111112,
+        "venue": 0.9861111111111112,
+        "address": 0.9444444444444444,
+        "start_date": 0.9722222222222222,
+        "end_date": 0.9722222222222222,
+        "start_time": 1,
+        "end_time": 1,
+        "url": 0.9861111111111112
+      },
+      "hallucinationRate": 0.125,
+      "missRate": 0.9583333333333334,
+      "classificationAccuracy": 0.8289473684210527,
+      "meanLatencyMs": 8484.631578947368,
+      "p95LatencyMs": 12623,
+      "costPer100Images": 1.2910381578947372,
+      "errors": 0
+    }
+  ]
+}
