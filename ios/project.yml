@@ -12,7 +12,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.10"
-    DEVELOPMENT_TEAM: REPLACE_ME_TEAM_ID
+    DEVELOPMENT_TEAM: HJ33GW58G8
     CODE_SIGN_STYLE: Automatic
     ENABLE_USER_SCRIPT_SANDBOXING: YES
 
@@ -38,7 +38,7 @@ targets:
         com.apple.security.application-groups:
           - group.digital.callaeas.s2c
         com.apple.developer.associated-domains:
-          - applinks:REPLACE_ME_CLOUDFRONT_DOMAIN
+          - applinks:d1n6hy34w2a6gq.cloudfront.net
         keychain-access-groups:
           - $(AppIdentifierPrefix)digital.callaeas.s2c.shared
     info:

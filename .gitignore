@@ -26,6 +26,11 @@ evals/reports/*
 ios/*.xcodeproj
 ios/DerivedData/
 ios/.build/
+# Info.plist and entitlements are generated from project.yml (properties inline)
+ios/App/Info.plist
+ios/App/App.entitlements
+ios/ShareExtension/Info.plist
+ios/ShareExtension/ShareExtension.entitlements
 
 # Playwright
 test-results/
