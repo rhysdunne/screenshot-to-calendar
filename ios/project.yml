@@ -44,6 +44,9 @@ targets:
     info:
       path: App/Info.plist
       properties:
+        # Exposes the team-identifier prefix at runtime so KeychainStore can build
+        # the correctly-prefixed keychain access group (else the JWT never persists).
+        AppIdentifierPrefix: "$(AppIdentifierPrefix)"
         CFBundleDisplayName: Screenshot to Calendar
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
@@ -78,6 +81,8 @@ targets:
     info:
       path: ShareExtension/Info.plist
       properties:
+        # Same as the app target: KeychainStore (shared) needs the prefix at runtime.
+        AppIdentifierPrefix: "$(AppIdentifierPrefix)"
         CFBundleDisplayName: Capture Event
         NSExtension:
           NSExtensionPointIdentifier: com.apple.share-services
