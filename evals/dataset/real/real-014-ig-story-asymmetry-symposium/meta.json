@@ -1,0 +1,12 @@
+{
+  "source": "user",
+  "frozenToday": "2026-04-18",
+  "classification": {
+    "category": "event_screenshot",
+    "is_event": true,
+    "confidence": "high"
+  },
+  "notes": "Instagram story reshare. Venue 'The Courtauld' printed. Explicit date '15 May 2026' + time '9.30am-6pm' -> 09:30-18:00. Symposium -> category talk. PII FLAG: the resharer's name 'Scarlett PB' (and 'scarlett_duhh') is still visible at the top/bottom and should be redacted on the original.",
+  "consent": true,
+  "sourceFile": "IMG_5857.jpeg"
+}

@@ -1,0 +1,12 @@
+{
+  "source": "user",
+  "frozenToday": "2026-07-09",
+  "classification": {
+    "category": "event_screenshot",
+    "is_event": true,
+    "confidence": "high"
+  },
+  "notes": "In-app browser screenshot of theyardtheatre.co.uk (a website, NOT an Instagram post). Venue 'The Yard Theatre' (logo + URL). Date range '14 July - 1 August 2026' with year. URL visible in the browser address bar (www.theyardtheatre.co.uk) -> url populated (site homepage, not a specific event link). category theatre.",
+  "consent": true,
+  "sourceFile": "IMG_6518.jpeg"
+}

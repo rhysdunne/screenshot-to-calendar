@@ -21,6 +21,12 @@ infra/cdk.out/
 # Evals: reports are generated; baselines are committed explicitly
 evals/reports/*
 !evals/reports/baseline*/
+# Evals: local review aid (embeds images), regenerated on demand
+evals/real-dataset-review.html
+
+# Full-res source captures for the real eval set — the processed image.jpg in
+# each evals/dataset/real/<case>/ is the committed copy; originals stay local.
+images/
 
 # iOS: project is generated from project.yml by XcodeGen
 ios/*.xcodeproj
