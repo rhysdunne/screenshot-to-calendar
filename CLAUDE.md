@@ -36,6 +36,18 @@ cd evals   && npm run eval -- --models claude-haiku-4-5,claude-sonnet-5 --datase
                                     # live eval, needs ANTHROPIC_API_KEY
 ```
 
+## How work is tracked
+
+- **Bugs / ideas / known issues → GitHub Issues** (labels: `bug`, `enhancement`,
+  `chore`, `docs`, `prompt-eval`). When you notice an out-of-scope problem, file an
+  issue rather than leaving a TODO in the code.
+- **Big, reversible decisions → an ADR** under `docs/decisions/` (see its README for
+  when one is warranted). When you make a non-obvious call someone will later
+  question, record it. Small implementation choices stay in commit messages.
+- **Rules the AI must always follow → an invariant in this file** (below), with the
+  reason attached.
+- Full model (memory tiers, enforcement layers, conventions): `CONTRIBUTING.md`.
+
 ## Conventions and invariants
 
 - **Date/time**: never use `new Date().toISOString()` for "today" or date arithmetic —
