@@ -1,0 +1,12 @@
+{
+  "source": "user",
+  "frozenToday": "2026-04-29",
+  "classification": {
+    "category": "event_screenshot",
+    "is_event": true,
+    "confidence": "high"
+  },
+  "notes": "Instagram story (DM style). Full address printed '64 Chisenhale Road, London, E3 5QZ'. Explicit date 'Wednesday 29 April 2026' + '7-8:30pm' -> 19:00-20:30. Book/reading launch -> category talk. Note frozenToday equals the event date (screenshotted on the day).",
+  "consent": true,
+  "sourceFile": "redacted"
+}
