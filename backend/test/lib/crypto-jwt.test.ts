@@ -36,7 +36,7 @@ describe('jwt (session tokens)', () => {
 
   it('rejects a tampered payload', () => {
     const token = signSession('user-1', 1, SECRET);
-    const [h, p, s] = token.split('.') as [string, string, string];
+    const [h, , s] = token.split('.') as [string, string, string];
     const forged = Buffer.from(JSON.stringify({ sub: 'attacker', ver: 1, iat: 0, exp: 9e9 }))
       .toString('base64url');
     expect(() => verifySession(`${h}.${forged}.${s}`, SECRET)).toThrow(TokenError);
