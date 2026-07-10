@@ -5,7 +5,7 @@ import type { SQSHandler } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
 import { extractSchemaFor, loadPrompt, renderPrompt } from '../prompts/prompts.js';
 import { CLASSIFY_IMAGE_SCHEMA } from '../prompts/schemas.js';
-import { extractEventData, normalizeEventData } from '../pipeline/extract.js';
+import { extractEventData } from '../pipeline/extract.js';
 import { mapEventToCalendar } from '../pipeline/map-to-calendar.js';
 import { addDays, todayInZone } from '../pipeline/dates.js';
 import { findDuplicate } from '../pipeline/dedup.js';

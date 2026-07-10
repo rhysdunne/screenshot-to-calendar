@@ -32,6 +32,7 @@ export function extractEventData(response: AnthropicResponseLike): ExtractedEven
   } catch (e) {
     throw new Error(
       `Failed to parse event JSON: ${(e as Error).message}\nRaw response: ${rawText}`,
+      { cause: e },
     );
   }
   return normalizeEventData(parsed);
