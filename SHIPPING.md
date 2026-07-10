@@ -18,7 +18,7 @@ and the universal-links AASA — depends on it.
 Produces every credential the AWS step then consumes, so it comes before AWS.
 
 - [ ] Project created; **Calendar API** + **Places API (New)** enabled
-- [ ] OAuth consent screen: External, calendar scope, then **publish to
+- [x] OAuth consent screen: External, calendar scope, then **publish to
       Production** ⚠️ — in Testing status refresh tokens die every 7 days
       and the app silently breaks
 - [ ] **iOS OAuth client** → client id + reversed id (used in `ios/project.yml`
