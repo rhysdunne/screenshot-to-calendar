@@ -1,10 +1,10 @@
-name: Nightly eval smoke
+name: Weekly eval smoke
 
 # A small live eval (10 cases, one model, ~$0.10) so extraction quality drift
-# — from model updates or accidental prompt changes — shows up within a day.
+# — from model updates or accidental prompt changes — shows up week to week.
 on:
   schedule:
-    - cron: "17 3 * * *"
+    - cron: "17 3 * * 1" # Mondays 03:17 UTC
   workflow_dispatch:
 
 jobs:
@@ -21,8 +21,8 @@ jobs:
         working-directory: evals
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: npm run eval -- --models claude-haiku-4-5 --dataset synthetic --limit 10 --label nightly
+        run: npm run eval -- --models claude-haiku-4-5 --dataset synthetic --limit 10 --label weekly
       - uses: actions/upload-artifact@v7
         with:
           name: eval-report-${{ github.run_id }}
-          path: evals/reports/nightly/
+          path: evals/reports/weekly/
