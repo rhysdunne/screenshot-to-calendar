@@ -15,9 +15,6 @@ settings:
     DEVELOPMENT_TEAM: HJ33GW58G8
     CODE_SIGN_STYLE: Automatic
     ENABLE_USER_SCRIPT_SANDBOXING: YES
-    # iPhone-only (1). The app is portrait-only; going universal would require
-    # all four orientations for iPad multitasking (App Store error 90474).
-    TARGETED_DEVICE_FAMILY: "1"
 
 packages:
   GoogleSignIn:
@@ -50,6 +47,9 @@ targets:
         # Exposes the team-identifier prefix at runtime so KeychainStore can build
         # the correctly-prefixed keychain access group (else the JWT never persists).
         AppIdentifierPrefix: "$(AppIdentifierPrefix)"
+        # Only exempt encryption (HTTPS + Keychain, both OS-provided) — declare it
+        # so App Store Connect skips the export-compliance prompt on every upload.
+        ITSAppUsesNonExemptEncryption: false
         CFBundleDisplayName: Screenshot to Calendar
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
@@ -68,6 +68,8 @@ targets:
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # iPhone-only; a portrait-only app can't ship universal (App Store error 90474).
+        TARGETED_DEVICE_FAMILY: "1"
 
   ShareExtension:
     type: app-extension
@@ -99,3 +101,4 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: digital.callaeas.s2c.share
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1"
