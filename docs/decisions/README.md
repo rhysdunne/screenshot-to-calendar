@@ -35,3 +35,4 @@ Status. (Same principle as the versioned prompt files; see ADR 0003.)
 - [0001](0001-extraction-model-sonnet-5.md) — Sonnet 5 for event extraction
 - [0002](0002-real-eval-dataset-labelling.md) — Real eval dataset labelling conventions
 - [0003](0003-prompt-change-control.md) — Prompt change-control: versioned files + eval gate
+- [0004](0004-content-moderation-at-ingest.md) — Content moderation at ingest via Rekognition
