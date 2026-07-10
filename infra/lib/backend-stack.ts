@@ -105,6 +105,12 @@ export class BackendStack extends Stack {
       GOOGLE_CLIENT_ID: props.googleClientId,
       POWERTOOLS_SERVICE_NAME: `s2c-${stage}`,
       NODE_OPTIONS: '--enable-source-maps',
+      // Content moderation at ingest (see captures-create.ts + ADR 0004).
+      // Declared here so the policy is visible/tunable per stage rather than
+      // relying on the backend's envOr fallbacks.
+      MODERATION_ENABLED: 'true',
+      MODERATION_MIN_CONFIDENCE: '80',
+      MODERATION_BLOCK_CATEGORIES: 'Explicit Nudity',
     };
 
     const ssmParamsPolicy = new iam.PolicyStatement({
@@ -179,6 +185,13 @@ export class BackendStack extends Stack {
     });
     imagesBucket.grantPut(capturesCreateFn);
     queue.grantSendMessages(capturesCreateFn);
+    // Ingest moderation gate. DetectModerationLabels is not resource-scoped.
+    capturesCreateFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['rekognition:DetectModerationLabels'],
+        resources: ['*'],
+      }),
+    );
 
     const capturesListFn = makeFn('CapturesList', 'captures-read.ts', 'listHandler');
     const capturesGetFn = makeFn('CapturesGet', 'captures-read.ts', 'getHandler');
