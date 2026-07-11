@@ -7,6 +7,5 @@
     "confidence": "high"
   },
   "notes": "Photo of a physical billboard poster (National Gallery), not a screenshot. End-date-only exhibition 'Until 23 August 2026' -> end_date 2026-08-23, start_date null. Venue 'The National Gallery' printed. 'Members go free' is a member perk, not general admission -> price null. Real-world capture: glare/reflection band across the poster. category exhibition.",
-  "consent": true,
-  "sourceFile": "redacted"
+  "consent": true
 }

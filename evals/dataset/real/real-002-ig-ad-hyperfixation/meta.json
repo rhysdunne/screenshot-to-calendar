@@ -7,6 +7,5 @@
     "confidence": "high"
   },
   "notes": "Instagram ad. Venue and area printed on the poster ('The Victoria, Dalston') but no full street address/postcode, so address=null. Explicit date 'March 16th' and time '7PM'. Caption reads 'two weeks till' though the screenshot is ~1 week before — poster date used. Cabaret → nearest category 'theatre'.",
-  "consent": true,
-  "sourceFile": "redacted"
+  "consent": true
 }

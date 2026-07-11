@@ -7,6 +7,5 @@
     "confidence": "high"
   },
   "notes": "Instagram story. Account @thejudgementhall is a festival/promoter, not a venue, and the work is 'site-specific' with no venue named -> venue null. Explicit date 11.04 + 6:30pm -> 18:30. Music sticker 'Abul Mogard - Like a bird' is not event data.",
-  "consent": true,
-  "sourceFile": "redacted"
+  "consent": true
 }

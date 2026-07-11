@@ -1,5 +1,18 @@
 # CLAUDE.md
 
+> ⚠️ **This repository is PUBLIC** (portfolio/showcase). Everything committed —
+> and everything in git *history* — is world-readable and effectively permanent.
+> Before committing, assume it will be scraped and cannot be un-published:
+> - **No secrets or PII in commits.** Secrets live in AWS SSM Parameter Store /
+>   macOS Keychain (see the Secrets invariant below), never in the tree or env vars.
+> - **Real user/eval data** needs the user's recorded `consent` **and** any
+>   in-image third-party PII (names, handles, faces) redacted *before* commit —
+>   check the pixels, not just the label. Keep source camera-roll filenames
+>   (`IMG_####`) out of `meta.json`.
+> - **`docs/corrections-to-prompt-improvement.md` stays untracked** until the
+>   prompt-injection / eval-poisoning gaps it documents are hardened — publishing
+>   it maps live attack surface.
+
 ## Project: screenshot-to-calendar
 
 Production AI product that turns screenshots of event posters/Instagram posts into

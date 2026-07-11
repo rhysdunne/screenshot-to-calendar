@@ -7,6 +7,5 @@
     "confidence": "high"
   },
   "notes": "Photo of a physical film billboard. Title 'The Invite'. HARD CASE: 'IN CINEMAS JULY 3' has no year and July 3 is 6 days BEFORE frozenToday (2026-07-09), so the prompt's 'next occurrence' heuristic would wrongly roll to 2027-07-03; correct human reading is 2026-07-03 (film just released). Gold = 2026-07-03, confidence medium. General cinema release, no venue -> null. category film.",
-  "consent": true,
-  "sourceFile": "redacted"
+  "consent": true
 }

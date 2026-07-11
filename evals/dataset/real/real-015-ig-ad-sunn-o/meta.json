@@ -7,6 +7,5 @@
     "confidence": "high"
   },
   "notes": "Instagram ad. Tour ad with no specific venue/city on this slide -> venue null. Explicit date 'Friday 3rd July 2026' (weekday confirms). Ticket URL text is partly hidden behind the 'Learn more' button and illegible -> url null. Band name stylised 'sunn O)))'.",
-  "consent": true,
-  "sourceFile": "redacted"
+  "consent": true
 }

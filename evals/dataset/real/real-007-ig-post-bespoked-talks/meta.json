@@ -7,6 +7,5 @@
     "confidence": "high"
   },
   "notes": "Instagram carousel post (1/4). Venue + street address printed ('Unit/08 Bussey Building, 133 Copeland Road, London, Peckham'). Date 'Sat 25th April' weekday confirms 2026. A possible start time in the top-right corner is cut off/illegible -> start_time null, confidence medium. Title vs series: headline 'BESPOKED TALKS', talk subject 'The Albion Textile Shaman: Graeme Raeburn' used as title.",
-  "consent": true,
-  "sourceFile": "redacted"
+  "consent": true
 }

@@ -6,7 +6,6 @@
     "is_event": true,
     "confidence": "high"
   },
-  "notes": "Instagram story reshare. Venue 'The Courtauld' printed. Explicit date '15 May 2026' + time '9.30am-6pm' -> 09:30-18:00. Symposium -> category talk. PII FLAG: the resharer's name '[redacted]' (and '[redacted]') is still visible at the top/bottom and should be redacted on the original.",
-  "consent": true,
-  "sourceFile": "redacted"
+  "notes": "Instagram story reshare of an @asymmetryartorg / @courtauldres post. Venue 'The Courtauld' printed. Explicit date '15 May 2026' + time '9.30am-6pm' -> 09:30-18:00. Symposium -> category talk. Capture is cropped to the embedded original post; the resharer's name/handle are not present in the image.",
+  "consent": true
 }

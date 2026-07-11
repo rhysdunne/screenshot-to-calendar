@@ -7,6 +7,5 @@
     "confidence": "high"
   },
   "notes": "Instagram post; the image is a designed party flyer -> classification event_poster. Venue 'London Bike Studio' (shop's own party). Date 'Saturday 30 May' weekday confirms 2026; no time shown. Party with DJs/pizza/alley-cat racing -> category 'other' (borderline club_night). 'Luca & Cameron' are staff being sent off (on the public flyer).",
-  "consent": true,
-  "sourceFile": "redacted"
+  "consent": true
 }
