@@ -11,8 +11,7 @@ import {
   extensionFor,
   imageSha256,
 } from '../pipeline/image.js';
-import { isBlocked } from '../pipeline/moderation.js';
-import { logger, safeError } from '../lib/logger.js';
+import { logger } from '../lib/logger.js';
 
 interface CreateRequest {
   imageBase64: string;
@@ -36,36 +35,6 @@ export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
         throw new HttpError(413, 'Image too large — resize before uploading');
       }
 
-      const mediaType = detectMediaType(clean);
-
-      // Content moderation, fail-closed: reject explicit images before anything
-      // is persisted — no S3 object, no hash claim, no capture, no queue message.
-      // See docs/decisions/0004-content-moderation-at-ingest.md.
-      if (deps.config.moderationEnabled) {
-        if (mediaType !== 'image/jpeg' && mediaType !== 'image/png') {
-          // Rekognition inspects JPEG/PNG only; the client always sends resized
-          // JPEG, so an unmoderatable format can't be checked → refuse it.
-          throw new HttpError(415, 'Unsupported image format');
-        }
-        let labels;
-        try {
-          labels = await deps.moderate(bytes, mediaType);
-        } catch (e) {
-          logger.error('moderation_unavailable', { error: safeError(e) });
-          throw new HttpError(503, 'Image could not be checked right now — please try again');
-        }
-        if (
-          isBlocked(labels, {
-            blockCategories: deps.config.moderationBlockCategories,
-            minConfidence: deps.config.moderationMinConfidence,
-          })
-        ) {
-          // No content or labels in logs — just that a block happened.
-          logger.warn('moderation_blocked', { userId: user.userId });
-          throw new HttpError(422, 'This image can’t be added');
-        }
-      }
-
       const sha256 = imageSha256(clean);
       const captureId = ulid();
       const existing = await deps.store.claimImageHash(user.userId, sha256, captureId);
@@ -73,6 +42,7 @@ export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
         return json(200, { captureId: existing, status: 'duplicate', duplicateOf: existing });
       }
 
+      const mediaType = detectMediaType(clean);
       const imageKey = deps.images.captureKey(user.userId, captureId, extensionFor(mediaType));
       await deps.images.putImage(imageKey, bytes, mediaType);
       await deps.store.createCapture(
