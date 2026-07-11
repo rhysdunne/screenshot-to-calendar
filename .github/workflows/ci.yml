@@ -1,8 +1,8 @@
 name: CI
 
+# No push trigger: every push to main runs CI exactly once, inside deploy.yml's
+# pipeline (workflow_call). PRs get the required checks via pull_request.
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_call: # reused as the test gate in deploy.yml
 
