@@ -98,7 +98,10 @@ curl "https://<WebDomain>/.well-known/apple-app-site-association"
    `repo:<owner>/<repo>:ref:refs/heads/main` with a policy allowing
    CloudFormation/CDK deploys (start with `AdministratorAccess`, tighten
    later), and set its ARN as the repo secret/variable `AWS_DEPLOY_ROLE_ARN`.
-3. Run the **Deploy** workflow from the Actions tab, choosing the stage.
+3. Add a repo **variable** `ALERT_EMAIL` (Settings → Secrets and variables →
+   Actions → Variables) — the ops alarm address, kept out of `cdk.json` because
+   this repo is public. Non-secret, so a variable rather than a secret.
+4. Run the **Deploy** workflow from the Actions tab, choosing the stage.
 
 ## Costs
 

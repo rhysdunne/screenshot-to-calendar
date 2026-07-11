@@ -4,6 +4,13 @@ import Foundation
 /// After deploying the backend, paste the API endpoint(s) and CloudFront
 /// domain here (values are printed by `cdk deploy` as stack outputs).
 enum AppConfig {
+    // These endpoints are NOT secrets. The prod URL ships inside the app binary
+    // and is trivially extractable from any install, so committing it to this
+    // (public) repo exposes nothing new. Every request is authenticated
+    // (Google OAuth → app JWT); no endpoint is a trust boundary on its own.
+    // `stagingApiBase` is used only by Debug builds and points at the staging
+    // stack, which holds synthetic QA data only. See the PUBLIC note in CLAUDE.md.
+
     /// API Gateway endpoint for the prod stack, e.g. "https://abc123.execute-api.eu-west-2.amazonaws.com"
     static let prodApiBase = URL(string: "https://6qnbz31qk6.execute-api.eu-west-2.amazonaws.com")!
     /// Staging endpoint — used automatically by Debug builds.

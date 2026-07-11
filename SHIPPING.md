@@ -48,14 +48,16 @@ now completes end to end.
   > Tip: `scripts/secrets.sh push <stage>` stores these in your macOS Keychain
   > and pushes all five at once — see [docs/secrets.md](docs/secrets.md).
 - [ ] Fill `infra/cdk.json` context: `googleClientId` (web id, step 2),
-      `appleTeamId` (step 1), `alertEmail`. `iosBundleId` is already
-      `digital.callaeas.s2c`.
+      `appleTeamId` (step 1). `iosBundleId` is already `digital.callaeas.s2c`.
+- [ ] Set the ops alarm address out of source: `export ALERT_EMAIL=you@example.com`
+      for local deploys, and add an `ALERT_EMAIL` GitHub Actions repo **variable**
+      for CI (kept out of `cdk.json` because this is a public repo).
 
 ## 4. Deploy (≈15 min) — [docs/deploy.md](docs/deploy.md)
 
-- [ ] `cd infra && npx cdk deploy S2cWeb-staging S2cBackend-staging`
-- [ ] Same for prod: `npx cdk deploy S2cWeb-prod S2cBackend-prod`
-- [ ] **Confirm the SNS subscription email** AWS sends to `alertEmail` —
+- [ ] `cd infra && ALERT_EMAIL=you@example.com npx cdk deploy S2cWeb-staging S2cBackend-staging`
+- [ ] Same for prod: `ALERT_EMAIL=you@example.com npx cdk deploy S2cWeb-prod S2cBackend-prod`
+- [ ] **Confirm the SNS subscription email** AWS sends to `ALERT_EMAIL` —
       until you click it, alarms notify no one
 - [ ] Record outputs: `ApiUrl` (both stages) and `WebDomain`
 - [ ] Verify:

@@ -105,6 +105,23 @@ gate, eval gate, prompt-improvement PR loop). In short:
 - **Big reversible decisions** → [Architecture Decision Records](docs/decisions/).
 - **Rules the AI must follow** → invariants in [CLAUDE.md](CLAUDE.md).
 
+## Security posture
+
+This repo is public so the app can be audited. What that means in practice:
+
+- **Secrets are never in git.** Runtime secrets live in AWS SSM Parameter Store
+  (SecureStrings under `/s2c/{stage}/…`), and local tooling reads them from the
+  macOS Keychain — see [docs/secrets.md](docs/secrets.md). Refresh tokens are
+  AES-256-GCM encrypted at rest.
+- **Non-secret config is intentionally in source.** API endpoints, Google OAuth
+  client IDs, the Apple Team ID, and the bundle ID all ship inside the released
+  app and are extractable from any install, so committing them exposes nothing new.
+  Auth (Google OAuth → app JWT) is the trust boundary, not endpoint obscurity.
+- **Deploy-time personal values are injected, not committed** — e.g. the ops alarm
+  address comes from `ALERT_EMAIL` (env / CI variable), not `cdk.json`.
+- **Sensitive internal design docs are kept untracked** until the weaknesses they
+  describe are hardened.
+
 ## Privacy
 
 Images and extracted data are stored encrypted at rest in eu-west-2, used only to
