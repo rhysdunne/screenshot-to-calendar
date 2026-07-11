@@ -1,0 +1,22 @@
+name: iOS
+
+# Compile check only — no signing, no tests (no XCTest target exists yet).
+# Separate from ci.yml so the deploy pipeline doesn't rerun a macOS build
+# before backend deploys. macOS runners are free on public repos.
+on:
+  pull_request:
+
+jobs:
+  ios-build: # job id = required-check context in the protect-main ruleset
+    runs-on: macos-15 # default Xcode 16.x matches project.yml's xcodeVersion 16.0
+    timeout-minutes: 30
+    defaults:
+      run: { working-directory: ios }
+    steps:
+      - uses: actions/checkout@v7
+      - run: brew install xcodegen
+      - run: xcodegen generate
+      - run: >
+          xcodebuild build -scheme Screenshot2Cal
+          -destination 'generic/platform=iOS'
+          CODE_SIGNING_ALLOWED=NO
