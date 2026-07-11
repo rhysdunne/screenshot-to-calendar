@@ -5,7 +5,7 @@ struct SettingsView: View {
     @State private var calendars: [CalendarEntry] = []
     @State private var showDeleteConfirm = false
     @State private var exportURL: URL?
-    @State private var infoMessage: String?
+    @State private var errorMessage: String?
 
     var body: some View {
         Form {
@@ -26,8 +26,11 @@ struct SettingsView: View {
             Section("Your data") {
                 Button {
                     Task {
-                        if let response = try? await appState.api.exportAccount() {
+                        do {
+                            let response = try await appState.api.exportAccount()
                             exportURL = URL(string: response.url)
+                        } catch {
+                            errorMessage = error.localizedDescription
                         }
                     }
                 } label: {
@@ -50,7 +53,11 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .task {
-            calendars = (try? await appState.api.listCalendars().calendars) ?? []
+            do {
+                calendars = try await appState.api.listCalendars().calendars
+            } catch {
+                errorMessage = "Couldn't load your calendars. Check your connection and reopen Settings to try again."
+            }
         }
         .sheet(item: $exportURL) { url in
             SafariLink(url: url)
@@ -62,14 +69,18 @@ struct SettingsView: View {
         ) {
             Button("Delete everything", role: .destructive) {
                 Task {
-                    try? await appState.api.deleteAccount()
-                    appState.signOutLocally()
+                    do {
+                        try await appState.api.deleteAccount()
+                        appState.signOutLocally()
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
                 }
             }
         }
-        .alert("Info", isPresented: .constant(infoMessage != nil)) {
-            Button("OK") { infoMessage = nil }
-        } message: { Text(infoMessage ?? "") }
+        .alert("Error", isPresented: .constant(errorMessage != nil)) {
+            Button("OK") { errorMessage = nil }
+        } message: { Text(errorMessage ?? "") }
     }
 
     private var calendarBinding: Binding<String?> {
@@ -78,7 +89,7 @@ struct SettingsView: View {
             set: { newValue in
                 guard var settings = appState.settings else { return }
                 settings.calendarId = newValue
-                Task { appState.settings = try? await appState.api.updateSettings(settings) }
+                Task { await save(settings) }
             }
         )
     }
@@ -89,9 +100,21 @@ struct SettingsView: View {
             set: { newValue in
                 guard var settings = appState.settings else { return }
                 settings.consentEvalUse = newValue
-                Task { appState.settings = try? await appState.api.updateSettings(settings) }
+                Task { await save(settings) }
             }
         )
+    }
+
+    /// Persist a settings change. On failure, surface it and leave the existing
+    /// `appState.settings` untouched — the control reverts to its prior value on
+    /// the next render, and we never overwrite good settings with nil (which
+    /// would bounce the user to the calendar picker).
+    private func save(_ settings: UserSettings) async {
+        do {
+            appState.settings = try await appState.api.updateSettings(settings)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }
 

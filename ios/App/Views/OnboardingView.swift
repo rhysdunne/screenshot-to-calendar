@@ -6,6 +6,7 @@ struct OnboardingView: View {
     @State private var calendars: [CalendarEntry] = []
     @State private var newCalendarName = ""
     @State private var isWorking = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -41,9 +42,18 @@ struct OnboardingView: View {
             }
             .navigationTitle("Choose a calendar")
             .overlay { if isWorking { ProgressView() } }
-            .task {
-                calendars = (try? await appState.api.listCalendars().calendars) ?? []
-            }
+            .task { await loadCalendars() }
+            .alert("Error", isPresented: .constant(errorMessage != nil)) {
+                Button("OK") { errorMessage = nil }
+            } message: { Text(errorMessage ?? "") }
+        }
+    }
+
+    private func loadCalendars() async {
+        do {
+            calendars = try await appState.api.listCalendars().calendars
+        } catch {
+            errorMessage = "Couldn't load your calendars. Check your connection and try again — you can still create a new one below."
         }
     }
 
@@ -52,14 +62,24 @@ struct OnboardingView: View {
         isWorking = true
         defer { isWorking = false }
         settings.calendarId = calendarId
-        appState.settings = try? await appState.api.updateSettings(settings)
+        do {
+            // Assign only on success — never overwrite good settings with nil,
+            // which would bounce the user back to this picker.
+            appState.settings = try await appState.api.updateSettings(settings)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func createAndSelect() async {
         isWorking = true
-        defer { isWorking = false }
-        guard let created = try? await appState.api.createCalendar(
-            summary: newCalendarName.trimmingCharacters(in: .whitespaces)) else { return }
-        await select(created.id)
+        do {
+            let created = try await appState.api.createCalendar(
+                summary: newCalendarName.trimmingCharacters(in: .whitespaces))
+            await select(created.id)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isWorking = false
     }
 }
