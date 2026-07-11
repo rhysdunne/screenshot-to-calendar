@@ -5,6 +5,10 @@ import GoogleSignIn
 @MainActor
 final class AppState: ObservableObject {
     @Published var isSignedIn = KeychainStore.token != nil
+    /// False until the first `bootstrap()` (or a fresh `signIn`) has resolved
+    /// `settings`. The router shows a launch splash while this is false so a
+    /// returning user never flashes the calendar picker before settings load.
+    @Published var didBootstrap = false
     @Published var settings: UserSettings?
     @Published var captures: [Capture] = []
     @Published var pendingDeepLinkCaptureId: String?
@@ -16,6 +20,7 @@ final class AppState: ObservableObject {
 
     func bootstrap() async {
         guard isSignedIn else { return }
+        defer { didBootstrap = true }
         do {
             settings = try await api.getSettings()
             await refreshCaptures()
@@ -47,6 +52,7 @@ final class AppState: ObservableObject {
             KeychainStore.token = auth.token
             settings = auth.user.settings
             isSignedIn = true
+            didBootstrap = true
             await refreshCaptures()
         } catch {
             lastError = error.localizedDescription
@@ -57,6 +63,7 @@ final class AppState: ObservableObject {
         KeychainStore.token = nil
         GIDSignIn.sharedInstance.signOut()
         isSignedIn = false
+        didBootstrap = false
         settings = nil
         captures = []
     }
