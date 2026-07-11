@@ -85,25 +85,6 @@ describe('BackendStack', () => {
     });
   });
 
-  it('grants the create Lambda Rekognition moderation and sets the moderation env', () => {
-    backend.hasResourceProperties('AWS::Lambda::Function', {
-      Environment: {
-        Variables: Match.objectLike({ MODERATION_ENABLED: 'true' }),
-      },
-    });
-    backend.hasResourceProperties('AWS::IAM::Policy', {
-      PolicyDocument: {
-        Statement: Match.arrayWith([
-          Match.objectLike({
-            Action: 'rekognition:DetectModerationLabels',
-            Effect: 'Allow',
-            Resource: '*',
-          }),
-        ]),
-      },
-    });
-  });
-
   it('alarms when the DLQ is not empty and notifies the alerts topic', () => {
     backend.hasResourceProperties('AWS::SNS::Topic', { TopicName: 's2c-alerts-staging' });
     backend.hasResourceProperties('AWS::CloudWatch::Alarm', {

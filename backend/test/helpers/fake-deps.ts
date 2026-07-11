@@ -11,7 +11,6 @@ import type {
 } from '../../src/lib/ddb.js';
 import type { ClaudeCallOptions, ClaudeCallResult } from '../../src/lib/anthropic.js';
 import type { CalendarEventInput, ExistingCalendarEvent } from '../../src/pipeline/types.js';
-import type { ModerationLabel } from '../../src/pipeline/moderation.js';
 
 export class FakeStore implements Store {
   users = new Map<string, UserRecord>();
@@ -174,12 +173,6 @@ export interface FakeDepsOptions {
   extractResult?: unknown;
   existingEvents?: ExistingCalendarEvent[];
   placesAddress?: string | null;
-  /** Labels the moderation fake returns; defaults to [] (allow). */
-  moderateLabels?: ModerationLabel[];
-  /** When true, the moderation fake throws (simulates Rekognition unavailable). */
-  moderateThrows?: boolean;
-  /** Override the moderationEnabled config flag; defaults to true. */
-  moderationEnabled?: boolean;
 }
 
 export function makeFakeDeps(opts: FakeDepsOptions = {}) {
@@ -188,7 +181,6 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
   const insertedEvents: Array<{ calendarId: string; event: CalendarEventInput }> = [];
   const patchedEvents: Array<{ calendarId: string; eventId: string }> = [];
   const claudeCalls: ClaudeCallOptions[] = [];
-  const moderationCalls: Buffer[] = [];
 
   const deps: Deps = {
     store,
@@ -247,23 +239,15 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
       if (name === 'token-enc-key') return 'a'.repeat(64);
       return `secret-${name}`;
     },
-    moderate: async (bytes: Buffer) => {
-      moderationCalls.push(bytes);
-      if (opts.moderateThrows) throw new Error('rekognition unavailable');
-      return opts.moderateLabels ?? [];
-    },
     config: {
       deepLinkBase: 'https://app.example.com',
       classifyModel: 'claude-haiku-4-5',
       extractModel: 'claude-sonnet-5',
       googleClientId: 'client-id.apps.googleusercontent.com',
-      moderationEnabled: opts.moderationEnabled ?? true,
-      moderationMinConfidence: 80,
-      moderationBlockCategories: ['Explicit Nudity'],
     },
   };
 
-  return { deps, store, images, insertedEvents, patchedEvents, claudeCalls, moderationCalls };
+  return { deps, store, images, insertedEvents, patchedEvents, claudeCalls };
 }
 
 export function testUser(overrides: Partial<UserRecord> = {}): UserRecord {
