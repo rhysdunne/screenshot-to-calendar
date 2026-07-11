@@ -62,8 +62,3 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
-
-  # iOS builds need macOS runners (billed at 10× on private repos) and
-  # signing configuration; Swift sources are review-only in CI for now.
-  # To enable later: runs-on: macos-15, xcodegen generate, xcodebuild build
-  # -scheme Screenshot2Cal -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO
