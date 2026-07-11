@@ -22,8 +22,13 @@ struct CaptureDetailView: View {
                     statusSection(capture)
                     if capture.event != nil {
                         fieldsSection
-                        actionsSection(capture)
+                        if canApprove(capture) || capture.eventLink != nil {
+                            actionsSection(capture)
+                        }
                     }
+                    // Always available — including not_event and other event-less
+                    // captures, which previously had no way to be removed.
+                    deleteSection
                 }
             }
             .navigationTitle("Capture")
@@ -78,6 +83,10 @@ struct CaptureDetailView: View {
                 Text("The AI wasn't confident about these details — check them (especially the dates), fix anything wrong, then add to calendar below.")
                     .font(.callout)
             }
+            if capture.status == .notEvent {
+                Text("This didn't look like an event, so nothing was added to your calendar. You can delete it below.")
+                    .font(.callout)
+            }
             if let error = capture.error {
                 Text(error).font(.callout).foregroundStyle(.red)
             }
@@ -121,9 +130,15 @@ struct CaptureDetailView: View {
         }
     }
 
+    /// A `needs_review` or a `failed`-with-event capture can still be added to
+    /// the calendar by the user once they've checked the details.
+    private func canApprove(_ capture: Capture) -> Bool {
+        capture.status == .needsReview || (capture.status == .failed && capture.event != nil)
+    }
+
     private func actionsSection(_ capture: Capture) -> some View {
         Section {
-            if capture.status == .needsReview || (capture.status == .failed && capture.event != nil) {
+            if canApprove(capture) {
                 Button {
                     Task { await approve() }
                 } label: {
@@ -140,6 +155,11 @@ struct CaptureDetailView: View {
             if let link = capture.eventLink, let url = URL(string: link) {
                 Link(destination: url) { Label("Open in Google Calendar", systemImage: "calendar") }
             }
+        }
+    }
+
+    private var deleteSection: some View {
+        Section {
             Button(role: .destructive) { showDeleteConfirm = true } label: {
                 Label("Delete capture", systemImage: "trash")
             }

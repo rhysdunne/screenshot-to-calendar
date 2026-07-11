@@ -13,14 +13,14 @@ struct LibraryView: View {
             ScrollView {
                 if appState.captures.isEmpty {
                     emptyState
+                } else if reviewCaptures.isEmpty {
+                    // Nothing needs attention — show the flat grid, no section
+                    // headers, so the tidy common case looks unchanged.
+                    grid(recentCaptures).padding()
                 } else {
-                    LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(appState.captures) { capture in
-                            Button { selectedCapture = capture } label: {
-                                CaptureTile(capture: capture)
-                            }
-                            .buttonStyle(.plain)
-                        }
+                    VStack(alignment: .leading, spacing: 24) {
+                        titledSection("Needs your review (\(reviewCaptures.count))", reviewCaptures)
+                        titledSection("Recent", recentCaptures)
                     }
                     .padding()
                 }
@@ -52,6 +52,42 @@ struct LibraryView: View {
                 appState.pendingDeepLinkCaptureId = nil
                 selectedCapture = appState.captures.first { $0.captureId == captureId }
                     ?? Capture(captureId: captureId, status: .completed, createdAt: "")
+            }
+        }
+    }
+
+    // MARK: Triage
+
+    /// Captures that need the user to act: low-confidence extractions, failures
+    /// that still produced an event to salvage, or possible duplicates. These
+    /// float to the top so they don't scroll out of sight in reverse-chron order.
+    private func needsAttention(_ capture: Capture) -> Bool {
+        capture.status == .needsReview
+            || (capture.status == .failed && capture.event != nil)
+            || capture.possibleDuplicateOf != nil
+    }
+
+    private var reviewCaptures: [Capture] { appState.captures.filter(needsAttention) }
+    private var recentCaptures: [Capture] { appState.captures.filter { !needsAttention($0) } }
+
+    @ViewBuilder private func grid(_ captures: [Capture]) -> some View {
+        LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(captures) { capture in
+                Button { selectedCapture = capture } label: {
+                    CaptureTile(capture: capture)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    /// A labelled grid, rendered only when it has content (so an all-in-review
+    /// state doesn't leave an empty "Recent" header behind).
+    @ViewBuilder private func titledSection(_ title: String, _ captures: [Capture]) -> some View {
+        if !captures.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title).font(.headline)
+                grid(captures)
             }
         }
     }
