@@ -25,7 +25,11 @@ fast per-PR compile gate; Xcode Cloud is the release lane.
    Google org owner could do. Grants are for *private* repos; public package
    dependencies are fetched anonymously. Close that page and click Next.
 4. Workflow settings:
-   - Environment: latest Xcode 16.x (project pins `xcodeVersion: 16.0`).
+   - Environment: pin a **specific Xcode version**, not "Latest Release" (which
+     silently advances and can break a tag push months later). Currently
+     **Xcode 26.5 (17F42)** — kept in lockstep with `ios.yml`'s
+     `xcode-select` pin, so PR CI and the release lane use one toolchain.
+     Bumping the version is a deliberate act: change both together.
    - Start condition: **Tag** matching `ios-v*` (delete the default branch
      condition — most merges to main are backend-only and shouldn't burn
      compute hours on an archive nobody installs).

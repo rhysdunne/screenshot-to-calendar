@@ -8,12 +8,16 @@ on:
 
 jobs:
   ios-build: # job id = required-check context in the protect-main ruleset
-    runs-on: macos-15 # default Xcode 16.x matches project.yml's xcodeVersion 16.0
+    runs-on: macos-26
     timeout-minutes: 30
     defaults:
       run: { working-directory: ios }
     steps:
       - uses: actions/checkout@v7
+      # Pinned to the same Xcode build (17F42) as the Xcode Cloud TestFlight
+      # workflow, so CI and the release lane compile with one toolchain.
+      # Fails loudly if a runner-image update drops this version.
+      - run: sudo xcode-select --switch /Applications/Xcode_26.5.app
       - run: brew install xcodegen
       - run: xcodegen generate
       - run: >
