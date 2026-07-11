@@ -6,15 +6,21 @@ Local:
 
 ```bash
 cd infra
+export ALERT_EMAIL=you@example.com   # ops alarm address; kept out of source (public repo)
 npx cdk diff S2cBackend-staging      # review
 npx cdk deploy S2cWeb-staging S2cBackend-staging
 # validate on staging, then:
 npx cdk deploy S2cWeb-prod S2cBackend-prod
 ```
 
+`ALERT_EMAIL` is the address AWS subscribes to the CloudWatch alarms topic. It's
+non-secret but personal, so it lives in your environment, not `cdk.json`. Omit it
+and the stack still deploys — alarms just have no email subscriber.
+
 GitHub Actions: run the **Deploy** workflow (Actions tab → Deploy → Run
-workflow → pick stage). Requires the `AWS_DEPLOY_ROLE_ARN` variable
-(docs/setup-aws.md §6).
+workflow → pick stage). Requires the `AWS_DEPLOY_ROLE_ARN` and `ALERT_EMAIL`
+repository **variables** (Settings → Secrets and variables → Actions → Variables;
+see docs/setup-aws.md §6).
 
 The iOS app points at prod in Release builds and staging in Debug builds
 (`ios/Shared/AppConfig.swift`).
