@@ -30,6 +30,12 @@ struct RootView: View {
         Group {
             if !appState.isSignedIn {
                 SignInView()
+            } else if !appState.didBootstrap {
+                // Signed in, but settings haven't loaded yet. Show a splash
+                // rather than falling through to OnboardingView — otherwise a
+                // returning user sees the calendar picker flash until the
+                // async getSettings() lands.
+                LaunchSplashView()
             } else if appState.settings?.calendarId == nil {
                 OnboardingView()
             } else {
