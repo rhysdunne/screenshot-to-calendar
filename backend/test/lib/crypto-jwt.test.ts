@@ -17,7 +17,11 @@ describe('crypto (refresh token encryption)', () => {
 
   it('rejects tampered ciphertext', () => {
     const enc = encrypt('secret', KEY);
-    const tampered = { ...enc, ct: enc.ct.replace(/^../, 'ff') };
+    // Flip the first ciphertext byte's bits so it is ALWAYS genuinely changed.
+    // Overwriting it with a fixed 'ff' was a no-op ~1/256 of the time (whenever
+    // the random first byte already was 0xff), which made this test flaky.
+    const flipped = (parseInt(enc.ct.slice(0, 2), 16) ^ 0xff).toString(16).padStart(2, '0');
+    const tampered = { ...enc, ct: flipped + enc.ct.slice(2) };
     expect(() => decrypt(tampered, KEY)).toThrow();
   });
 
