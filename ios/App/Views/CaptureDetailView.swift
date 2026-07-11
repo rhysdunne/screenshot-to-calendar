@@ -103,21 +103,22 @@ struct CaptureDetailView: View {
             LabeledContent("Title") { TextField("Title", text: binding(\.title)) }
             LabeledContent("Venue") { TextField("Venue", text: binding(\.venue)) }
             LabeledContent("Address") { TextField("Address", text: binding(\.address)) }
-            LabeledContent("Start date") {
-                TextField("YYYY-MM-DD", text: binding(\.startDate))
-                    .keyboardType(.numbersAndPunctuation)
+            DatePicker("Start date", selection: startDateBinding, displayedComponents: .date)
+
+            Toggle("Add a start time", isOn: startTimeOn)
+            if form.startTime != nil {
+                DatePicker("Start time", selection: startTimeBinding, displayedComponents: .hourAndMinute)
             }
-            LabeledContent("End date") {
-                TextField("YYYY-MM-DD", text: binding(\.endDate))
-                    .keyboardType(.numbersAndPunctuation)
+
+            Toggle("Add an end date", isOn: endDateOn)
+            if form.endDate != nil {
+                DatePicker("End date", selection: endDateBinding,
+                           in: startDateValue..., displayedComponents: .date)
             }
-            LabeledContent("Start time") {
-                TextField("HH:MM", text: binding(\.startTime))
-                    .keyboardType(.numbersAndPunctuation)
-            }
-            LabeledContent("End time") {
-                TextField("HH:MM", text: binding(\.endTime))
-                    .keyboardType(.numbersAndPunctuation)
+
+            Toggle("Add an end time", isOn: endTimeOn)
+            if form.endTime != nil {
+                DatePicker("End time", selection: endTimeBinding, displayedComponents: .hourAndMinute)
             }
             LabeledContent("URL") { TextField("URL", text: binding(\.url)) }
             // v3 read-only fields (corrections for these are a follow-up):
@@ -128,6 +129,60 @@ struct CaptureDetailView: View {
                 LabeledContent("Category") { Text(category.replacingOccurrences(of: "_", with: " ")) }
             }
         }
+    }
+
+    // MARK: Date & time field mapping
+
+    /// Wall-clock wire formats (`yyyy-MM-dd`, `HH:mm`). These carry no timezone —
+    /// the backend attaches one from user settings — so parse and format both use
+    /// the device timezone consistently, keeping DatePicker round-trips stable.
+    private enum WireFormat {
+        static let date: DateFormatter = {
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.dateFormat = "yyyy-MM-dd"
+            return f
+        }()
+        static let time: DateFormatter = {
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.dateFormat = "HH:mm"
+            return f
+        }()
+    }
+
+    private var startDateValue: Date { WireFormat.date.date(from: form.startDate ?? "") ?? Date() }
+
+    private var startDateBinding: Binding<Date> {
+        Binding(get: { startDateValue },
+                set: { form.startDate = WireFormat.date.string(from: $0) })
+    }
+
+    private var startTimeOn: Binding<Bool> {
+        Binding(get: { form.startTime != nil },
+                set: { form.startTime = $0 ? (form.startTime ?? "09:00") : nil })
+    }
+    private var startTimeBinding: Binding<Date> {
+        Binding(get: { WireFormat.time.date(from: form.startTime ?? "09:00") ?? Date() },
+                set: { form.startTime = WireFormat.time.string(from: $0) })
+    }
+
+    private var endDateOn: Binding<Bool> {
+        Binding(get: { form.endDate != nil },
+                set: { form.endDate = $0 ? (form.endDate ?? form.startDate ?? WireFormat.date.string(from: Date())) : nil })
+    }
+    private var endDateBinding: Binding<Date> {
+        Binding(get: { WireFormat.date.date(from: form.endDate ?? "") ?? startDateValue },
+                set: { form.endDate = WireFormat.date.string(from: $0) })
+    }
+
+    private var endTimeOn: Binding<Bool> {
+        Binding(get: { form.endTime != nil },
+                set: { form.endTime = $0 ? (form.endTime ?? form.startTime ?? "10:00") : nil })
+    }
+    private var endTimeBinding: Binding<Date> {
+        Binding(get: { WireFormat.time.date(from: form.endTime ?? "10:00") ?? Date() },
+                set: { form.endTime = WireFormat.time.string(from: $0) })
     }
 
     /// A `needs_review` or a `failed`-with-event capture can still be added to
@@ -186,6 +241,11 @@ struct CaptureDetailView: View {
             let loaded = try await appState.api.getCapture(id: captureId)
             capture = loaded
             form = loaded.effectiveEvent ?? ExtractedEvent()
+            // A calendar event needs a date; if the extraction had none, seed
+            // today so the always-visible Start date picker has a value to edit.
+            if loaded.event != nil, form.startDate == nil {
+                form.startDate = WireFormat.date.string(from: Date())
+            }
             if let response = try? await appState.api.imageUrl(id: captureId) {
                 imageURL = URL(string: response.url)
             }
