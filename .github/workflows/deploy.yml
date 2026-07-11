@@ -1,57 +1,35 @@
 name: Deploy
 
+# Merge to main → CI → deploy staging → pause at prod until approved in the
+# Actions UI (required-reviewer rule on the prod environment). Ignored prod
+# gates expire after 30 days and can be rejected in the UI.
+#
+# workflow_dispatch reruns the same pipeline: "redeploy staging" = dispatch and
+# don't approve prod; "redeploy prod" = dispatch and approve. Prod can never
+# receive a commit that didn't just deploy to staging.
+#
+# Deliberate omissions: no paths filter (a docs-only merge redeploys staging —
+# idempotent, and keeps staging exactly at main); no auto-approval of prod.
+
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      stage:
-        description: Stage to deploy
-        required: true
-        type: choice
-        options: [staging, prod]
 
 permissions:
   id-token: write # GitHub OIDC → AWS role
   contents: read
 
-# Queue (never interleave) concurrent deploys to the same stage.
-concurrency:
-  group: deploy-${{ inputs.stage }}
-  cancel-in-progress: false
-
 jobs:
   ci:
     uses: ./.github/workflows/ci.yml
 
-  deploy:
+  staging:
     needs: ci
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.stage }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
-        with: { node-version: 22 }
-      - uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: eu-west-2
-      - run: npm ci --prefix backend
-      - run: npm ci --prefix infra
-      - name: Deploy ${{ inputs.stage }}
-        working-directory: infra
-        env:
-          ALERT_EMAIL: ${{ vars.ALERT_EMAIL }} # ops alarm address; kept out of source (public repo)
-        run: npx cdk deploy S2cWeb-${{ inputs.stage }} S2cBackend-${{ inputs.stage }} --require-approval never
+    uses: ./.github/workflows/deploy-stage.yml
+    with: { stage: staging }
 
-      - name: Verify deployment
-        run: |
-          set -euo pipefail
-          API_URL=$(aws cloudformation describe-stacks \
-            --stack-name S2cBackend-${{ inputs.stage }} --region eu-west-2 \
-            --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
-          WEB_DOMAIN=$(aws cloudformation describe-stacks \
-            --stack-name S2cWeb-${{ inputs.stage }} --region eu-west-2 \
-            --query "Stacks[0].Outputs[?OutputKey=='WebDomain'].OutputValue" --output text)
-          echo "Health check: $API_URL/v1/health"
-          curl -fsS "$API_URL/v1/health"
-          echo "AASA check: $WEB_DOMAIN/.well-known/apple-app-site-association"
-          curl -fsS "$WEB_DOMAIN/.well-known/apple-app-site-association" | grep -q applinks
+  prod:
+    needs: staging
+    uses: ./.github/workflows/deploy-stage.yml
+    with: { stage: prod }
