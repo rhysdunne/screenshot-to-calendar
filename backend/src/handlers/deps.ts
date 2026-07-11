@@ -4,9 +4,6 @@
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { DdbStore, type UserRecord } from '../lib/ddb.js';
 import { ImageStore } from '../lib/s3.js';
-import { RekognitionModerator } from '../lib/rekognition.js';
-import type { ModerationLabel } from '../pipeline/moderation.js';
-import type { ImageMediaType } from '../pipeline/image.js';
 import { env, envOr, getSecret } from '../lib/config.js';
 import { decrypt } from '../lib/crypto.js';
 import { GoogleAuthError, refreshAccessToken } from '../lib/google-auth.js';
@@ -53,16 +50,11 @@ export interface Deps {
   >;
   resolveVenue: typeof resolveVenue;
   getSecret: typeof getSecret;
-  /** Content moderation (Rekognition) — returns raw labels; pipeline decides. */
-  moderate: (bytes: Buffer, mediaType: ImageMediaType) => Promise<ModerationLabel[]>;
   config: {
     deepLinkBase: string;
     classifyModel: string;
     extractModel: string;
     googleClientId: string;
-    moderationEnabled: boolean;
-    moderationMinConfidence: number;
-    moderationBlockCategories: string[];
   };
 }
 
@@ -73,7 +65,6 @@ export function realDeps(): Deps {
   const sqs = new SQSClient({});
   const queueUrl = env('QUEUE_URL');
   const store = new DdbStore(env('TABLE_NAME'));
-  const moderator = new RekognitionModerator();
 
   real = {
     store,
@@ -109,21 +100,11 @@ export function realDeps(): Deps {
     calendar: gcal,
     resolveVenue,
     getSecret,
-    moderate: (bytes) => moderator.detect(bytes),
     config: {
       deepLinkBase: env('DEEPLINK_BASE_URL'),
       classifyModel: envOr('CLASSIFY_MODEL', DEFAULT_MODELS.classify),
       extractModel: envOr('EXTRACT_MODEL', DEFAULT_MODELS.extract),
       googleClientId: env('GOOGLE_CLIENT_ID'),
-      // Enabled unless explicitly 'false' — also the local-dev kill switch,
-      // since fail-closed would otherwise block uploads where Rekognition is
-      // unreachable. Threshold/categories are env-tunable without a code change.
-      moderationEnabled: envOr('MODERATION_ENABLED', 'true') !== 'false',
-      moderationMinConfidence: Number(envOr('MODERATION_MIN_CONFIDENCE', '80')),
-      moderationBlockCategories: envOr('MODERATION_BLOCK_CATEGORIES', 'Explicit Nudity')
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
     },
   };
   return real;

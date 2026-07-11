@@ -1,6 +1,6 @@
 # 0004. Content moderation at ingest via Rekognition
 
-- **Status:** Accepted
+- **Status:** Superseded by 0005 (parked — reverted from prod pending false-positive validation)
 - **Date:** 2026-07-10
 - **Deciders:** Rhys + Claude Code
 

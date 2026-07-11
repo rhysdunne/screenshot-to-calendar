@@ -95,49 +95,6 @@ describe('captures-create', () => {
     expect(second.body.status).toBe('duplicate');
     expect(second.body.duplicateOf).toBe(first.body.captureId);
   });
-
-  it('rejects a flagged image (422) and persists nothing', async () => {
-    const fake = makeFakeDeps({
-      moderateLabels: [{ name: 'Explicit Nudity', parentName: '', confidence: 99 }],
-    });
-    await fake.store.putUser(testUser());
-    const token = signSession('user-1', 1, JWT_SECRET);
-    const res = await invoke(
-      makeCreateHandler(fake.deps),
-      apiEvent({ body: { imageBase64: PNG_BASE64 }, token }),
-    );
-    expect(res.statusCode).toBe(422);
-    // Nothing written: no S3 object, no capture record, no hash claim.
-    expect(fake.images.objects.size).toBe(0);
-    expect(fake.store.captures.size).toBe(0);
-    expect(fake.store.imageHashes.size).toBe(0);
-  });
-
-  it('fails closed (503) when moderation is unavailable, persisting nothing', async () => {
-    const fake = makeFakeDeps({ moderateThrows: true });
-    await fake.store.putUser(testUser());
-    const token = signSession('user-1', 1, JWT_SECRET);
-    const res = await invoke(
-      makeCreateHandler(fake.deps),
-      apiEvent({ body: { imageBase64: PNG_BASE64 }, token }),
-    );
-    expect(res.statusCode).toBe(503);
-    expect(fake.images.objects.size).toBe(0);
-    expect(fake.store.captures.size).toBe(0);
-  });
-
-  it('skips moderation when disabled and stores the image (202)', async () => {
-    const fake = makeFakeDeps({ moderationEnabled: false, moderateThrows: true });
-    await fake.store.putUser(testUser());
-    const token = signSession('user-1', 1, JWT_SECRET);
-    const res = await invoke(
-      makeCreateHandler(fake.deps),
-      apiEvent({ body: { imageBase64: PNG_BASE64 }, token }),
-    );
-    expect(res.statusCode).toBe(202);
-    expect(fake.moderationCalls).toHaveLength(0); // moderate never called
-    expect(fake.images.objects.size).toBe(1);
-  });
 });
 
 describe('captures-update (corrections)', () => {
