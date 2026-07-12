@@ -75,6 +75,7 @@ struct PipelineMark: View {
         ctx.clip(to: Path(roundedRect: CGRect(x: 0, y: 0, width: 270, height: 230), cornerRadius: 12))
         drawGrid(ctx)
         drawBeat1(ctx, t)
+        drawBeat2(ctx, t)
     }
 
     /// Faint blueprint grid behind everything (~10% opacity).
@@ -158,9 +159,77 @@ struct PipelineMark: View {
         g.opacity *= op
         g.stroke(Path(roundedRect: rect, cornerRadius: r), with: .color(PipelinePalette.gold), lineWidth: 1.9)
     }
+
+    // MARK: Beat 2 — structure
+
+    static func drawBeat2(_ ctx: GraphicsContext, _ t: Double) {
+        // Envelope for the whole stack: fade in 45–48%, fade out 62–66%.
+        let gB = pipelineLerp(t, [(0, 0), (0.45, 0), (0.48, 1), (0.62, 1), (0.66, 0), (1, 0)])
+        if gB <= 0.001 { return }
+        var g = ctx
+        g.opacity *= gB
+        // Top bar first, then each slides down (−14→0) one cadence-beat later.
+        drawBar(g, t, yTop: 64, icon: .notes, value1: 36, value2: 54,
+                opFrames: [(0, 0), (0.47, 0), (0.52, 1), (1, 1)],
+                yFrames: [(0, -14), (0.47, -14), (0.52, 0), (1, 0)])
+        drawBar(g, t, yTop: 98, icon: .clock, value1: 40, value2: 58,
+                opFrames: [(0, 0), (0.51, 0), (0.56, 1), (1, 1)],
+                yFrames: [(0, -14), (0.51, -14), (0.56, 0), (1, 0)])
+        drawBar(g, t, yTop: 132, icon: .pin, value1: 38, value2: 64,
+                opFrames: [(0, 0), (0.55, 0), (0.60, 1), (1, 1)],
+                yFrames: [(0, -14), (0.55, -14), (0.60, 0), (1, 0)])
+    }
+
+    /// One field bar: white rounded rect, gold icon at left, two white value lines.
+    static func drawBar(_ ctx: GraphicsContext, _ t: Double, yTop: CGFloat, icon: PipelineFieldIcon,
+                        value1: CGFloat, value2: CGFloat,
+                        opFrames: [(Double, Double)], yFrames: [(Double, Double)]) {
+        let op = pipelineLerp(t, opFrames)
+        if op <= 0.001 { return }
+        var g = ctx
+        g.opacity *= op
+        g.translateBy(x: 0, y: pipelineLerp(t, yFrames))
+        let ink = GraphicsContext.Shading.color(PipelinePalette.line)
+        g.stroke(Path(roundedRect: CGRect(x: 80, y: yTop, width: 130, height: 26), cornerRadius: 2), with: ink, lineWidth: 1.4)
+        drawFieldIcon(g, icon, cx: 96, cy: yTop + 13)
+        var vals = Path()
+        vals.move(to: CGPoint(x: 112, y: yTop + 10)); vals.addLine(to: CGPoint(x: 112 + value1, y: yTop + 10))
+        vals.move(to: CGPoint(x: 112, y: yTop + 17)); vals.addLine(to: CGPoint(x: 112 + value2, y: yTop + 17))
+        g.stroke(vals, with: ink, lineWidth: 1.4)
+    }
+
+    /// A gold field icon centred at (cx, cy): notes lines, a clock, or a map pin.
+    static func drawFieldIcon(_ ctx: GraphicsContext, _ icon: PipelineFieldIcon, cx: CGFloat, cy: CGFloat) {
+        let gold = GraphicsContext.Shading.color(PipelinePalette.gold)
+        switch icon {
+        case .notes:
+            var p = Path()
+            p.move(to: CGPoint(x: cx - 6, y: cy - 4)); p.addLine(to: CGPoint(x: cx + 6, y: cy - 4))
+            p.move(to: CGPoint(x: cx - 6, y: cy));     p.addLine(to: CGPoint(x: cx + 6, y: cy))
+            p.move(to: CGPoint(x: cx - 6, y: cy + 4)); p.addLine(to: CGPoint(x: cx + 2, y: cy + 4))
+            ctx.stroke(p, with: gold, lineWidth: 1.6)
+        case .clock:
+            ctx.stroke(Path(ellipseIn: CGRect(x: cx - 7, y: cy - 7, width: 14, height: 14)), with: gold, lineWidth: 1.6)
+            var hands = Path()
+            hands.move(to: CGPoint(x: cx, y: cy - 4)); hands.addLine(to: CGPoint(x: cx, y: cy)); hands.addLine(to: CGPoint(x: cx + 3, y: cy + 2))
+            ctx.stroke(hands, with: gold, lineWidth: 1.6)
+        case .pin:
+            var p = Path()
+            p.move(to: CGPoint(x: cx, y: cy - 7))
+            p.addCurve(to: CGPoint(x: cx - 6, y: cy - 1), control1: CGPoint(x: cx - 4, y: cy - 7), control2: CGPoint(x: cx - 6, y: cy - 4))
+            p.addCurve(to: CGPoint(x: cx, y: cy + 9),     control1: CGPoint(x: cx - 6, y: cy + 3), control2: CGPoint(x: cx, y: cy + 9))
+            p.addCurve(to: CGPoint(x: cx + 6, y: cy - 1), control1: CGPoint(x: cx, y: cy + 9),     control2: CGPoint(x: cx + 6, y: cy + 3))
+            p.addCurve(to: CGPoint(x: cx, y: cy - 7),     control1: CGPoint(x: cx + 6, y: cy - 4), control2: CGPoint(x: cx + 4, y: cy - 7))
+            p.closeSubpath()
+            ctx.stroke(p, with: gold, lineWidth: 1.6)
+            ctx.stroke(Path(ellipseIn: CGRect(x: cx - 2, y: cy - 3, width: 4, height: 4)), with: gold, lineWidth: 1.6)
+        }
+    }
 }
 
 #Preview("PipelineMark") {
     PipelineMark(width: 240)
         .padding()
 }
+
+enum PipelineFieldIcon { case notes, clock, pin }
