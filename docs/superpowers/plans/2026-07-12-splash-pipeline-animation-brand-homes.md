@@ -17,24 +17,42 @@
 - **Motion source of truth:** `docs/superpowers/specs/2026-07-12-splash-pipeline-animation-reference.html`. Every timing/shape below is copied from it. When a preview disagrees with the reference, the reference wins.
 - **The mark defines its own world:** it does not adopt the system foreground colour; it must look right in both light and dark mode.
 - **Reduced motion:** when `accessibilityReduceMotion` is on, render a static end-state (calendar + two white days + gold event), no animation.
-- **iOS is Mac-build/review-only** (no Linux CI compile, no iOS test target in the repo). The verification cycle for every task is: `xcodegen generate` → `xcodebuild … build` (compile gate) → open the file's `#Preview` in Xcode and compare against the reference HTML (visual gate). Do **not** add an XCTest target — the repo deliberately has none.
+- **No iOS test target** exists in the repo (confirmed in `.github/workflows/ios.yml`: "no tests (no XCTest target exists yet)"). Do **not** add an XCTest target — the repo deliberately has none. The two verification gates are: an automated **compile gate** (CI) and a manual **visual gate** (Xcode `#Preview`, human on a Mac).
 
 ### Build / verify commands (used by every task)
 
-Compile gate (run from repo root):
+**Compile gate — automated via CI.** The repo has a required PR check, `iOS / ios-build`
+(`.github/workflows/ios.yml`), that runs on every `pull_request`: macOS runner, pinned
+Xcode 26.5, `xcodegen generate` then `xcodebuild build`, no signing. This is the
+authoritative compile gate — it does **not** need a local Mac. Practical flow: open a
+PR for this branch early, then every push re-runs the check; a task's compile gate is
+"the `ios-build` check is green on the PR after the task's commit is pushed". Check with:
+
+```bash
+gh pr checks --watch   # or: gh run list --workflow=ios.yml --branch feat/splash-pipeline-animation
+```
+
+Expected: the `ios-build` check passes.
+
+**Optional local compile** (only if working on a Mac with Xcode — faster than waiting on
+CI; mirrors what CI runs):
 
 ```bash
 cd ios && xcodegen generate && \
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer && \
-xcodebuild -project Screenshot2Cal.xcodeproj -scheme Screenshot2Cal -configuration Debug \
-  -destination 'platform=iOS Simulator,name=iPhone 17' \
-  -derivedDataPath build/DerivedData -clonedSourcePackagesDirPath build/SourcePackages build && \
+xcodebuild build -scheme Screenshot2Cal -destination 'generic/platform=iOS' \
+  CODE_SIGNING_ALLOWED=NO && \
 rm -rf build
 ```
 
-Expected: `** BUILD SUCCEEDED **`. (`ios/build/` is not gitignored, so the `rm -rf build` keeps the tree clean.)
+Expected: `** BUILD SUCCEEDED **`. (`ios/build/` is not gitignored; the `rm -rf build` keeps the tree clean.)
 
-Visual gate: open `ios/App/Views/PipelineMark.swift` in Xcode, show the Canvas/Preview, and open `docs/superpowers/specs/2026-07-12-splash-pipeline-animation-reference.html` in a browser side by side. They should match.
+**Visual gate — manual, needs a Mac.** Open `ios/App/Views/PipelineMark.swift` in Xcode,
+show the `#Preview`, and open `docs/superpowers/specs/2026-07-12-splash-pipeline-animation-reference.html`
+in a browser side by side; they should match. This gate can be **deferred** — code the
+tasks with CI as the running compile gate, and do the visual sign-off in one pass on a Mac
+once the branch is up. The animation is a faithful translation of the reference, so the
+main risk the visual gate catches is Canvas API/geometry details, not motion design.
 
 ---
 
