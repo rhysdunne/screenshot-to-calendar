@@ -113,25 +113,33 @@ struct CaptureTile: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Group {
-                if let image {
-                    Image(uiImage: image)
-                        .resizable().aspectRatio(contentMode: .fill)
-                } else {
-                    Rectangle().fill(.quaternary)
-                        .overlay { Image(systemName: "photo").foregroundStyle(.secondary) }
+            // The image lives in an overlay of a fixed-height spacer so it can
+            // never drive layout: a fill-mode image with only its height fixed
+            // reports width = 130 × aspect, and one landscape photo would
+            // inflate its grid cell until the row clipped off the screen edge.
+            Color.clear
+                .frame(height: 130)
+                .overlay {
+                    if let image {
+                        Image(uiImage: image).resizable().scaledToFill()
+                    } else {
+                        Rectangle().fill(.quaternary)
+                            .overlay { Image(systemName: "photo").foregroundStyle(.secondary) }
+                    }
                 }
-            }
-            .frame(height: 130)
-            .clipShape(RoundedRectangle(cornerRadius: 10))
-            // Badge only when something is off — completed tiles (the common
-            // case) stay clean, so the badged ones read as "needs a look".
-            .overlay(alignment: .topTrailing) {
-                if capture.status != .completed {
-                    StatusBadge(status: capture.status, style: .overlay)
-                        .padding(6)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                // A duplicate is an echo of a capture you already have — dim
+                // its thumbnail so the original reads as the real one.
+                .opacity(capture.status == .duplicate ? 0.55 : 1)
+                // Badge only when something is off — completed tiles (the
+                // common case) stay clean, so badged ones read as "needs a
+                // look". Applied after .opacity so the badge stays full-strength.
+                .overlay(alignment: .topTrailing) {
+                    if capture.status != .completed {
+                        StatusBadge(status: capture.status, style: .overlay)
+                            .padding(6)
+                    }
                 }
-            }
 
             Text(capture.effectiveEvent?.title ?? capture.status.label)
                 .font(.caption.weight(.medium))
@@ -155,13 +163,24 @@ struct StatusBadge: View {
     }
 
     var body: some View {
-        Text(status.label)
+        Text(label)
             .font(.caption2.weight(.semibold))
             .lineLimit(1)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(style == .overlay ? color : color.opacity(0.15), in: Capsule())
             .foregroundStyle(style == .overlay ? .white : color)
+    }
+
+    /// Overlay badges sit on ~110pt tiles; the two long labels get compact
+    /// forms there ("Already in calendar" truncated mid-word on device).
+    private var label: String {
+        guard style == .overlay else { return status.label }
+        switch status {
+        case .duplicate: return "Duplicate"
+        case .notEvent: return "Not an event"
+        default: return status.label
+        }
     }
 
     private var color: Color {
