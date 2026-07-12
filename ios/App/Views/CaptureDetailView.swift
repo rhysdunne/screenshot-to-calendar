@@ -9,6 +9,8 @@ struct CaptureDetailView: View {
 
     @State private var capture: Capture?
     @State private var imageURL: URL?
+    @State private var loadedImage: Image?
+    @State private var showImageViewer = false
     @State private var form = ExtractedEvent()
     @State private var isSaving = false
     @State private var showDeleteConfirm = false
@@ -62,11 +64,25 @@ struct CaptureDetailView: View {
             AsyncImage(url: imageURL) { phase in
                 if case .success(let image) = phase {
                     image.resizable().aspectRatio(contentMode: .fit)
+                        // Stash the decoded image for the full-screen viewer —
+                        // it must not re-fetch the URL (presign expires in 5 min).
+                        .onAppear { loadedImage = image }
                 } else {
                     Rectangle().fill(.quaternary).frame(height: 200)
                 }
             }
             .listRowInsets(EdgeInsets())
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if loadedImage != nil { showImageViewer = true }
+            }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Opens the image full screen")
+            .fullScreenCover(isPresented: $showImageViewer) {
+                if let loadedImage {
+                    ImageViewerView(image: loadedImage)
+                }
+            }
         }
     }
 
