@@ -56,6 +56,15 @@ struct CaptureDetailView: View {
                     Task { await delete(deleteEvent: false) }
                 }
             }
+            // Presented from Form level, like the alert/dialog above — a
+            // fullScreenCover attached inside a Form row can present an empty
+            // (black) cover because the row's host may be detached when the
+            // presentation fires.
+            .fullScreenCover(isPresented: $showImageViewer) {
+                if let loadedImage {
+                    ImageViewerView(image: loadedImage)
+                }
+            }
         }
     }
 
@@ -78,11 +87,6 @@ struct CaptureDetailView: View {
             }
             .accessibilityAddTraits(.isButton)
             .accessibilityHint("Opens the image full screen")
-            .fullScreenCover(isPresented: $showImageViewer) {
-                if let loadedImage {
-                    ImageViewerView(image: loadedImage)
-                }
-            }
         }
     }
 
