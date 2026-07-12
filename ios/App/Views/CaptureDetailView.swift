@@ -99,7 +99,7 @@ struct CaptureDetailView: View {
                 StatusBadge(status: capture.status)
                 Spacer()
                 if let confidence = capture.event?.confidence {
-                    Text("Confidence: \(confidence)").font(.caption).foregroundStyle(.secondary)
+                    ConfidenceMeter(confidence: confidence)
                 }
             }
             if capture.status == .needsReview {
@@ -339,4 +339,44 @@ struct CaptureDetailView: View {
 private struct ViewerImage: Identifiable {
     let id = UUID()
     let image: Image
+}
+
+/// A signal-strength-style meter for the AI's extraction confidence. Replaces
+/// the old plain "Confidence: low" caption. The level is shown purely by how many
+/// bars are lit — `high`/`medium`/`low` → 3/2/1 — and every lit bar shares one
+/// colour, so the count does the work and the colour never reads as a status.
+/// Indigo is deliberately distinct from every `StatusBadge` colour.
+struct ConfidenceMeter: View {
+    let confidence: String
+
+    /// Indigo (#5856D6) — not used by any status badge, and unlike system blue
+    /// it doesn't read as "tappable".
+    private static let fill = Color(red: 0x58 / 255, green: 0x56 / 255, blue: 0xD6 / 255)
+
+    /// 1…3. Mirrors the backend's coercion (`pipeline/extract.ts`): anything
+    /// unrecognised degrades to `low`.
+    private var level: Int {
+        switch confidence.lowercased() {
+        case "high": return 3
+        case "medium": return 2
+        default: return 1
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text("Confidence")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            HStack(alignment: .bottom, spacing: 2) {
+                ForEach(1...3, id: \.self) { bar in
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(bar <= level ? Self.fill : Color.secondary.opacity(0.25))
+                        .frame(width: 4, height: 3 + CGFloat(bar) * 3)
+                }
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Confidence: \(confidence)")
+    }
 }
