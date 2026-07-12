@@ -15,6 +15,7 @@ final class AppState: ObservableObject {
     @Published var lastError: String?
 
     let api = APIClient()
+    lazy var images = CaptureImageStore(api: api)
 
     // MARK: Lifecycle
 
@@ -66,6 +67,7 @@ final class AppState: ObservableObject {
         didBootstrap = false
         settings = nil
         captures = []
+        images.removeAll()
     }
 
     // MARK: Captures
