@@ -43,6 +43,7 @@ ios/Screenshot2Cal.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
 !ios/Screenshot2Cal.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 ios/DerivedData/
 ios/.build/
+ios/build/
 # Info.plist and entitlements are generated from project.yml (properties inline)
 ios/App/Info.plist
 ios/App/App.entitlements

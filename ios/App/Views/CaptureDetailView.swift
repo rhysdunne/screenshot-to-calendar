@@ -10,7 +10,12 @@ struct CaptureDetailView: View {
     @State private var capture: Capture?
     @State private var imageURL: URL?
     @State private var loadedImage: Image?
-    @State private var showImageViewer = false
+    /// Drives the full-screen viewer. Item-based (not a bool) so the image is
+    /// passed into the cover atomically at tap time — presenting via
+    /// `isPresented` + reading `loadedImage` inside the cover raced: on a slow
+    /// (uncached) first load the cover could build before `loadedImage` was
+    /// visible to its closure, presenting an empty (black) cover. See #67.
+    @State private var viewerImage: ViewerImage?
     @State private var form = ExtractedEvent()
     @State private var isSaving = false
     @State private var showDeleteConfirm = false
@@ -60,10 +65,8 @@ struct CaptureDetailView: View {
             // fullScreenCover attached inside a Form row can present an empty
             // (black) cover because the row's host may be detached when the
             // presentation fires.
-            .fullScreenCover(isPresented: $showImageViewer) {
-                if let loadedImage {
-                    ImageViewerView(image: loadedImage)
-                }
+            .fullScreenCover(item: $viewerImage) { viewer in
+                ImageViewerView(image: viewer.image)
             }
         }
     }
@@ -83,7 +86,7 @@ struct CaptureDetailView: View {
             .listRowInsets(EdgeInsets())
             .contentShape(Rectangle())
             .onTapGesture {
-                if loadedImage != nil { showImageViewer = true }
+                if let loadedImage { viewerImage = ViewerImage(image: loadedImage) }
             }
             .accessibilityAddTraits(.isButton)
             .accessibilityHint("Opens the image full screen")
@@ -328,4 +331,12 @@ struct CaptureDetailView: View {
             set: { form[keyPath: keyPath] = $0 }
         )
     }
+}
+
+/// Identifiable wrapper so the full-screen image viewer can be presented with
+/// `.fullScreenCover(item:)` — the image value is carried into the presentation
+/// atomically, avoiding the empty-cover race of the `isPresented` form.
+private struct ViewerImage: Identifiable {
+    let id = UUID()
+    let image: Image
 }
