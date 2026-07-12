@@ -1,0 +1,72 @@
+name: Release
+
+# Every ios-v* tag gets a GitHub Release, and vice versa. The Releases page is
+# the public shipping history (notes auto-generated from merged PRs); the tag
+# is still what starts the Xcode Cloud TestFlight archive
+# (docs/setup-xcode-cloud.md).
+#
+# Two entry points, converging on the same end state (tag + release):
+#   - Tag push (a dev machine): git tag ios-v… && git push origin ios-v… — the
+#     release is created automatically, attached to the pushed tag.
+#   - workflow_dispatch (remote Claude sessions): those sessions cannot push
+#     tags — their git proxy restricts pushes to the session branch and their
+#     egress proxy blocks the bare-tag API path — so dispatching this workflow
+#     is their way to ship: creating the release mints the tag too.
+#
+# Refs created here use the built-in GITHUB_TOKEN, which never triggers other
+# Actions workflows (recursion guard). That's fine: Xcode Cloud watches the
+# repo via App Store Connect, not Actions, so the archive still fires.
+#
+# Deliberate omissions: no checkout (gh release create talks straight to the
+# API); no tag-format automation beyond validation — MARKETING_VERSION stays
+# hand-managed in ios/project.yml per the Xcode Cloud doc.
+
+on:
+  push:
+    tags: ["ios-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (ios-v<marketing-version>-<attempt>)"
+        required: true
+      sha:
+        description: "Commit to tag (default: main)"
+        required: false
+
+permissions:
+  contents: write # create tags and releases
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Queue (never interleave) concurrent runs for the same tag, so the
+    # tag-push event that follows a dispatch-created tag can't race the
+    # release-exists check.
+    concurrency:
+      group: release-${{ inputs.tag || github.ref_name }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Create release for tag
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event_name == 'push' && github.ref_name || inputs.tag }}"
+          case "$TAG" in
+            ios-v*) ;;
+            *) echo "Tag must match ios-v* (got: $TAG)"; exit 1 ;;
+          esac
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — nothing to do."
+            exit 0
+          fi
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            # Tag already exists (tag-push path, or backfilling an older tag):
+            # attach the release to it.
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --verify-tag --generate-notes
+          else
+            # Dispatch path: minting the tag is the point.
+            TARGET="${{ inputs.sha }}"
+            gh release create "$TAG" -R "$GITHUB_REPOSITORY" --target "${TARGET:-main}" --generate-notes
+          fi

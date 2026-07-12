@@ -48,14 +48,27 @@ fast per-PR compile gate; Xcode Cloud is the release lane.
 
 ## Shipping a TestFlight build
 
+Every `ios-v*` tag gets a matching GitHub Release
+([`release.yml`](../.github/workflows/release.yml)) — the tag starts the
+Xcode Cloud archive; the Releases page is the public shipping history, with
+notes auto-generated from merged PRs. Two ways to ship:
+
+**From a dev machine** — unchanged; the release is created automatically:
+
 ```bash
 git tag ios-v1.0.0-3   # convention: ios-v<MARKETING_VERSION>-<attempt>
 git push origin ios-v1.0.0-3
 ```
 
-The tag is the audit trail of what shipped. Build numbers are automatic
-(`CI_BUILD_NUMBER`); bump `MARKETING_VERSION` in `ios/project.yml` when the
-user-facing version changes.
+**From a remote Claude session** — those sessions can't push tags (their git
+and API proxies restrict writes), so instead dispatch the `Release` workflow
+with the tag name (and optionally a commit SHA, default `main`). Creating the
+release mints the tag, and Xcode Cloud picks it up the same way — it watches
+the repo via App Store Connect, so it isn't affected by `GITHUB_TOKEN`-created
+refs not triggering other Actions workflows.
+
+Build numbers are automatic (`CI_BUILD_NUMBER`); bump `MARKETING_VERSION` in
+`ios/project.yml` when the user-facing version changes.
 
 ## Costs
 
