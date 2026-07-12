@@ -52,3 +52,4 @@ ios/ShareExtension/ShareExtension.entitlements
 
 # Playwright
 test-results/
+.superpowers/
