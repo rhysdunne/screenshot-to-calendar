@@ -39,6 +39,9 @@ fileprivate func pipelineLerp(_ t: Double, _ frames: [(Double, Double)]) -> Doub
     return frames.last!.1
 }
 
+/// The three fields the mark extracts, each drawn with its own gold icon in beat 2.
+enum PipelineFieldIcon { case notes, clock, pin }
+
 struct PipelineMark: View {
     /// Width in points; height follows the 270:230 aspect.
     var width: CGFloat = 220
@@ -305,5 +308,3 @@ struct PipelineMark: View {
     PipelineMark(width: 240, forceReducedMotion: true)
         .padding()
 }
-
-enum PipelineFieldIcon { case notes, clock, pin }
