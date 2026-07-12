@@ -47,7 +47,16 @@ forcing symmetry.
 
 ## Motion timeline
 
-Loop period **7.5s**. All values are percentages of the loop. The reference HTML
+> **Revised 2026-07-12 (post-merge):** the loop was retimed to **9.0s**. Beat 1 is
+> unchanged in absolute time (its ~3.5s scan/appear runway). Beats 2 and 3 were
+> slowed to a **~0.5s** per-element cadence (from 0.3s) with a short hold, because
+> watching it live they read as rushed against beat 1 — the mismatch came from
+> those beats lacking beat 1's runway, not from the stagger, so equal cadence still
+> felt hurried. The table below describes the **original 7.5s** design;
+> `ios/App/Views/PipelineMark.swift` is now authoritative for exact timing, and the
+> reference HTML still shows the original 7.5s cadence (regenerate when timing is final).
+
+Loop period **7.5s** (original). All values are percentages of the loop. The reference HTML
 is authoritative; this table is for orientation. The per-item cadence (fields
 gold, bars sliding, days appearing) is a shared ~4% (~0.3s) stagger — deliberately
 identical across beats.
