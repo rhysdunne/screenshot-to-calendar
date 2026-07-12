@@ -42,13 +42,17 @@ fileprivate func pipelineLerp(_ t: Double, _ frames: [(Double, Double)]) -> Doub
 struct PipelineMark: View {
     /// Width in points; height follows the 270:230 aspect.
     var width: CGFloat = 220
+    /// Forces the reduced-motion still regardless of the system setting. Only for
+    /// previews — `\.accessibilityReduceMotion` is a read-only environment value and
+    /// cannot be injected, so this flag is the way to preview the static frame.
+    var forceReducedMotion = false
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 12).fill(PipelinePalette.ground)
-            if reduceMotion {
+            if reduceMotion || forceReducedMotion {
                 Canvas { ctx, size in
                     var c = ctx
                     Self.draw(&c, size: size, t: PipelineTiming.restPhase)
@@ -298,9 +302,8 @@ struct PipelineMark: View {
 }
 
 #Preview("PipelineMark — reduced motion") {
-    PipelineMark(width: 240)
+    PipelineMark(width: 240, forceReducedMotion: true)
         .padding()
-        .environment(\.accessibilityReduceMotion, true)
 }
 
 enum PipelineFieldIcon { case notes, clock, pin }
