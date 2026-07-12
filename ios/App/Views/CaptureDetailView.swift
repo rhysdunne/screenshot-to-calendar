@@ -345,13 +345,10 @@ private struct ViewerImage: Identifiable {
 /// the old plain "Confidence: low" caption. The level is shown purely by how many
 /// bars are lit — `high`/`medium`/`low` → 3/2/1 — and every lit bar shares one
 /// colour, so the count does the work and the colour never reads as a status.
-/// Indigo is deliberately distinct from every `StatusBadge` colour.
+/// System indigo (adaptive in dark mode) is deliberately distinct from every
+/// `StatusBadge` colour and from the app's blue-grey tint.
 struct ConfidenceMeter: View {
     let confidence: String
-
-    /// Indigo (#5856D6) — not used by any status badge, and unlike system blue
-    /// it doesn't read as "tappable".
-    private static let fill = Color(red: 0x58 / 255, green: 0x56 / 255, blue: 0xD6 / 255)
 
     /// 1…3. Mirrors the backend's coercion (`pipeline/extract.ts`): anything
     /// unrecognised degrades to `low`.
@@ -371,7 +368,7 @@ struct ConfidenceMeter: View {
             HStack(alignment: .bottom, spacing: 2) {
                 ForEach(1...3, id: \.self) { bar in
                     RoundedRectangle(cornerRadius: 1)
-                        .fill(bar <= level ? Self.fill : Color.secondary.opacity(0.25))
+                        .fill(bar <= level ? Color.indigo : Color.secondary.opacity(0.25))
                         .frame(width: 4, height: 3 + CGFloat(bar) * 3)
                 }
             }

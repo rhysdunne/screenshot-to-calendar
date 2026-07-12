@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 /// URLSession scoped to the App Group so it survives the extension being
 /// torn down moments after completeRequest().
 final class ShareViewController: UIViewController {
-    private let statusLabel = UILabel()
+    private let model = ShareStatusModel()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -16,23 +16,25 @@ final class ShareViewController: UIViewController {
         Task { await handleSharedItem() }
     }
 
+    /// Embed the SwiftUI status view full-bleed; the hosting view stays clear
+    /// so the extension keeps its systemBackground ground.
     private func configureUI() {
-        statusLabel.text = "Capturing…"
-        statusLabel.font = .preferredFont(forTextStyle: .headline)
-        statusLabel.textAlignment = .center
-        statusLabel.numberOfLines = 0
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(statusLabel)
+        let host = UIHostingController(rootView: ShareStatusView(model: model))
+        host.view.backgroundColor = .clear
+        addChild(host)
+        view.addSubview(host.view)
+        host.view.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            statusLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            statusLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            statusLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 32),
-            statusLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -32),
+            host.view.topAnchor.constraint(equalTo: view.topAnchor),
+            host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
         ])
+        host.didMove(toParent: self)
     }
 
-    private func finish(message: String, after seconds: Double = 1.2) {
-        statusLabel.text = message
+    private func finish(_ phase: ShareStatusModel.Phase, after seconds: Double = 1.2) {
+        model.phase = phase
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
             self?.extensionContext?.completeRequest(returningItems: nil)
         }
@@ -40,22 +42,22 @@ final class ShareViewController: UIViewController {
 
     private func handleSharedItem() async {
         guard KeychainStore.token != nil else {
-            finish(message: "Open Screenshot to Calendar and sign in first.", after: 2.5)
+            finish(.failure("Open Screenshot to Calendar and sign in first."), after: 2.5)
             return
         }
         guard let image = await loadSharedImage() else {
-            finish(message: "Couldn't read that image.", after: 2)
+            finish(.failure("Couldn't read that image."), after: 2)
             return
         }
         guard let jpeg = ImageResizer.resizeAndEncode(image) else {
-            finish(message: "Couldn't process that image.", after: 2)
+            finish(.failure("Couldn't process that image."), after: 2)
             return
         }
         do {
             try enqueueUpload(imageData: jpeg)
-            finish(message: "✅ Added — processing.\nOpen the app to see the result.")
+            finish(.success("Added — processing.\nOpen the app to see the result."))
         } catch {
-            finish(message: "Upload failed: \(error.localizedDescription)", after: 2.5)
+            finish(.failure("Upload failed: \(error.localizedDescription)"), after: 2.5)
         }
     }
 
