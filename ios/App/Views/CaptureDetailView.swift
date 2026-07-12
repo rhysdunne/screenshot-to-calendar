@@ -8,12 +8,13 @@ struct CaptureDetailView: View {
     let captureId: String
 
     @State private var capture: Capture?
-    @State private var imageURL: URL?
-    @State private var loadedImage: Image?
+    /// Decoded via the app-wide CaptureImageStore, so a tile that already
+    /// loaded this capture makes the detail image instant (and vice versa).
+    @State private var image: UIImage?
     /// Drives the full-screen viewer. Item-based (not a bool) so the image is
     /// passed into the cover atomically at tap time — presenting via
-    /// `isPresented` + reading `loadedImage` inside the cover raced: on a slow
-    /// (uncached) first load the cover could build before `loadedImage` was
+    /// `isPresented` + reading the image state inside the cover raced: on a
+    /// slow (uncached) first load the cover could build before the image was
     /// visible to its closure, presenting an empty (black) cover. See #67.
     @State private var viewerImage: ViewerImage?
     @State private var form = ExtractedEvent()
@@ -73,12 +74,9 @@ struct CaptureDetailView: View {
 
     private var imageSection: some View {
         Section {
-            AsyncImage(url: imageURL) { phase in
-                if case .success(let image) = phase {
-                    image.resizable().aspectRatio(contentMode: .fit)
-                        // Stash the decoded image for the full-screen viewer —
-                        // it must not re-fetch the URL (presign expires in 5 min).
-                        .onAppear { loadedImage = image }
+            Group {
+                if let image {
+                    Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
                 } else {
                     Rectangle().fill(.quaternary).frame(height: 200)
                 }
@@ -86,7 +84,7 @@ struct CaptureDetailView: View {
             .listRowInsets(EdgeInsets())
             .contentShape(Rectangle())
             .onTapGesture {
-                if let loadedImage { viewerImage = ViewerImage(image: loadedImage) }
+                if let image { viewerImage = ViewerImage(image: Image(uiImage: image)) }
             }
             .accessibilityAddTraits(.isButton)
             .accessibilityHint("Opens the image full screen")
@@ -260,6 +258,10 @@ struct CaptureDetailView: View {
     // MARK: Data
 
     private func load() async {
+        // Image and capture load in parallel — the image is usually already
+        // cached by the grid tile, so it paints immediately instead of
+        // waiting out the getCapture round-trip.
+        Task { image = await appState.images.image(for: captureId) }
         do {
             let loaded = try await appState.api.getCapture(id: captureId)
             capture = loaded
@@ -268,9 +270,6 @@ struct CaptureDetailView: View {
             // today so the always-visible Start date picker has a value to edit.
             if loaded.event != nil, form.startDate == nil {
                 form.startDate = WireFormat.date.string(from: Date())
-            }
-            if let response = try? await appState.api.imageUrl(id: captureId) {
-                imageURL = URL(string: response.url)
             }
         } catch {
             errorMessage = error.localizedDescription

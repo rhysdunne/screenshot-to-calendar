@@ -109,15 +109,15 @@ struct LibraryView: View {
 struct CaptureTile: View {
     @EnvironmentObject private var appState: AppState
     let capture: Capture
-    @State private var imageURL: URL?
+    @State private var image: UIImage?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            AsyncImage(url: imageURL) { phase in
-                switch phase {
-                case .success(let image):
-                    image.resizable().aspectRatio(contentMode: .fill)
-                default:
+            Group {
+                if let image {
+                    Image(uiImage: image)
+                        .resizable().aspectRatio(contentMode: .fill)
+                } else {
                     Rectangle().fill(.quaternary)
                         .overlay { Image(systemName: "photo").foregroundStyle(.secondary) }
                 }
@@ -138,9 +138,7 @@ struct CaptureTile: View {
                 .lineLimit(1)
         }
         .task {
-            if let response = try? await appState.api.imageUrl(id: capture.captureId) {
-                imageURL = URL(string: response.url)
-            }
+            image = await appState.images.image(for: capture.captureId)
         }
     }
 }
