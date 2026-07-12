@@ -531,9 +531,24 @@ git commit -m "$(printf 'PipelineMark: add beat 3 (calendar, existing days, new 
 **Interfaces:**
 - Consumes: everything from Tasks 1–4 (`restPhase` already routes through `draw`).
 
-- [ ] **Step 1: Add a reduced-motion preview to confirm the static end-state**
+- [ ] **Step 1: Add a preview-only override, then a reduced-motion preview**
 
-The reduced-motion branch already calls `draw(_:size:t: restPhase)`, so it renders beat 3's resolved frame (calendar + two white days + gold event + tick) with no animation. Add a preview that forces it. Replace the existing `#Preview("PipelineMark")` block with:
+The reduced-motion branch already calls `draw(_:size:t: restPhase)`, so it renders beat 3's resolved frame (calendar + two white days + gold event + tick) with no animation. To *preview* that branch you cannot inject `\.accessibilityReduceMotion` — it is a **read-only** `EnvironmentValues` key, and `.environment(\.accessibilityReduceMotion, true)` fails to compile. Add a preview-only flag instead.
+
+In `PipelineMark`, add the stored property (after `var width`) and use it in the branch condition:
+
+```swift
+    /// Forces the reduced-motion still regardless of the system setting. Only for
+    /// previews — `\.accessibilityReduceMotion` is a read-only environment value and
+    /// cannot be injected, so this flag is the way to preview the static frame.
+    var forceReducedMotion = false
+```
+
+```swift
+            if reduceMotion || forceReducedMotion {
+```
+
+Then replace the existing `#Preview("PipelineMark")` block with:
 
 ```swift
 #Preview("PipelineMark — looping") {
@@ -542,9 +557,8 @@ The reduced-motion branch already calls `draw(_:size:t: restPhase)`, so it rende
 }
 
 #Preview("PipelineMark — reduced motion") {
-    PipelineMark(width: 240)
+    PipelineMark(width: 240, forceReducedMotion: true)
         .padding()
-        .environment(\.accessibilityReduceMotion, true)
 }
 ```
 
