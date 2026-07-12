@@ -1,0 +1,103 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Splash pipeline animation — motion reference (v11)</title>
+<!--
+  Canonical MOTION REFERENCE for the SwiftUI PipelineMark component.
+  This is the exact loop signed off during brainstorming (v11). It is the source
+  of truth for timings, shapes, palette, and cadence. Open in a browser to watch.
+  The SwiftUI build reproduces this; when in doubt, match this file.
+  viewBox is 270x230; the mark is centred. Loop period = 7.5s.
+-->
+<style>
+  body{margin:0;background:#20272d;display:grid;place-items:center;min-height:100vh}
+  .stage{width:300px;background:#33414b;border-radius:12px;overflow:hidden}
+  .bp *{vector-effect:non-scaling-stroke}
+  .bp .ln{stroke:#e4ebee;fill:none;stroke-width:1.4}
+  .bp .go{stroke:#E0AD4B;fill:none;stroke-width:1.9}
+  .bp .fg{fill:#E0AD4B}
+  .bp .fw{fill:#e4ebee}
+  .bp .icng{stroke:#E0AD4B;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+  .gA{animation:gA 7.5s infinite ease-out}
+  @keyframes gA{0%{opacity:0}6%{opacity:1}42%{opacity:1}47%{opacity:0}100%{opacity:0}}
+  .docScale{transform-box:fill-box;transform-origin:center;animation:docScale 7.5s infinite ease-out}
+  @keyframes docScale{0%{transform:scale(.96)}6%,100%{transform:scale(1)}}
+  .copy{animation:copy 7.5s infinite cubic-bezier(.45,0,.55,1)}
+  @keyframes copy{0%,9%{transform:translateX(0)}27%,100%{transform:translateX(94px)}}
+  .lamp{animation:lamp 7.5s infinite}
+  @keyframes lamp{0%,8%{opacity:0}11%,26%{opacity:1}28%,100%{opacity:0}}
+  .gp1{animation:gp1 7.5s infinite ease-out}
+  .gp2{animation:gp2 7.5s infinite ease-out}
+  .gp3{animation:gp3 7.5s infinite ease-out}
+  @keyframes gp1{0%,28%{opacity:0}33%,42%{opacity:1}47%,100%{opacity:0}}
+  @keyframes gp2{0%,32%{opacity:0}37%,42%{opacity:1}47%,100%{opacity:0}}
+  @keyframes gp3{0%,36%{opacity:0}41%,42%{opacity:1}47%,100%{opacity:0}}
+  .gB{animation:gB 7.5s infinite}
+  @keyframes gB{0%,45%{opacity:0}48%,62%{opacity:1}66%,100%{opacity:0}}
+  .b1{animation:b1 7.5s infinite ease-out}
+  .b2{animation:b2 7.5s infinite ease-out}
+  .b3{animation:b3 7.5s infinite ease-out}
+  @keyframes b1{0%,47%{opacity:0;transform:translateY(-14px)}52%{opacity:1;transform:translateY(0)}62%{opacity:1}66%{opacity:0}}
+  @keyframes b2{0%,51%{opacity:0;transform:translateY(-14px)}56%{opacity:1;transform:translateY(0)}62%{opacity:1}66%{opacity:0}}
+  @keyframes b3{0%,55%{opacity:0;transform:translateY(-14px)}60%{opacity:1;transform:translateY(0)}62%{opacity:1}66%{opacity:0}}
+  .calGrid{transform-box:fill-box;transform-origin:center;animation:calGrid 7.5s infinite ease-out}
+  @keyframes calGrid{0%,61%{opacity:0;transform:scale(.97)}67%{opacity:1;transform:scale(1)}90%{opacity:1;transform:scale(1)}94%,100%{opacity:0}}
+  .w1{animation:w1 7.5s infinite ease-out}
+  .w2{animation:w2 7.5s infinite ease-out}
+  @keyframes w1{0%,67%{opacity:0}71%,90%{opacity:1}94%,100%{opacity:0}}
+  @keyframes w2{0%,71%{opacity:0}75%,90%{opacity:1}94%,100%{opacity:0}}
+  .goldBox{animation:goldBox 7.5s infinite cubic-bezier(.34,1.3,.5,1)}
+  @keyframes goldBox{0%,75%{opacity:0;transform:translateY(-22px)}79%{opacity:1}82%{transform:translateY(0)}90%{opacity:1;transform:translateY(0)}94%,100%{opacity:0}}
+</style>
+<div class="stage">
+<svg class="bp" width="100%" viewBox="0 0 270 230" xmlns="http://www.w3.org/2000/svg">
+  <g opacity=".1"><line class="ln" x1="0" y1="58" x2="270" y2="58"/><line class="ln" x1="0" y1="115" x2="270" y2="115"/><line class="ln" x1="0" y1="172" x2="270" y2="172"/><line class="ln" x1="90" y1="0" x2="90" y2="230"/><line class="ln" x1="180" y1="0" x2="180" y2="230"/></g>
+
+  <g class="gA">
+    <g class="docScale">
+      <rect class="ln" x="96" y="42" width="92" height="128" rx="3"/>
+      <rect class="ln" x="104" y="50" width="74" height="14" rx="7"/>
+      <line class="ln" x1="104" y1="72" x2="152" y2="72"/>
+      <rect class="ln" x="104" y="86" width="52" height="12" rx="6"/>
+      <line class="ln" x1="104" y1="110" x2="172" y2="110"/>
+      <line class="ln" x1="104" y1="118" x2="146" y2="118"/>
+      <line class="ln" x1="104" y1="126" x2="162" y2="126"/>
+      <rect class="ln" x="116" y="140" width="62" height="13" rx="6.5"/>
+    </g>
+    <g class="copy"><g class="lamp">
+      <rect class="fg" x="90" y="40" width="12" height="132" opacity=".28"/>
+      <line class="go" x1="96" y1="38" x2="96" y2="174" stroke-width="2.4"/>
+      <path class="fg" d="M96 36 l-4 -6 h8 z"/><path class="fg" d="M96 176 l-4 6 h8 z"/>
+    </g></g>
+  </g>
+
+  <rect class="gp1 go" x="104" y="50" width="74" height="14" rx="7"/>
+  <rect class="gp2 go" x="104" y="86" width="52" height="12" rx="6"/>
+  <rect class="gp3 go" x="116" y="140" width="62" height="13" rx="6.5"/>
+
+  <g class="gB">
+    <g class="b3"><rect class="ln" x="80" y="132" width="130" height="26" rx="2"/>
+      <path class="icng" d="M96 138 c-4,0 -6,3 -6,6 c0,4 6,10 6,10 c0,0 6,-6 6,-10 c0,-3 -2,-6 -6,-6 z"/><circle class="icng" cx="96" cy="144" r="2"/>
+      <line class="ln" x1="112" y1="142" x2="150" y2="142"/><line class="ln" x1="112" y1="149" x2="176" y2="149"/></g>
+    <g class="b2"><rect class="ln" x="80" y="98" width="130" height="26" rx="2"/>
+      <circle class="icng" cx="96" cy="111" r="7"/><path class="icng" d="M96 107 v4 l3 2"/>
+      <line class="ln" x1="112" y1="108" x2="152" y2="108"/><line class="ln" x1="112" y1="115" x2="170" y2="115"/></g>
+    <g class="b1"><rect class="ln" x="80" y="64" width="130" height="26" rx="2"/>
+      <line class="icng" x1="90" y1="73" x2="102" y2="73"/><line class="icng" x1="90" y1="77" x2="102" y2="77"/><line class="icng" x1="90" y1="81" x2="98" y2="81"/>
+      <line class="ln" x1="112" y1="74" x2="148" y2="74"/><line class="ln" x1="112" y1="81" x2="166" y2="81"/></g>
+  </g>
+
+  <g class="calGrid">
+    <rect class="ln" x="92" y="52" width="86" height="120" rx="3"/>
+    <line class="ln" x1="92" y1="80" x2="178" y2="80"/>
+    <line class="ln" x1="121" y1="80" x2="121" y2="172"/><line class="ln" x1="150" y1="80" x2="150" y2="172"/>
+    <line class="ln" x1="92" y1="111" x2="178" y2="111"/><line class="ln" x1="92" y1="142" x2="178" y2="142"/>
+    <line class="ln" x1="108" y1="46" x2="108" y2="58" opacity=".8"/><line class="ln" x1="162" y1="46" x2="162" y2="58" opacity=".8"/>
+  </g>
+  <rect class="w1 fw" x="121" y="80" width="29" height="31" opacity=".85"/>
+  <rect class="w2 fw" x="92" y="142" width="29" height="30" opacity=".85"/>
+  <g class="goldBox">
+    <rect class="fg" x="150" y="111" width="28" height="31"/>
+    <path class="go" d="M156 127 l6 7 l12 -15" stroke-width="2.4" fill="none"/>
+  </g>
+</svg>
+</div>
