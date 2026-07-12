@@ -76,6 +76,7 @@ struct PipelineMark: View {
         drawGrid(ctx)
         drawBeat1(ctx, t)
         drawBeat2(ctx, t)
+        drawBeat3(ctx, t)
     }
 
     /// Faint blueprint grid behind everything (~10% opacity).
@@ -224,6 +225,70 @@ struct PipelineMark: View {
             ctx.stroke(p, with: gold, lineWidth: 1.6)
             ctx.stroke(Path(ellipseIn: CGRect(x: cx - 2, y: cy - 3, width: 4, height: 4)), with: gold, lineWidth: 1.6)
         }
+    }
+
+    // MARK: Beat 3 — schedule
+
+    static func drawBeat3(_ ctx: GraphicsContext, _ t: Double) {
+        // Calendar appears (61–67%), overlapping beat 2's exit; scale .97→1.
+        let calOp = pipelineLerp(t, [(0, 0), (0.61, 0), (0.67, 1), (0.90, 1), (0.94, 0), (1, 0)])
+        if calOp > 0.001 {
+            var g = ctx
+            g.opacity *= calOp
+            let sc = pipelineLerp(t, [(0, 0.97), (0.61, 0.97), (0.67, 1), (1, 1)])
+            g.translateBy(x: 135, y: 112); g.scaleBy(x: sc, y: sc); g.translateBy(x: -135, y: -112)
+            drawCalendarGrid(g)
+        }
+        // Two existing days (white) fade in, one cadence-beat apart.
+        drawWhiteDay(ctx, t, rect: CGRect(x: 121, y: 80, width: 29, height: 31),
+                     frames: [(0, 0), (0.67, 0), (0.71, 1), (0.90, 1), (0.94, 0), (1, 0)])
+        drawWhiteDay(ctx, t, rect: CGRect(x: 92, y: 142, width: 29, height: 30),
+                     frames: [(0, 0), (0.71, 0), (0.75, 1), (0.90, 1), (0.94, 0), (1, 0)])
+        // The new event (gold) slides into its slot with a slight settle.
+        drawGoldEvent(ctx, t)
+    }
+
+    /// The calendar frame, header ticks, and 3×3 grid lines (all white).
+    static func drawCalendarGrid(_ ctx: GraphicsContext) {
+        let ink = GraphicsContext.Shading.color(PipelinePalette.line)
+        ctx.stroke(Path(roundedRect: CGRect(x: 92, y: 52, width: 86, height: 120), cornerRadius: 3), with: ink, lineWidth: 1.4)
+        var grid = Path()
+        grid.move(to: CGPoint(x: 92, y: 80));  grid.addLine(to: CGPoint(x: 178, y: 80))
+        grid.move(to: CGPoint(x: 121, y: 80)); grid.addLine(to: CGPoint(x: 121, y: 172))
+        grid.move(to: CGPoint(x: 150, y: 80)); grid.addLine(to: CGPoint(x: 150, y: 172))
+        grid.move(to: CGPoint(x: 92, y: 111)); grid.addLine(to: CGPoint(x: 178, y: 111))
+        grid.move(to: CGPoint(x: 92, y: 142)); grid.addLine(to: CGPoint(x: 178, y: 142))
+        ctx.stroke(grid, with: ink, lineWidth: 1.4)
+        var ticks = ctx
+        ticks.opacity *= 0.8
+        var tp = Path()
+        tp.move(to: CGPoint(x: 108, y: 46)); tp.addLine(to: CGPoint(x: 108, y: 58))
+        tp.move(to: CGPoint(x: 162, y: 46)); tp.addLine(to: CGPoint(x: 162, y: 58))
+        ticks.stroke(tp, with: ink, lineWidth: 1.4)
+    }
+
+    /// An existing calendar day: a white cell at 85% alpha, fading in per `frames`.
+    static func drawWhiteDay(_ ctx: GraphicsContext, _ t: Double, rect: CGRect, frames: [(Double, Double)]) {
+        let op = pipelineLerp(t, frames)
+        if op <= 0.001 { return }
+        var g = ctx
+        g.opacity *= op
+        g.fill(Path(rect), with: .color(PipelinePalette.line.opacity(0.85)))
+    }
+
+    /// The new event: a gold cell that slides down into its slot, with a gold tick.
+    static func drawGoldEvent(_ ctx: GraphicsContext, _ t: Double) {
+        let op = pipelineLerp(t, [(0, 0), (0.75, 0), (0.79, 1), (0.90, 1), (0.94, 0), (1, 0)])
+        if op <= 0.001 { return }
+        var g = ctx
+        g.opacity *= op
+        // Overshoot slightly past 0 (+2) then settle — the "drop into slot" feel.
+        let dy = pipelineLerp(t, [(0, -22), (0.75, -22), (0.82, 2), (0.86, 0), (1, 0)])
+        g.translateBy(x: 0, y: dy)
+        g.fill(Path(CGRect(x: 150, y: 111, width: 28, height: 31)), with: .color(PipelinePalette.gold))
+        var tick = Path()
+        tick.move(to: CGPoint(x: 156, y: 127)); tick.addLine(to: CGPoint(x: 162, y: 134)); tick.addLine(to: CGPoint(x: 174, y: 119))
+        g.stroke(tick, with: .color(PipelinePalette.gold), lineWidth: 2.4)
     }
 }
 
