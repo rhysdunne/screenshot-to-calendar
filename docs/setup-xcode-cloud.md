@@ -14,6 +14,13 @@ fast per-PR compile gate; Xcode Cloud is the release lane.
   `CI_BUILD_NUMBER` so TestFlight never sees a duplicate build number.
   `MARKETING_VERSION` (the user-facing x.y.z) stays hand-managed in
   `ios/project.yml`.
+- **`Package.resolved` is committed** (the one tracked exception inside the
+  otherwise-gitignored `.xcodeproj` — see the ladder in `.gitignore`). Xcode
+  Cloud disables automatic package resolution and fails the Resolve Package
+  Graph step without it ("a resolved file is required when automatic dependency
+  resolution is disabled"). Side benefit: GitHub CI builds the same pinned
+  dependency versions. To update packages: bump in Xcode locally
+  (File → Packages → Update…), commit the regenerated lockfile.
 
 ## One-time setup (Xcode UI, personal Apple ID)
 
