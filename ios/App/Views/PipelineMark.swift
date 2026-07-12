@@ -292,9 +292,15 @@ struct PipelineMark: View {
     }
 }
 
-#Preview("PipelineMark") {
+#Preview("PipelineMark — looping") {
     PipelineMark(width: 240)
         .padding()
+}
+
+#Preview("PipelineMark — reduced motion") {
+    PipelineMark(width: 240)
+        .padding()
+        .environment(\.accessibilityReduceMotion, true)
 }
 
 enum PipelineFieldIcon { case notes, clock, pin }
