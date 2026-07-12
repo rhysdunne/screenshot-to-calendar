@@ -11,15 +11,17 @@ enum PipelinePalette {
 }
 
 enum PipelineTiming {
-    /// One full extract → structure → schedule loop.
-    static let period: Double = 7.5
+    /// One full extract → structure → schedule loop. Beat 1 keeps its ~3.5s
+    /// establishing run; beats 2 and 3 are paced slower (~0.5s per element) so
+    /// they feel as unhurried as beat 1 despite having no scan/appear runway.
+    static let period: Double = 9.0
     /// Phase 0..<1 across the loop, derived from wall-clock time.
     static func phase(at date: Date) -> Double {
         let s = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period)
         return (s < 0 ? s + period : s) / period
     }
     /// A phase where beat 3 is fully resolved — used for the reduced-motion still.
-    static let restPhase: Double = 0.88
+    static let restPhase: Double = 0.93
 }
 
 /// Linear interpolation across keyframes `(position 0..1, value)`, sorted by position.
@@ -100,35 +102,35 @@ struct PipelineMark: View {
     // MARK: Beat 1 — extract
 
     static func drawBeat1(_ ctx: GraphicsContext, _ t: Double) {
-        // Envelope: the whole flyer fades in (0–6%), holds, fades out (42–47%).
-        let gA = pipelineLerp(t, [(0, 0), (0.06, 1), (0.42, 1), (0.47, 0), (1, 0)])
+        // Envelope: the flyer fades in (0–5%), holds, fades out (35–39%).
+        let gA = pipelineLerp(t, [(0, 0), (0.05, 1), (0.35, 1), (0.39, 0), (1, 0)])
         if gA > 0.001 {
             var g = ctx
             g.opacity *= gA
             // "Document appears": scale .96→1 about the poster centre (142,106).
-            let sc = pipelineLerp(t, [(0, 0.96), (0.06, 1), (1, 1)])
+            let sc = pipelineLerp(t, [(0, 0.96), (0.05, 1), (1, 1)])
             var doc = g
             doc.translateBy(x: 142, y: 106)
             doc.scaleBy(x: sc, y: sc)
             doc.translateBy(x: -142, y: -106)
             strokePoster(doc)
-            // "Scan": the lamp sweeps left→right (9–27%), visible 11–26%.
-            let lampOp = pipelineLerp(t, [(0, 0), (0.08, 0), (0.11, 1), (0.26, 1), (0.28, 0), (1, 0)])
+            // "Scan": the lamp sweeps left→right (7.5–22.5%), visible 9–22%.
+            let lampOp = pipelineLerp(t, [(0, 0), (0.07, 0), (0.09, 1), (0.22, 1), (0.23, 0), (1, 0)])
             if lampOp > 0.001 {
                 var l = g
                 l.opacity *= lampOp
-                let lampX = pipelineLerp(t, [(0, 0), (0.09, 0), (0.27, 94), (1, 94)])
+                let lampX = pipelineLerp(t, [(0, 0), (0.075, 0), (0.225, 94), (1, 94)])
                 l.translateBy(x: lampX, y: 0)
                 drawLamp(l)
             }
         }
-        // "Confirm": the three pill outlines flip gold, top → down. Independent of gA.
+        // "Confirm": the three pill outlines flip gold, top → down (~0.30s apart). Independent of gA.
         drawGoldPill(ctx, t, rect: CGRect(x: 104, y: 50, width: 74, height: 14), r: 7,
-                     frames: [(0, 0), (0.28, 0), (0.33, 1), (0.42, 1), (0.47, 0), (1, 0)])
+                     frames: [(0, 0), (0.233, 0), (0.275, 1), (0.35, 1), (0.39, 0), (1, 0)])
         drawGoldPill(ctx, t, rect: CGRect(x: 104, y: 86, width: 52, height: 12), r: 6,
-                     frames: [(0, 0), (0.32, 0), (0.37, 1), (0.42, 1), (0.47, 0), (1, 0)])
+                     frames: [(0, 0), (0.267, 0), (0.308, 1), (0.35, 1), (0.39, 0), (1, 0)])
         drawGoldPill(ctx, t, rect: CGRect(x: 116, y: 140, width: 62, height: 13), r: 6.5,
-                     frames: [(0, 0), (0.36, 0), (0.41, 1), (0.42, 1), (0.47, 0), (1, 0)])
+                     frames: [(0, 0), (0.30, 0), (0.342, 1), (0.35, 1), (0.39, 0), (1, 0)])
     }
 
     /// The flyer: frame, three pill fields (white outline), and text lines.
@@ -171,21 +173,21 @@ struct PipelineMark: View {
     // MARK: Beat 2 — structure
 
     static func drawBeat2(_ ctx: GraphicsContext, _ t: Double) {
-        // Envelope for the whole stack: fade in 45–48%, fade out 62–66%.
-        let gB = pipelineLerp(t, [(0, 0), (0.45, 0), (0.48, 1), (0.62, 1), (0.66, 0), (1, 0)])
+        // Envelope for the whole stack: fade in 40–43%, fade out 62–67%.
+        let gB = pipelineLerp(t, [(0, 0), (0.40, 0), (0.433, 1), (0.622, 1), (0.667, 0), (1, 0)])
         if gB <= 0.001 { return }
         var g = ctx
         g.opacity *= gB
-        // Top bar first, then each slides down (−14→0) one cadence-beat later.
+        // Top bar first, then each slides down (−14→0) ~0.5s apart — roomier than beat 1.
         drawBar(g, t, yTop: 64, icon: .notes, value1: 36, value2: 54,
-                opFrames: [(0, 0), (0.47, 0), (0.52, 1), (1, 1)],
-                yFrames: [(0, -14), (0.47, -14), (0.52, 0), (1, 0)])
+                opFrames: [(0, 0), (0.411, 0), (0.467, 1), (1, 1)],
+                yFrames: [(0, -14), (0.411, -14), (0.467, 0), (1, 0)])
         drawBar(g, t, yTop: 98, icon: .clock, value1: 40, value2: 58,
-                opFrames: [(0, 0), (0.51, 0), (0.56, 1), (1, 1)],
-                yFrames: [(0, -14), (0.51, -14), (0.56, 0), (1, 0)])
+                opFrames: [(0, 0), (0.467, 0), (0.522, 1), (1, 1)],
+                yFrames: [(0, -14), (0.467, -14), (0.522, 0), (1, 0)])
         drawBar(g, t, yTop: 132, icon: .pin, value1: 38, value2: 64,
-                opFrames: [(0, 0), (0.55, 0), (0.60, 1), (1, 1)],
-                yFrames: [(0, -14), (0.55, -14), (0.60, 0), (1, 0)])
+                opFrames: [(0, 0), (0.522, 0), (0.578, 1), (1, 1)],
+                yFrames: [(0, -14), (0.522, -14), (0.578, 0), (1, 0)])
     }
 
     /// One field bar: white rounded rect, gold icon at left, two white value lines.
@@ -237,20 +239,20 @@ struct PipelineMark: View {
     // MARK: Beat 3 — schedule
 
     static func drawBeat3(_ ctx: GraphicsContext, _ t: Double) {
-        // Calendar appears (61–67%), overlapping beat 2's exit; scale .97→1.
-        let calOp = pipelineLerp(t, [(0, 0), (0.61, 0), (0.67, 1), (0.90, 1), (0.94, 0), (1, 0)])
+        // Calendar appears (63–71%), overlapping beat 2's exit; scale .97→1.
+        let calOp = pipelineLerp(t, [(0, 0), (0.633, 0), (0.711, 1), (0.944, 1), (0.989, 0), (1, 0)])
         if calOp > 0.001 {
             var g = ctx
             g.opacity *= calOp
-            let sc = pipelineLerp(t, [(0, 0.97), (0.61, 0.97), (0.67, 1), (1, 1)])
+            let sc = pipelineLerp(t, [(0, 0.97), (0.633, 0.97), (0.711, 1), (1, 1)])
             g.translateBy(x: 135, y: 112); g.scaleBy(x: sc, y: sc); g.translateBy(x: -135, y: -112)
             drawCalendarGrid(g)
         }
-        // Two existing days (white) fade in, one cadence-beat apart.
+        // Two existing days (white) fade in, ~0.5s apart.
         drawWhiteDay(ctx, t, rect: CGRect(x: 121, y: 80, width: 29, height: 31),
-                     frames: [(0, 0), (0.67, 0), (0.71, 1), (0.90, 1), (0.94, 0), (1, 0)])
+                     frames: [(0, 0), (0.733, 0), (0.789, 1), (0.944, 1), (0.989, 0), (1, 0)])
         drawWhiteDay(ctx, t, rect: CGRect(x: 92, y: 142, width: 29, height: 30),
-                     frames: [(0, 0), (0.71, 0), (0.75, 1), (0.90, 1), (0.94, 0), (1, 0)])
+                     frames: [(0, 0), (0.789, 0), (0.844, 1), (0.944, 1), (0.989, 0), (1, 0)])
         // The new event (gold) slides into its slot with a slight settle.
         drawGoldEvent(ctx, t)
     }
@@ -285,12 +287,12 @@ struct PipelineMark: View {
 
     /// The new event: a gold cell that slides down into its slot, with a gold tick.
     static func drawGoldEvent(_ ctx: GraphicsContext, _ t: Double) {
-        let op = pipelineLerp(t, [(0, 0), (0.75, 0), (0.79, 1), (0.90, 1), (0.94, 0), (1, 0)])
+        let op = pipelineLerp(t, [(0, 0), (0.856, 0), (0.883, 1), (0.944, 1), (0.989, 0), (1, 0)])
         if op <= 0.001 { return }
         var g = ctx
         g.opacity *= op
         // Overshoot slightly past 0 (+2) then settle — the "drop into slot" feel.
-        let dy = pipelineLerp(t, [(0, -22), (0.75, -22), (0.82, 2), (0.86, 0), (1, 0)])
+        let dy = pipelineLerp(t, [(0, -22), (0.856, -22), (0.894, 2), (0.917, 0), (1, 0)])
         g.translateBy(x: 0, y: dy)
         g.fill(Path(CGRect(x: 150, y: 111, width: 28, height: 31)), with: .color(PipelinePalette.gold))
         var tick = Path()
