@@ -120,7 +120,7 @@ struct CaptureDetailView: View {
     }
 
     private var fieldsSection: some View {
-        Section("Event details") {
+        Section {
             LabeledContent("Title") { TextField("Title", text: binding(\.title)) }
             LabeledContent("Venue") { TextField("Venue", text: binding(\.venue)) }
             LabeledContent("Address") { TextField("Address", text: binding(\.address)) }
@@ -147,8 +147,15 @@ struct CaptureDetailView: View {
                 LabeledContent("Price") { Text(price) }
             }
             if let category = capture?.effectiveEvent?.category {
-                LabeledContent("Category") { Text(category.replacingOccurrences(of: "_", with: " ")) }
+                LabeledContent("Category") {
+                    Text(category.replacingOccurrences(of: "_", with: " ").capitalized)
+                }
             }
+        } header: {
+            Text("Event details")
+        } footer: {
+            // Editable rows look just like read-only ones — say so once.
+            Text("Tap a field to correct anything the AI got wrong.")
         }
     }
 
