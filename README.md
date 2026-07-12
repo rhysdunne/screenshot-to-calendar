@@ -69,8 +69,10 @@ cd evals   && npm run generate          # regenerate synthetic eval posters
 cd evals   && npm run eval -- --models claude-haiku-4-5   # live eval (needs ANTHROPIC_API_KEY)
 ```
 
-Deployment is via GitHub Actions (`deploy.yml`, manual dispatch per stage) or locally
-with `cd infra && npx cdk deploy` — see [docs/deploy.md](docs/deploy.md).
+Backend + web deploy automatically on merge to `main` (staging, then a prod
+approval gate); the iOS app ships on an `ios-v*` tag via Xcode Cloud → TestFlight.
+The whole pipeline is in [docs/ci-cd.md](docs/ci-cd.md); the CDK deploy specifics
+and local fallback in [docs/deploy.md](docs/deploy.md).
 
 ## The AI pipeline
 

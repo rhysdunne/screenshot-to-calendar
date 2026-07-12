@@ -55,15 +55,25 @@ and let Xcode retry.
 
 ## 4. TestFlight
 
-1. In Xcode: Product → Archive → Distribute App → App Store Connect → Upload.
-2. [appstoreconnect.apple.com](https://appstoreconnect.apple.com): create the
-   app record (same bundle id) if prompted, wait for processing.
-3. TestFlight tab → add yourself to an **Internal Testing** group. Internal
+Builds reach TestFlight through the **Xcode Cloud release lane**, not a manual
+archive — set it up once (post-clone hook, repo access, Xcode version pin,
+TestFlight post-action) following
+[setup-xcode-cloud.md](setup-xcode-cloud.md). One-time app-record steps:
+
+1. [appstoreconnect.apple.com](https://appstoreconnect.apple.com): create the
+   app record (same bundle id) if it doesn't exist yet.
+2. TestFlight tab → add yourself to an **Internal Testing** group. Internal
    testing (up to 100 members of your team) needs **no App Review**. External
    groups require a lightweight beta review — not needed for personal use.
-4. Install via the TestFlight app on your phone.
+3. Install via the TestFlight app on your phone.
+
+A manual Product → Archive → Distribute → Upload still works if you ever need
+it, but the tag-driven lane is the intended path.
 
 ## 5. Updating
 
-Bump `CURRENT_PROJECT_VERSION` in `project.yml`, `xcodegen generate`, archive,
-upload. TestFlight picks up new builds automatically for internal testers.
+Ship a build by pushing an `ios-v*` tag (or dispatching the **Release**
+workflow) — Xcode Cloud archives and uploads, and TestFlight picks it up
+automatically for internal testers. Build numbers are stamped automatically from
+`CI_BUILD_NUMBER`; only bump `MARKETING_VERSION` in `project.yml` when the
+user-facing x.y.z changes. Details: [setup-xcode-cloud.md](setup-xcode-cloud.md).
