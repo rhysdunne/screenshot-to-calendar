@@ -94,14 +94,14 @@ struct LibraryView: View {
 
     private var emptyState: some View {
         VStack(spacing: 16) {
-            Text("🗂️").font(.system(size: 56))
+            PipelineMark(width: 160)
             Text("No captures yet").font(.headline)
             Text("Share an event poster or screenshot from Photos or Instagram and pick “Capture Event”.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }
-        .padding(.top, 120)
+        .padding(.top, 80)
         .padding(.horizontal, 40)
     }
 }
@@ -124,11 +124,18 @@ struct CaptureTile: View {
             }
             .frame(height: 130)
             .clipShape(RoundedRectangle(cornerRadius: 10))
+            // Badge only when something is off — completed tiles (the common
+            // case) stay clean, so the badged ones read as "needs a look".
+            .overlay(alignment: .topTrailing) {
+                if capture.status != .completed {
+                    StatusBadge(status: capture.status, style: .overlay)
+                        .padding(6)
+                }
+            }
 
             Text(capture.effectiveEvent?.title ?? capture.status.label)
                 .font(.caption.weight(.medium))
                 .lineLimit(1)
-            StatusBadge(status: capture.status)
         }
         .task {
             if let response = try? await appState.api.imageUrl(id: capture.captureId) {
@@ -140,14 +147,23 @@ struct CaptureTile: View {
 
 struct StatusBadge: View {
     let status: CaptureStatus
+    var style: Style = .tinted
+
+    enum Style {
+        /// Translucent capsule, coloured text — for flat grounds like Form rows.
+        case tinted
+        /// Solid capsule, white text — stays legible overlaid on a photo.
+        case overlay
+    }
 
     var body: some View {
         Text(status.label)
             .font(.caption2.weight(.semibold))
+            .lineLimit(1)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(color.opacity(0.15), in: Capsule())
-            .foregroundStyle(color)
+            .background(style == .overlay ? color : color.opacity(0.15), in: Capsule())
+            .foregroundStyle(style == .overlay ? .white : color)
     }
 
     private var color: Color {
@@ -159,4 +175,23 @@ struct StatusBadge: View {
         case .notEvent: return .secondary
         }
     }
+}
+
+#Preview("StatusBadge styles") {
+    let statuses: [CaptureStatus] = [
+        .queued, .processing, .needsReview, .failed, .duplicate, .notEvent, .completed,
+    ]
+    return HStack(alignment: .top, spacing: 24) {
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(statuses, id: \.self) { StatusBadge(status: $0) }
+        }
+        // Overlay style on a photo-ish ground, as on a capture tile.
+        VStack(alignment: .leading, spacing: 8) {
+            ForEach(statuses, id: \.self) { StatusBadge(status: $0, style: .overlay) }
+        }
+        .padding(8)
+        .background(LinearGradient(colors: [.brown, .teal],
+                                   startPoint: .topLeading, endPoint: .bottomTrailing))
+    }
+    .padding()
 }

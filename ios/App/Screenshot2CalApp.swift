@@ -42,6 +42,7 @@ struct RootView: View {
                 LibraryView()
             }
         }
+        .tint(.brandTint)
         .task { await appState.bootstrap() }
     }
 }
