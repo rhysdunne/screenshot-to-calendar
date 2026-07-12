@@ -8,12 +8,12 @@ struct LaunchSplashView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            Text("📸").font(.system(size: 64))
+            PipelineMark(width: 200)
             Text("Screenshot to Calendar")
                 .font(.title2.weight(.semibold))
-            ProgressView()
-                .padding(.top, 8)
             Spacer()
         }
     }
 }
+
+#Preview { LaunchSplashView() }
