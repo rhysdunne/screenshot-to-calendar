@@ -220,8 +220,18 @@ struct CaptureDetailView: View {
                 } label: {
                     Label(isSaving ? "Adding…" : "Looks right — add to calendar",
                           systemImage: "checkmark.circle.fill")
+                        // The List row's automatic label style drops the icon
+                        // inside a prominent button — force it back.
+                        .labelStyle(.titleAndIcon)
                         .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+                // A filled button, not a Form row — clear the row chrome so the
+                // primary action of the review flow reads as one.
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
                 .disabled(isSaving || hasChanges) // save edits first, then approve
                 if hasChanges {
                     Text("Save your edits first, then add to calendar.")
@@ -249,6 +259,7 @@ struct CaptureDetailView: View {
             let updated = try await appState.api.approveCapture(id: captureId)
             capture = updated
             form = updated.effectiveEvent ?? form
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
             await appState.refreshCaptures()
         } catch {
             errorMessage = error.localizedDescription
@@ -307,6 +318,7 @@ struct CaptureDetailView: View {
                 id: captureId, fields: changedFields(from: original))
             capture = updated
             form = updated.effectiveEvent ?? form
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
             await appState.refreshCaptures()
         } catch {
             errorMessage = error.localizedDescription
@@ -376,3 +388,4 @@ struct ConfidenceMeter: View {
         .accessibilityLabel("Confidence: \(confidence)")
     }
 }
+

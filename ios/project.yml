@@ -31,6 +31,10 @@ targets:
     dependencies:
       - package: GoogleSignIn
         product: GoogleSignIn
+      # The official branded SwiftUI "Sign in with Google" button (same package,
+      # separate product) — Google's branding guidelines require their button.
+      - package: GoogleSignIn
+        product: GoogleSignInSwift
       - target: ShareExtension
     entitlements:
       path: App/App.entitlements

@@ -1,7 +1,9 @@
 import SwiftUI
+import GoogleSignInSwift
 
 struct SignInView: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 24) {
@@ -15,16 +17,15 @@ struct SignInView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
             Spacer()
-            Button {
+            // Google's own button (branding guidelines require it) — its fixed
+            // 40pt height, 2pt radius, and Roboto text are the spec; it
+            // deliberately doesn't take the app tint.
+            GoogleSignInButton(scheme: colorScheme == .dark ? .dark : .light, style: .wide) {
                 Task {
                     guard let root = UIApplication.shared.rootViewController else { return }
                     await appState.signIn(presenting: root)
                 }
-            } label: {
-                Label("Sign in with Google", systemImage: "person.badge.key")
-                    .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
             .padding(.horizontal, 32)
 
             VStack(spacing: 6) {
