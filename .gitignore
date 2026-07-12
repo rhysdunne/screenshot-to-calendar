@@ -28,8 +28,19 @@ evals/real-dataset-review.html
 # each evals/dataset/real/<case>/ is the committed copy; originals stay local.
 images/
 
-# iOS: project is generated from project.yml by XcodeGen
-ios/*.xcodeproj
+# iOS: project is generated from project.yml by XcodeGen. One exception is
+# tracked inside it: the SPM lockfile, because Xcode Cloud disables automatic
+# package resolution and refuses to build without a committed Package.resolved.
+# (gitignore can't re-include a file inside an ignored directory, hence the
+# unignore-dir/ignore-contents ladder.)
+ios/*.xcodeproj/*
+!ios/Screenshot2Cal.xcodeproj/project.xcworkspace/
+ios/Screenshot2Cal.xcodeproj/project.xcworkspace/*
+!ios/Screenshot2Cal.xcodeproj/project.xcworkspace/xcshareddata/
+ios/Screenshot2Cal.xcodeproj/project.xcworkspace/xcshareddata/*
+!ios/Screenshot2Cal.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+ios/Screenshot2Cal.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
+!ios/Screenshot2Cal.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 ios/DerivedData/
 ios/.build/
 # Info.plist and entitlements are generated from project.yml (properties inline)
