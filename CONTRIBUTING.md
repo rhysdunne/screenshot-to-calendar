@@ -42,7 +42,10 @@ obey → **add a `CLAUDE.md` invariant**.
   ([`.github/workflows/prompt-improvement.yml`](.github/workflows/prompt-improvement.yml))
   — proposes prompt changes from consented corrections and opens a PR; never
   auto-merges.
-- **Deploy** is manual (`workflow_dispatch`, OIDC) per stage.
+- **Deploy** — merge to `main` auto-deploys the backend + web to staging, then
+  pauses at a prod approval gate ([`deploy.yml`](.github/workflows/deploy.yml));
+  the iOS app ships on an `ios-v*` tag via Xcode Cloud. Full pipeline, gates, and
+  release lanes: [docs/ci-cd.md](docs/ci-cd.md).
 
 ## Conventions
 

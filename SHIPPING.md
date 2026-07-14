@@ -96,7 +96,11 @@ Every value now exists: Team ID (step 1), both OAuth client ids (step 2),
 - [ ] `brew install xcodegen && cd ios && xcodegen generate`
 - [ ] Open in Xcode, team selected, capabilities provision cleanly
 - [ ] Run on your iPhone; sign in (expect the "unverified app" warning)
-- [ ] Archive → upload → TestFlight **internal** group (no App Review)
+- [ ] Set up the Xcode Cloud release lane once
+      ([docs/setup-xcode-cloud.md](docs/setup-xcode-cloud.md)), then ship the
+      first build to the TestFlight **internal** group by pushing an `ios-v*`
+      tag (no App Review for internal). A manual Xcode Archive → upload still
+      works as a fallback, but the tag lane is the intended path.
 
 ## 8. End-to-end smoke on the phone
 
