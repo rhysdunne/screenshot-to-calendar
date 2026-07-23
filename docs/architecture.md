@@ -75,6 +75,9 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
   $/100 images per model.
 - Google: Calendar API free; Places free tier covers hobby volume.
 
+See [`cost-management.md`](cost-management.md) for the full scope of cost tracking,
+guardrails, and known gaps across AWS, Anthropic, and GCP.
+
 ## Dedup design
 
 1. **Exact**: SHA-256 of image bytes claimed via conditional put at upload.
