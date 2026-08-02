@@ -65,8 +65,8 @@ const INVISIBLE_CHARS_G = /[\u200B-\u200D\u2060\uFEFF\u202A-\u202E\u2066-\u2069]
 /** HTML-ish markup. Google Calendar renders a limited HTML subset. */
 const MARKUP = /<\/?[a-z][^>]*>/i;
 /** The provenance marker `map-to-calendar` writes. Untrusted text may not carry it. */
-const PROVENANCE_MARKER = /\[auto-captured/i;
-const PROVENANCE_MARKER_G = /\[auto-captured/gi;
+const PROVENANCE_MARKER = /\[auto-captured[^\]]*\]?/i;
+const PROVENANCE_MARKER_G = /\[auto-captured[^\]]*\]?/gi;
 
 /**
  * Narrow, high-signal patterns for text addressed at a model rather than a
