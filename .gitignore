@@ -18,6 +18,11 @@ coverage/
 # CDK
 infra/cdk.out/
 
+# Prompt-improvement scratch: work/patterns.json holds raw user correction
+# values (free-text `description` edits). This repo is public and the monthly
+# workflow commits its working tree, so this must never be committable.
+tools/prompt-improvement/work/
+
 # Evals: reports are generated; baselines are committed explicitly
 evals/reports/*
 !evals/reports/baseline*/
