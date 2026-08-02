@@ -100,6 +100,7 @@ async function runCase(
       imageBase64: c.imageBase64,
       mediaType,
       schema: CLASSIFY_IMAGE_SCHEMA,
+      allowUnstructured: true,
       maxTokens: 256,
       stage: 'classify',
     });
@@ -136,6 +137,9 @@ async function runCase(
     imageBase64: c.imageBase64,
     mediaType,
     schema: extractSchemaFor(opts.promptVersion),
+    // Candidate models under comparison may lack structured-output support;
+    // the harness relies on the fence-stripping fallback in pipeline/extract.
+    allowUnstructured: true,
     maxTokens: 1024,
     stage: 'extract',
   });

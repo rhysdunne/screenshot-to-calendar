@@ -155,6 +155,19 @@ export class FakeImages implements Images {
   }
 }
 
+function rawTextResponse(text: string): ClaudeCallResult['response'] {
+  return {
+    id: 'msg_test',
+    type: 'message',
+    role: 'assistant',
+    model: 'test',
+    content: [{ type: 'text', text, citations: null }],
+    stop_reason: 'end_turn',
+    stop_sequence: null,
+    usage: { input_tokens: 1500, output_tokens: 150 },
+  } as unknown as ClaudeCallResult['response'];
+}
+
 function textResponse(json: unknown): ClaudeCallResult['response'] {
   return {
     id: 'msg_test',
@@ -171,6 +184,12 @@ function textResponse(json: unknown): ClaudeCallResult['response'] {
 export interface FakeDepsOptions {
   classifyResult?: unknown;
   extractResult?: unknown;
+  /**
+   * Literal text for the extract response, bypassing JSON.stringify — the only
+   * way to exercise the parse-failure path, since `extractResult` always
+   * serialises to valid JSON.
+   */
+  extractRawText?: string;
   existingEvents?: ExistingCalendarEvent[];
   placesAddress?: string | null;
 }
@@ -181,6 +200,8 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
   const insertedEvents: Array<{ calendarId: string; event: CalendarEventInput }> = [];
   const patchedEvents: Array<{ calendarId: string; eventId: string }> = [];
   const claudeCalls: ClaudeCallOptions[] = [];
+  /** Venue strings sent to the Places API — lets tests assert the fan-out is skipped. */
+  const venueLookups: string[] = [];
 
   const deps: Deps = {
     store,
@@ -189,6 +210,17 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
     googleAccessToken: async () => 'access-token-test',
     callClaude: async (options: ClaudeCallOptions): Promise<ClaudeCallResult> => {
       claudeCalls.push(options);
+      const usage = {
+        stage: options.stage,
+        model: options.model,
+        inputTokens: 1500,
+        outputTokens: 150,
+        costUsd: 0.002,
+        latencyMs: 42,
+      };
+      if (options.stage === 'extract' && opts.extractRawText !== undefined) {
+        return { response: rawTextResponse(opts.extractRawText), usage };
+      }
       const result =
         options.stage === 'classify'
           ? (opts.classifyResult ?? {
@@ -197,17 +229,7 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
               confidence: 'high',
             })
           : (opts.extractResult ?? {});
-      return {
-        response: textResponse(result),
-        usage: {
-          stage: options.stage,
-          model: options.model,
-          inputTokens: 1500,
-          outputTokens: 150,
-          costUsd: 0.002,
-          latencyMs: 42,
-        },
-      };
+      return { response: textResponse(result), usage };
     },
     calendar: {
       listWritableCalendars: async () => [
@@ -229,12 +251,14 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
       },
       deleteEvent: async () => {},
     },
-    resolveVenue: async () =>
-      opts.placesAddress === null || opts.placesAddress === undefined
+    resolveVenue: async (_key, venue) => {
+      venueLookups.push(venue);
+      return opts.placesAddress === null || opts.placesAddress === undefined
         ? opts.placesAddress === null
           ? null
           : { formattedAddress: '1 Test St, London' }
-        : { formattedAddress: opts.placesAddress },
+        : { formattedAddress: opts.placesAddress };
+    },
     getSecret: async (name) => {
       if (name === 'token-enc-key') return 'a'.repeat(64);
       return `secret-${name}`;
@@ -247,7 +271,7 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
     },
   };
 
-  return { deps, store, images, insertedEvents, patchedEvents, claudeCalls };
+  return { deps, store, images, insertedEvents, patchedEvents, claudeCalls, venueLookups };
 }
 
 export function testUser(overrides: Partial<UserRecord> = {}): UserRecord {

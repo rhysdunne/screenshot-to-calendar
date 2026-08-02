@@ -1,5 +1,11 @@
-import { EVENT_CATEGORIES, type EventCategory, type ExtractedEvent } from './types.js';
+import {
+  EVENT_CATEGORIES,
+  ExtractParseError,
+  type EventCategory,
+  type ExtractedEvent,
+} from './types.js';
 import { isValidHm, isValidYmd } from './dates.js';
+import { sanitizeText, sanitizeUrl, type Finding, type SanitizeResult } from './sanitize.js';
 
 // Minimal shape of an Anthropic Messages API response we parse from.
 interface AnthropicResponseLike {
@@ -13,6 +19,17 @@ interface AnthropicResponseLike {
  * support still parse (port of the v1 extractEventData).
  */
 export function extractEventData(response: AnthropicResponseLike): ExtractedEvent {
+  return extractEventDataWithFindings(response).event;
+}
+
+/**
+ * As `extractEventData`, but also reports what sanitisation had to change.
+ * Handlers use the findings to route suspicious captures to human review; the
+ * eval harness uses the plain form above.
+ */
+export function extractEventDataWithFindings(
+  response: AnthropicResponseLike,
+): SanitizeResult {
   if (!response.content || !Array.isArray(response.content)) {
     throw new Error('Unexpected API response structure');
   }
@@ -30,12 +47,13 @@ export function extractEventData(response: AnthropicResponseLike): ExtractedEven
   try {
     parsed = JSON.parse(cleaned);
   } catch (e) {
-    throw new Error(
-      `Failed to parse event JSON: ${(e as Error).message}\nRaw response: ${rawText}`,
-      { cause: e },
-    );
+    // Deliberately does NOT carry the raw model text: this message reaches
+    // `capture.error` and is rendered in the iOS app, which would hand an
+    // injected payload a direct channel to the user. The raw output is still
+    // persisted separately (and privately) as `rawModelOutput` for debugging.
+    throw new ExtractParseError({ cause: e });
   }
-  return normalizeEventData(parsed);
+  return normalizeEventDataWithFindings(parsed);
 }
 
 /**
@@ -44,10 +62,21 @@ export function extractEventData(response: AnthropicResponseLike): ExtractedEven
  * calendar mapping; unknown confidence degrades to 'low'.
  */
 export function normalizeEventData(raw: unknown): ExtractedEvent {
+  return normalizeEventDataWithFindings(raw).event;
+}
+
+/**
+ * As `normalizeEventData`, but reports what sanitisation changed. Free-text
+ * fields are bounded and stripped of control/invisible characters here; `url`
+ * is held to an http(s)-only policy. Dates, times and enums keep their existing
+ * strict handling.
+ */
+export function normalizeEventDataWithFindings(raw: unknown): SanitizeResult {
   if (typeof raw !== 'object' || raw === null) {
     throw new Error('Extracted event is not an object');
   }
   const o = raw as Record<string, unknown>;
+  const findings: Finding[] = [];
   const str = (v: unknown): string | null =>
     typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
   const date = (v: unknown): string | null => (isValidYmd(str(v)) ? (str(v) as string) : null);
@@ -61,19 +90,20 @@ export function normalizeEventData(raw: unknown): ExtractedEvent {
     ? (o.category as EventCategory)
     : null;
 
-  return {
-    title: str(o.title),
-    venue: str(o.venue),
-    address: str(o.address),
+  const event: ExtractedEvent = {
+    title: sanitizeText(o.title, 'title', findings),
+    venue: sanitizeText(o.venue, 'venue', findings),
+    address: sanitizeText(o.address, 'address', findings),
     start_date: date(o.start_date),
     end_date: date(o.end_date),
     start_time: time(o.start_time),
     end_time: time(o.end_time),
-    description: str(o.description),
-    url: str(o.url),
+    description: sanitizeText(o.description, 'description', findings),
+    url: sanitizeUrl(o.url, findings),
     confidence,
     // v3 fields: present-but-null on v2 responses is fine downstream.
-    price: str(o.price),
+    price: sanitizeText(o.price, 'price', findings),
     category,
   };
+  return { event, findings };
 }

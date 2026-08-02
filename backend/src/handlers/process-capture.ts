@@ -5,11 +5,17 @@ import type { SQSHandler } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
 import { extractSchemaFor, loadPrompt, renderPrompt } from '../prompts/prompts.js';
 import { CLASSIFY_IMAGE_SCHEMA } from '../prompts/schemas.js';
-import { extractEventData } from '../pipeline/extract.js';
+import { extractEventDataWithFindings } from '../pipeline/extract.js';
 import { mapEventToCalendar } from '../pipeline/map-to-calendar.js';
 import { addDays, todayInZone } from '../pipeline/dates.js';
 import { findDuplicate } from '../pipeline/dedup.js';
-import { NoDateError, type Classification, type ExtractedEvent } from '../pipeline/types.js';
+import { findingCodes, requiresReview } from '../pipeline/sanitize.js';
+import {
+  ExtractParseError,
+  NoDateError,
+  type Classification,
+  type ExtractedEvent,
+} from '../pipeline/types.js';
 import type { ImageMediaType } from '../pipeline/image.js';
 import type { CaptureRecord, UserRecord } from '../lib/ddb.js';
 import { logger, safeError } from '../lib/logger.js';
@@ -96,10 +102,15 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       .filter((b) => b.type === 'text')
       .map((b) => (b as { text?: string }).text ?? '')
       .join('');
-    let event = extractEventData(extractCall.response);
+    const extraction = extractEventDataWithFindings(extractCall.response);
+    let event = extraction.event;
+    const { findings } = extraction;
 
-    // 3. Resolve venue → address via Places when missing (non-fatal).
-    if (event.venue && !event.address) {
+    // 3. Resolve venue → address via Places when missing (non-fatal). Skipped
+    // when sanitisation flagged anything: `venue` is sent verbatim to a third
+    // party as a search query, so a capture we already distrust should not
+    // fan out. (Length and control characters are already bounded upstream.)
+    if (event.venue && !event.address && findings.length === 0) {
       try {
         const placesKey = await deps.getSecret('places-api-key');
         const place = await deps.resolveVenue(placesKey, event.venue);
@@ -109,9 +120,21 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       }
     }
 
-    // 4. Confidence gate (issue #2): low-confidence extractions wait for the
-    // user to review/approve in the app instead of auto-creating an event.
-    if (event.confidence === 'low') {
+    // 4. Review gate (issue #2): captures wait for the user to review/approve
+    // in the app instead of auto-creating an event. Two triggers:
+    //  - the model's own low confidence, and
+    //  - anything the deterministic sanitisation layer had to strip.
+    // The second matters because the first is self-reported: text embedded in
+    // a poster can talk the model into "high", but it cannot talk the
+    // sanitiser out of having found a dropped URL scheme or a control
+    // character. Reason codes only in logs — never the field values.
+    if (requiresReview(event, findings)) {
+      if (findings.length > 0) {
+        logger.warn('capture_flagged_for_review', {
+          ...msg,
+          codes: findingCodes(findings),
+        });
+      }
       await store.updateCapture(msg.userId, msg.captureId, {
         status: 'needs_review',
         classification,
@@ -130,10 +153,12 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       ...updates,
     });
   } catch (e) {
-    const message =
-      e instanceof NoDateError
-        ? 'No date could be read from this image.'
-        : `Processing failed: ${(e as Error).message}`;
+    // `capture.error` is returned by captureView and rendered in the app, so
+    // it is a fixed whitelist rather than the underlying message. Interpolating
+    // `e.message` would leak third-party API response bodies and — via
+    // JSON.parse's SyntaxError, which quotes the offending input — model output
+    // derived from the user's image.
+    const message = errorMessageFor(e);
     logger.error('process_capture_failed', { ...msg, error: safeError(e) });
     await store.updateCapture(msg.userId, msg.captureId, {
       status: 'failed',
@@ -205,6 +230,15 @@ export async function createCalendarEntry(
     eventLink: created.htmlLink,
     ...(verdict.kind === 'possible' ? { possibleDuplicateOf: verdict.event.id } : {}),
   };
+}
+
+/** User-facing failure copy. Fixed strings only — see the catch block. */
+function errorMessageFor(e: unknown): string {
+  if (e instanceof NoDateError) return 'No date could be read from this image.';
+  if (e instanceof ExtractParseError) {
+    return "We couldn't read the event details from this image.";
+  }
+  return 'Something went wrong processing this image.';
 }
 
 function extractClassification(response: {

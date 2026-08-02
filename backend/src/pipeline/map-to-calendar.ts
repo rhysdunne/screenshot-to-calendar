@@ -1,6 +1,13 @@
 import type { CalendarEventInput, ExtractedEvent } from './types.js';
 import { NoDateError } from './types.js';
 import { addDays } from './dates.js';
+import { escapeForCalendar, FIELD_LIMITS } from './sanitize.js';
+
+/**
+ * Cap on the assembled description. Google allows 8192; this is far above any
+ * legitimate poster and keeps calendar clients readable.
+ */
+const MAX_DESCRIPTION = 2000;
 
 export interface MapOptions {
   /** Today's date (YYYY-MM-DD) in the user's timezone — from todayInZone(). */
@@ -23,14 +30,22 @@ export function mapEventToCalendar(
   eventData: ExtractedEvent,
   opts: MapOptions,
 ): CalendarEventInput {
+  // Google Calendar renders the description as a limited HTML subset, so every
+  // extracted value is escaped before it is joined in. Values arriving from
+  // `normalizeEventData` already have newlines collapsed, which is what stops
+  // an injected field from forging one of the `Label: value` lines below.
+  const esc = (s: string): string => escapeForCalendar(s);
   const descParts: string[] = [];
-  if (eventData.description) descParts.push(eventData.description);
-  if (eventData.venue) descParts.push(`Venue: ${eventData.venue}`);
-  if (eventData.address) descParts.push(`Address: ${eventData.address}`);
-  if (eventData.price) descParts.push(`Price: ${eventData.price}`);
-  if (eventData.url) descParts.push(`Link: ${eventData.url}`);
+  // Provenance leads, so text further down cannot be mistaken for it. (An
+  // in-band marker in a free-text field is a UX hint, not a security control —
+  // the real defence is stripping the marker from untrusted values upstream.)
+  descParts.push(`[Auto-captured · Confidence: ${eventData.confidence || 'unknown'}]\n`);
+  if (eventData.description) descParts.push(esc(eventData.description));
+  if (eventData.venue) descParts.push(`Venue: ${esc(eventData.venue)}`);
+  if (eventData.address) descParts.push(`Address: ${esc(eventData.address)}`);
+  if (eventData.price) descParts.push(`Price: ${esc(eventData.price)}`);
+  if (eventData.url) descParts.push(`Link: ${esc(eventData.url)}`);
   if (opts.captureLink) descParts.push(`View capture: ${opts.captureLink}`);
-  descParts.push(`\n[Auto-captured · Confidence: ${eventData.confidence || 'unknown'}]`);
 
   const hasTime = !!eventData.start_time;
   let startDate = eventData.start_date;
@@ -73,10 +88,12 @@ export function mapEventToCalendar(
     end = { date: addDays(endDate as string, 1) };
   }
 
+  // `summary` and `location` are plain-text fields in Google Calendar, so they
+  // need bounds but not escaping; the values are already sanitised upstream.
   return {
-    summary: eventData.title || 'Untitled Event',
-    description: descParts.join('\n'),
-    location: eventData.address || eventData.venue || '',
+    summary: (eventData.title || 'Untitled Event').slice(0, FIELD_LIMITS.title),
+    description: descParts.join('\n').slice(0, MAX_DESCRIPTION),
+    location: (eventData.address || eventData.venue || '').slice(0, FIELD_LIMITS.address),
     start,
     end,
   };

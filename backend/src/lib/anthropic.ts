@@ -30,8 +30,50 @@ export interface ClaudeCallOptions {
   mediaType: ImageMediaType;
   /** JSON Schema for structured outputs; applied only if the model supports it. */
   schema?: object;
+  /**
+   * Opt in to running without structured outputs when the model can't do them.
+   * The eval harness sets this — it deliberately compares candidate models that
+   * lack structured-output support and relies on the fence-stripping fallback
+   * in `pipeline/extract.ts`. Production callers leave it unset so that an
+   * unknown `EXTRACT_MODEL` fails loudly instead of quietly dropping the only
+   * shape guard on the response.
+   */
+  allowUnstructured?: boolean;
   maxTokens?: number;
   stage: 'classify' | 'extract';
+}
+
+/** A schema was requested but the configured model cannot enforce one. */
+export class StructuredOutputUnavailableError extends Error {
+  constructor(model: string) {
+    super(
+      `Model "${model}" cannot enforce structured outputs (unknown to lib/models.ts, ` +
+        `or structuredOutputs: false). Pass allowUnstructured to proceed without them.`,
+    );
+    this.name = 'StructuredOutputUnavailableError';
+  }
+}
+
+/**
+ * Decide whether structured outputs apply to this call. Pure, so the guard is
+ * testable without a network call.
+ *
+ * Previously a schema was silently dropped whenever the model didn't support
+ * structured outputs — including when the model ID was simply unknown to
+ * `lib/models.ts`, which an `EXTRACT_MODEL` typo would trigger. That removed
+ * the only shape guard on the model's response with no signal at all, so it
+ * now fails loudly unless the caller explicitly opts out.
+ */
+export function resolveStructuredOutput(
+  model: string,
+  schema: object | undefined,
+  allowUnstructured: boolean | undefined,
+): Record<string, unknown> | undefined {
+  const supported = MODELS[model]?.structuredOutputs ?? false;
+  if (schema && !supported && !allowUnstructured) {
+    throw new StructuredOutputUnavailableError(model);
+  }
+  return schema && supported ? (schema as Record<string, unknown>) : undefined;
 }
 
 export interface ClaudeCallResult {
@@ -42,11 +84,7 @@ export interface ClaudeCallResult {
 
 export async function callClaude(opts: ClaudeCallOptions): Promise<ClaudeCallResult> {
   const client = new Anthropic({ apiKey: opts.apiKey });
-  const modelInfo = MODELS[opts.model];
-  const schema =
-    opts.schema && (modelInfo?.structuredOutputs ?? false)
-      ? (opts.schema as Record<string, unknown>)
-      : undefined;
+  const schema = resolveStructuredOutput(opts.model, opts.schema, opts.allowUnstructured);
 
   const params: Anthropic.MessageCreateParamsNonStreaming = {
     model: opts.model,

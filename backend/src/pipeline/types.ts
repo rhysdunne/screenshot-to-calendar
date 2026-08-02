@@ -91,3 +91,16 @@ export class NoDateError extends Error {
     this.name = 'NoDateError';
   }
 }
+
+/**
+ * The model's response was not valid JSON. The message is deliberately fixed
+ * and content-free: `capture.error` is surfaced in the iOS app, so echoing the
+ * raw response (or a JSON parser's excerpt of it) would let text embedded in a
+ * user's image reach the user directly.
+ */
+export class ExtractParseError extends Error {
+  constructor(options?: ErrorOptions) {
+    super('Model output was not valid JSON', options);
+    this.name = 'ExtractParseError';
+  }
+}
