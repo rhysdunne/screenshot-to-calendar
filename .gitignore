@@ -24,6 +24,10 @@ evals/reports/*
 # Evals: local review aid (embeds images), regenerated on demand
 evals/real-dataset-review.html
 
+# Prompt-improvement scratch: clustered failure patterns and the proposal record
+# each run writes. Intermediates, never part of a commit.
+tools/prompt-improvement/work/
+
 # Full-res source captures for the real eval set — the processed image.jpg in
 # each evals/dataset/real/<case>/ is the committed copy; originals stay local.
 images/

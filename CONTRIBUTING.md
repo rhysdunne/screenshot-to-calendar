@@ -41,7 +41,15 @@ obey → **add a `CLAUDE.md` invariant**.
 - **Prompt-improvement PR loop**
   ([`.github/workflows/prompt-improvement.yml`](.github/workflows/prompt-improvement.yml))
   — proposes prompt changes from consented corrections and opens a PR; never
-  auto-merges.
+  auto-merges. The gate compares baseline and candidate **paired per case** with a
+  sign test, not as two aggregate percentages: both arms run at API default
+  temperature, and four runs of an identical prompt were measured spanning 0.9pt,
+  so an absolute threshold on two independent means was inside its own noise floor.
+- **Growing the real eval set is a manual step.** `cd tools/prompt-improvement &&
+  npm run materialize` pulls consented corrections and their images out of prod
+  into `evals/dataset/real/`. Run it locally, **inspect the pixels** for
+  third-party PII (faces, names, handles), redact, then commit. It is deliberately
+  not in CI — the repo is public and no automated step can do that review.
 - **Deploy** — merge to `main` auto-deploys the backend + web to staging, then
   pauses at a prod approval gate ([`deploy.yml`](.github/workflows/deploy.yml));
   the iOS app ships on an `ios-v*` tag via Xcode Cloud. Full pipeline, gates, and

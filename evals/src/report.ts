@@ -1,5 +1,22 @@
 // Markdown report rendering — the artifact that answers "which model is good
 // enough to process the images, and what does it cost".
+
+/**
+ * One case's score, retained so two runs can be compared PAIRED (same case,
+ * baseline vs candidate) instead of as two independent means. See
+ * `tools/prompt-improvement/src/run-gate.ts` for why that matters.
+ */
+export interface PerCaseScore {
+  id: string;
+  /** Null for non-event cases (unscored by design) and for errored cases. */
+  aggregate: number | null;
+  fields: Record<string, number>;
+  hallucinations: number;
+  misses: number;
+  /** True only when the case threw — distinguishes an error from a non-event. */
+  errored: boolean;
+}
+
 export interface ModelReport {
   model: string;
   cases: number;
@@ -12,6 +29,8 @@ export interface ModelReport {
   p95LatencyMs: number;
   costPer100Images: number;
   errors: number;
+  /** Optional: absent from reports generated before per-case scores were kept. */
+  perCase?: PerCaseScore[];
 }
 
 const pct = (v: number): string => `${(v * 100).toFixed(1)}%`;

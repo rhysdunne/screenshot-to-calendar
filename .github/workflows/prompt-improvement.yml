@@ -4,6 +4,12 @@ name: Prompt improvement
 # patterns, have Claude propose a minimal prompt revision, run the eval gate,
 # and open a PR if it passes. NEVER auto-merges — a human reviews the diff,
 # the gate report, and the source correction clusters.
+#
+# `npm run materialize` is deliberately NOT run here. It pulls consented
+# corrections (with their images) out of prod into evals/dataset/real/, and
+# CLAUDE.md requires in-image third-party PII to be redacted before commit —
+# "check the pixels, not just the label", which no CI step can do. It is a
+# maintainer command, run locally. See tools/prompt-improvement/README.md.
 on:
   schedule:
     - cron: "0 6 1 * *"
@@ -18,6 +24,11 @@ jobs:
   improve:
     runs-on: ubuntu-latest
     if: ${{ github.repository_owner == 'rhysdunne' }}
+    # `shell: bash` is `bash -eo pipefail`; the implicit default is `bash -e`
+    # with no pipefail, which silently swallowed failures inside a pipeline.
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
@@ -30,45 +41,103 @@ jobs:
       - run: npm ci --prefix evals
       - run: npm ci --prefix tools/prompt-improvement
 
-      - name: Materialize consented corrections into eval cases
-        working-directory: tools/prompt-improvement
-        env:
-          TABLE_NAME: s2c-main-prod
-          BUCKET_NAME: s2c-images-${{ vars.AWS_ACCOUNT_ID }}-prod
-        run: npm run materialize
-
       - name: Aggregate corrections
         working-directory: tools/prompt-improvement
         env:
           TABLE_NAME: s2c-main-prod
         run: npm run aggregate
 
+      # propose is the ONLY thing that knows whether it wrote a candidate file,
+      # so it reports that in work/proposal.json and we read it. Inferring the
+      # candidate from the filesystem (`ls | sort -V | tail -1`) is what made the
+      # 2026-08-01 run gate the already-active prompt against itself.
       - name: Propose candidate prompt
         id: propose
         working-directory: tools/prompt-improvement
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          npm run propose | tee propose.log
-          CANDIDATE=$(ls ../../backend/src/prompts/extract-event.v*.md | sed 's/.*extract-event\.\(v[0-9]*\)\.md/\1/' | sort -V | tail -1)
-          echo "candidate=$CANDIDATE" >> "$GITHUB_OUTPUT"
+          npm run propose
+          {
+            echo "proposed=$(jq -r '.proposed' work/proposal.json)"
+            echo "candidate=$(jq -r '.candidate // ""' work/proposal.json)"
+            echo "reason=$(jq -r '.reason // ""' work/proposal.json)"
+          } >> "$GITHUB_OUTPUT"
 
+      - name: No candidate — nothing to do
+        if: steps.propose.outputs.proposed != 'true'
+        run: |
+          echo "### No prompt candidate proposed" >> "$GITHUB_STEP_SUMMARY"
+          echo "Reason: \`${{ steps.propose.outputs.reason }}\`. Gate and PR skipped." \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      # Exit codes: 0 = passed, 1 = gate rejected the candidate (the safety
+      # mechanism working — a warning, not a red build), 2 = misuse or crash.
       - name: Run eval gate
+        id: gate
+        if: steps.propose.outputs.proposed == 'true'
         working-directory: tools/prompt-improvement
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: npm run gate -- --candidate ${{ steps.propose.outputs.candidate }}
+          CANDIDATE: ${{ steps.propose.outputs.candidate }}
+        run: |
+          code=0
+          npx tsx src/run-gate.ts --candidate "$CANDIDATE" || code=$?
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          report="../../evals/reports/gate-candidate-$CANDIDATE"
+          cat "$report/gate.md" >> "$GITHUB_STEP_SUMMARY" 2>/dev/null || true
+          if [ -f "$report/gate.json" ]; then
+            {
+              echo "better=$(jq -r '.better // "?"' "$report/gate.json")"
+              echo "worse=$(jq -r '.worse // "?"' "$report/gate.json")"
+              echo "paired=$(jq -r '.paired // "?"' "$report/gate.json")"
+              echo "pvalue=$(jq -r '.pValue // "?"' "$report/gate.json")"
+            } >> "$GITHUB_OUTPUT"
+          fi
+          case "$code" in
+            0) echo "::notice title=Gate passed::candidate $CANDIDATE — opening a PR" ;;
+            1) echo "::warning title=Gate rejected $CANDIDATE::working as designed; no PR opened" ;;
+            *) echo "::error title=Gate errored (exit $code)::see the step log"; exit 1 ;;
+          esac
+
+      # Uploaded for a rejected candidate too — that report is exactly what a
+      # human wants to read when deciding whether the rejection was right.
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() && steps.gate.outputs.code != '' }}
+        with:
+          name: prompt-gate-${{ steps.propose.outputs.candidate }}-${{ github.run_id }}
+          path: evals/reports/gate-*/
+          if-no-files-found: warn
+
+      # Backstop: add-paths below already limits the commit to the prompt file,
+      # but if anything ever drops user images into the dataset, stop here.
+      - name: Refuse to commit un-reviewed user data
+        if: steps.gate.outputs.code == '0'
+        run: |
+          if git status --porcelain -- evals/dataset/real | grep -q .; then
+            echo "::error::Un-reviewed real eval cases in the tree — a human must" \
+                 "check the pixels for third-party PII, redact, and commit them."
+            exit 1
+          fi
 
       - name: Open PR (human review required)
+        if: steps.gate.outputs.code == '0'
         uses: peter-evans/create-pull-request@v8
         with:
           branch: prompt-improvement/${{ steps.propose.outputs.candidate }}
+          # Explicit allowlist: never commit work/, reports, or dataset images.
+          add-paths: backend/src/prompts/extract-event.${{ steps.propose.outputs.candidate }}.md
           title: "Prompt candidate ${{ steps.propose.outputs.candidate }} (passed eval gate)"
           commit-message: "Add candidate extraction prompt ${{ steps.propose.outputs.candidate }}"
           body: |
             Automated prompt-improvement run.
 
             - Source: clustered consented corrections (see workflow logs)
-            - Eval gate: PASSED (report artifact attached to the run)
+            - Eval gate: PASSED — ${{ steps.gate.outputs.better }} cases improved,
+              ${{ steps.gate.outputs.worse }} regressed of ${{ steps.gate.outputs.paired }}
+              paired (sign test p=${{ steps.gate.outputs.pvalue }}). The classify stage
+              is excluded — this candidate only changes `extract-event`.
+            - Full gate report: the `prompt-gate-*` artifact on
+              ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
             - ⚠️ Adopting this requires bumping `ACTIVE_VERSIONS` in
               `backend/src/prompts/prompts.ts` — review the diff first.

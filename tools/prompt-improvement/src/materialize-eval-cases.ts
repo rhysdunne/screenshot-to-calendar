@@ -6,6 +6,12 @@
 //
 //   TABLE_NAME=s2c-main-prod BUCKET_NAME=s2c-images-<acct>-prod npm run materialize
 //
+// MAINTAINER COMMAND — run locally, never in CI. This writes real user images
+// into a PUBLIC repo's working tree. Consent is enforced here (non-consented
+// corrections are dropped), but CLAUDE.md also requires in-image third-party PII
+// to be redacted before commit — faces, names, handles — and that means looking
+// at the pixels. Inspect, redact, then commit.
+//
 // Idempotent: existing case directories are never touched (their gold may
 // have been hand-refined).
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
