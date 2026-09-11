@@ -5,7 +5,8 @@
 //
 //   ANTHROPIC_API_KEY=... npm run eval -- --models claude-haiku-4-5,claude-sonnet-5
 //   npm run eval -- --mock                      # plumbing check, no API calls
-//   npm run eval -- --prompt-version v3         # eval a candidate prompt (gate)
+//   npm run eval -- --prompt-version v4         # eval a candidate prompt (gate)
+//   npm run eval -- --no-classify               # extract only (skip classify stage)
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -73,7 +74,7 @@ interface CaseResult {
 async function runCase(
   model: string,
   c: DatasetCase,
-  opts: { apiKey: string; promptVersion?: string; mock: boolean },
+  opts: { apiKey: string; promptVersion?: string; mock: boolean; classify: boolean },
 ): Promise<CaseResult> {
   if (opts.mock) {
     return {
@@ -89,10 +90,13 @@ async function runCase(
   let latencyMs = 0;
   let costUsd = 0;
 
-  // Classification stage (always measured when gold classification exists).
+  // Classification stage (measured when gold classification exists). With
+  // `classify: false` the stage is skipped and gold is trusted instead: when only
+  // the extract prompt is under test, re-running an unchanged classify prompt adds
+  // cost and variance but no signal.
   let classificationCorrect: boolean | null = null;
-  let isEvent = true;
-  if (c.classification) {
+  let isEvent = c.classification?.is_event ?? true;
+  if (c.classification && opts.classify) {
     const call = await callClaude({
       apiKey: opts.apiKey,
       model,
@@ -111,10 +115,11 @@ async function runCase(
     const cls = scoreClassification(c.classification, predicted);
     classificationCorrect = cls.categoryCorrect && cls.isEventCorrect;
     isEvent = predicted.is_event;
-    if (c.classification.is_event === false) {
-      // Non-event case: extraction is not scored.
-      return { id: c.id, score: null, classificationCorrect, latencyMs, costUsd };
-    }
+  }
+
+  if (c.classification?.is_event === false) {
+    // Non-event case: extraction is not scored, by design and on both arms.
+    return { id: c.id, score: null, classificationCorrect, latencyMs, costUsd };
   }
 
   if (!isEvent) {
@@ -208,6 +213,14 @@ export function summarize(model: string, results: CaseResult[]): ModelReport {
       ? (results.reduce((a, r) => a + r.costUsd, 0) / results.length) * 100
       : 0,
     errors: results.filter((r) => r.error).length,
+    perCase: results.map((r) => ({
+      id: r.id,
+      aggregate: r.score ? r.score.aggregate : null,
+      fields: Object.fromEntries((r.score?.fields ?? []).map((f) => [f.field, f.score])),
+      hallucinations: r.score?.hallucinations ?? 0,
+      misses: r.score?.misses ?? 0,
+      errored: r.error !== undefined,
+    })),
   };
 }
 
@@ -223,6 +236,11 @@ export async function runEval(options: {
   promptVersion?: string;
   mock?: boolean;
   label?: string;
+  /**
+   * Run the classify stage (default true). Set false when only the extract
+   * prompt is under test — see the note in `runCase`.
+   */
+  classify?: boolean;
 }): Promise<EvalRunResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY ?? '';
   if (!options.mock && !apiKey) {
@@ -242,6 +260,7 @@ export async function runEval(options: {
           apiKey,
           promptVersion: options.promptVersion,
           mock: options.mock ?? false,
+          classify: options.classify ?? true,
         });
         console.log(
           `  ${c.id}: ${r.score ? r.score.aggregate.toFixed(2) : 'n/a'} ($${r.costUsd.toFixed(4)})`,
@@ -273,6 +292,7 @@ export async function runEval(options: {
         dataset: options.dataset,
         promptVersion: options.promptVersion ?? 'pinned',
         mock: options.mock ?? false,
+        classify: options.classify ?? true,
         reports,
       },
       null,
@@ -300,6 +320,7 @@ if (isMain) {
       : undefined,
     mock: process.argv.includes('--mock'),
     label: process.argv.includes('--label') ? arg('label', '') : undefined,
+    classify: !process.argv.includes('--no-classify'),
   }).catch((e) => {
     console.error(e);
     process.exit(1);
