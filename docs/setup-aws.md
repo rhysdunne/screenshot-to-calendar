@@ -121,7 +121,7 @@ must trust both:
 | Workflow | What it does in AWS | OIDC subject |
 |---|---|---|
 | `deploy.yml` (through `deploy-stage.yml`) | CDK deploy of both stacks | `repo:<owner>/<repo>:environment:staging` or `repo:<owner>/<repo>:environment:prod`, because the job sets `environment:` |
-| `prompt-improvement.yml` | Reads corrections from the prod table (`npm run aggregate`) | `repo:<owner>/<repo>:ref:refs/heads/main` when you dispatch it from `main` |
+| `prompt-improvement.yml` | Queries the owner's partition of the prod table for consented corrections (`npm run aggregate`) | `repo:<owner>/<repo>:ref:refs/heads/main` when you dispatch it from `main` |
 
 For this repo, `<owner>/<repo>` is `rhysdunne/screenshot-to-calendar`.
 
@@ -188,7 +188,9 @@ For this repo, `<owner>/<repo>` is `rhysdunne/screenshot-to-calendar`.
    | `OWNER_USER_ID` | your own userId, the ULID after `USER#` on your PROFILE item | the aggregate step of `prompt-improvement.yml` |
 
    `OWNER_USER_ID` is a secret, not a variable, so GitHub masks the value in the
-   public logs. Without it, the aggregate step stops with `Set OWNER_USER_ID`.
+   public logs. The aggregate step passes it to `npm run aggregate`, which runs
+   a DynamoDB Query on the `USER#<OWNER_USER_ID>` partition and reads no other
+   account. Without it, the aggregate step stops with `Set OWNER_USER_ID`.
    The header of `tools/prompt-improvement/src/materialize-eval-cases.ts` shows
    how to look up your userId.
 7. Run the **Deploy** workflow from the Actions tab. It deploys staging, then

@@ -108,8 +108,9 @@ original extraction. A maintainer runs the prompt-improvement workflow by hand
 ([ADR 0006](docs/decisions/0006-prompt-improvement-manual-only.md)). It clusters
 corrections into failure patterns, asks Claude to propose a minimal prompt change,
 and opens a PR only if the eval gate passes. It reads only the owner's own
-corrections, and only those made with eval consent on. A person reviews every
-change. See [`tools/prompt-improvement/`](tools/prompt-improvement/README.md).
+corrections, and only those made with eval consent on. The read is a DynamoDB
+Query on the one partition that the `OWNER_USER_ID` repository secret names. A
+person reviews every change. See [`tools/prompt-improvement/`](tools/prompt-improvement/README.md).
 
 ## Development & project hygiene
 

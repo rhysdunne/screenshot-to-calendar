@@ -124,9 +124,11 @@ cd evals   && npm run eval -- --models claude-haiku-5-5,claude-sonnet-5 --datase
   prompt-improvement when the user's `consentEvalUse` was true at correction time
   (snapshotted on the CORRECTION item). Default is false. The data must also come from
   the owner's own account. `npm run aggregate` and `npm run materialize` read only the
-  `OWNER_USER_ID` partition and refuse to run without it. Other users' data never
-  reaches the proposer LLM or this public repo, even with consent. The eval loader also
-  refuses a real case without `"consent": true` in its `meta.json`.
+  `USER#<OWNER_USER_ID>` partition, with a Query and never a table Scan, and refuse to
+  run without `OWNER_USER_ID`. In CI, the aggregate step of `prompt-improvement.yml`
+  gets it from the `OWNER_USER_ID` repository secret. Other users' data never reaches
+  the proposer LLM or this public repo, even with consent. The eval loader also refuses
+  a real case without `"consent": true` in its `meta.json`.
 
 ## Testing philosophy
 

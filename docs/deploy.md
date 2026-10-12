@@ -58,7 +58,9 @@ For a prompt fix that you write yourself
 A candidate from the prompt-improvement workflow must pass the strict gate,
 without `--report-only`. That workflow runs on demand only
 ([ADR 0006](decisions/0006-prompt-improvement-manual-only.md)). It proposes
-candidates from the owner's consented corrections. Adoption is always a
+candidates from the owner's consented corrections. Its aggregate step takes the
+owner's userId from the `OWNER_USER_ID` repository secret and runs a DynamoDB
+Query on that one partition of the prod table. Adoption is always a
 human-reviewed PR.
 
 ## Changing the models

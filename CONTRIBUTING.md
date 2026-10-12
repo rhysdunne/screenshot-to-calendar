@@ -50,9 +50,10 @@ obey → **add a `CLAUDE.md` invariant**.
   every changed case ([ADR 0008](docs/decisions/0008-human-written-prompt-review.md)).
 - **Prompt-improvement PR loop.**
   [`prompt-improvement.yml`](.github/workflows/prompt-improvement.yml) proposes
-  prompt changes from the owner's consented corrections (aggregate needs
-  `OWNER_USER_ID`) and opens a PR. It never auto-merges. It runs on demand only,
-  from the Actions tab
+  prompt changes from the owner's consented corrections and opens a PR. Its
+  aggregate step takes the owner's userId from the `OWNER_USER_ID` repository
+  secret and runs a DynamoDB Query on that one partition of the prod table. It
+  never auto-merges. It runs on demand only, from the Actions tab
   ([ADR 0006](docs/decisions/0006-prompt-improvement-manual-only.md)).
 - **Growing the real eval set is a manual step.** `cd tools/prompt-improvement &&
   OWNER_USER_ID=<your userId> npm run materialize` pulls the owner's consented
