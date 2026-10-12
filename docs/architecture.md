@@ -18,6 +18,7 @@ API Lambdas       captures-create ──► S3 (image) + DynamoDB (capture) ─�
                                                                 classify  (Haiku)
                                                                 extract   (Sonnet)
                                                                 places    (venue→address)
+                                                                gate      (low confidence → needs_review)
                                                                 dedup     (calendar window)
                                                                 insert    (Google Calendar)
 ```
@@ -34,22 +35,29 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 | `GET /v1/captures` | → `{captures:[CaptureView], cursor}` |
 | `GET /v1/captures/{id}` | → CaptureView (the app's poll target) |
 | `GET /v1/captures/{id}/image` | → `{url, expiresInSeconds}` (presigned, 5 min) |
-| `PATCH /v1/captures/{id}` | partial `{title?, venue?, address?, start_date?, end_date?, start_time?, end_time?, description?, url?}` (empty string clears) → CaptureView |
-| `DELETE /v1/captures/{id}?deleteEvent=true` | → `{deleted:true}` |
+| `PATCH /v1/captures/{id}` | partial `{title?, venue?, address?, start_date?, end_date?, start_time?, end_time?, description?, url?}` (empty string or null clears) → CaptureView. Each changed field is a `CORRECTION#` item (max 20 per user per day, else 429 `correction_limit`); the Google event is patched only through `calendarEventId`, so never for a duplicate |
+| `POST /v1/captures/{id}/approve` | no body → CaptureView. Only for a `needs_review` or `failed` capture that has an extracted `event` (else 409). Runs the processor's dedup + insert on the effective event (corrections overlaid) and clears `error`; 409 if it has no date |
+| `DELETE /v1/captures/{id}?deleteEvent=true` | → `{deleted:true}`. `deleteEvent=true` also deletes the event in `calendarEventId`; a duplicate ignores it and only the capture goes |
 | `GET /v1/calendars` / `POST /v1/calendars` | → `{calendars:[{id,summary,primary}]}` / `{summary}` → `{id,summary}` |
 | `GET/PUT /v1/settings` | `{calendarId, timezone, consentEvalUse}` |
 | `POST /v1/account/export` | → `{url, expiresInSeconds}` |
 | `DELETE /v1/account` | → `{deleted:true}` (S3+DDB purge, Google token revoked) |
 | `GET /v1/health` | unauthenticated liveness |
 
-**CaptureView**: `{captureId, status, createdAt, classification, event, corrected, calendarEventId, eventLink, possibleDuplicateOf, error}` where `status ∈ queued|processing|completed|failed|duplicate|not_event`. `event` is the original extraction (never mutated); `corrected` is the user's overlay.
+**CaptureView**: `{captureId, status, createdAt, classification, event, corrected, calendarEventId, eventLink, matchedEventId, possibleDuplicateOf, error}` where `status ∈ queued|processing|completed|failed|duplicate|not_event|needs_review`.
+
+- `event` is the original extraction (never mutated). `corrected` is the user's overlay, keyed by field name: a key with a string value replaces the extracted value, a key with `null` means the user cleared that field, and an absent key means not corrected.
+- `needs_review`: the extraction came back with `confidence: "low"`, so no calendar event was created. The app shows the fields for checking and calls `approve`.
+- `calendarEventId` is only ever an event this capture created. It is null for a duplicate.
+- `duplicate`: the dedup step matched an existing event, so nothing was created. `matchedEventId` is that event, and `eventLink` opens it. The capture never edits or deletes it.
+- `possibleDuplicateOf`: the event was created, but a similar existing event (by title) was found.
 
 ## DynamoDB single table (`s2c-main-{stage}`)
 
 | Entity | PK | SK | Notes |
 |---|---|---|---|
 | User | `USER#<ulid>` | `PROFILE` | `GSI1PK=GSUB#<googleSub>` for sign-in lookup; `encRefreshToken` AES-256-GCM; `tokenVersion` revokes JWTs |
-| Capture | `USER#<id>` | `CAPTURE#<ulid>` | ULID sort = newest-first library feed |
+| Capture | `USER#<id>` | `CAPTURE#<ulid>` | ULID sort = newest-first library feed; `calendarEventId`/`calendarId` = the event it created; `matchedEventId`/`matchedCalendarId` = the event a duplicate matched |
 | Image hash | `USER#<id>` | `IMGHASH#<sha256>` | conditional put = exact re-upload dedup |
 | Correction | `USER#<id>` | `CORRECTION#<ulid>` | field, old/new value, consent snapshot |
 | AI call | `USER#<id>` | `AICALL#<ulid>` | stage, model, tokens, cost, latency |
@@ -78,14 +86,23 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 ## Dedup design
 
 1. **Exact**: SHA-256 of image bytes claimed via conditional put at upload.
-2. **Fuzzy**: before insert, list calendar events in `[start−1d, end+1d]`;
-   normalize titles (case/diacritics/punctuation/stopwords), score
-   max(Jaccard, containment). ≥0.7 + same start date → skip and link the
-   existing event; ≥0.5 → create but flag `possibleDuplicateOf`.
+2. **Own event**: before insert, list calendar events in `[start−1d, end+1d]`.
+   An event whose description carries this capture's `/c/<captureId>` link
+   was created by an earlier attempt at the same capture (an SQS redelivery,
+   or a double approve). The capture adopts it as `completed` with that
+   `calendarEventId` instead of inserting again or matching itself as a
+   duplicate.
+3. **Fuzzy**: otherwise, normalize the titles in that window
+   (case/diacritics/punctuation/stopwords) and score max(Jaccard,
+   containment). ≥0.7 + same start date → skip, mark the capture `duplicate`
+   and store the match in `matchedEventId` (not `calendarEventId`); ≥0.5 →
+   create but flag `possibleDuplicateOf`.
 
 ## Deep links
 
-Calendar descriptions end with `View capture: https://<cloudfront>/c/<id>`.
+Calendar descriptions carry `View capture: https://<cloudfront>/c/<id>` (just
+above the `[Auto-captured · Confidence: …]` footer); dedup also uses it to
+recognise a capture's own event.
 The CloudFront web stack serves `/.well-known/apple-app-site-association`, so
 iOS opens the app (capture detail); without the app the link falls back to a
 static explainer page.
