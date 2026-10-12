@@ -109,10 +109,16 @@ jobs:
           path: evals/reports/gate-*/
           if-no-files-found: warn
 
+      # Both steps below check `proposed` as well as the gate code. A skipped
+      # gate has no outputs, and Actions compares null with '0' by coercing both
+      # to the number 0, so `code == '0'` alone is true when nothing was
+      # proposed — the 2026-10-01 run reached create-pull-request with an empty
+      # candidate and failed. Keep both clauses.
+      #
       # Backstop: add-paths below already limits the commit to the prompt file,
       # but if anything ever drops user images into the dataset, stop here.
       - name: Refuse to commit un-reviewed user data
-        if: steps.gate.outputs.code == '0'
+        if: steps.propose.outputs.proposed == 'true' && steps.gate.outputs.code == '0'
         run: |
           if git status --porcelain -- evals/dataset/real | grep -q .; then
             echo "::error::Un-reviewed real eval cases in the tree — a human must" \
@@ -121,7 +127,7 @@ jobs:
           fi
 
       - name: Open PR (human review required)
-        if: steps.gate.outputs.code == '0'
+        if: steps.propose.outputs.proposed == 'true' && steps.gate.outputs.code == '0'
         uses: peter-evans/create-pull-request@v8
         with:
           branch: prompt-improvement/${{ steps.propose.outputs.candidate }}
