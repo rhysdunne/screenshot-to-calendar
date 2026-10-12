@@ -48,7 +48,7 @@ just --list                         # every recipe (a bare `just` does the same)
 just install                        # npm ci in backend, infra, evals, tools/prompt-improvement
 just check                          # what the PR checks run: typecheck, lint, tests, mock eval
 just ios-build                      # unsigned iOS compile, like ios.yml (Mac only)
-just eval                           # live eval of production's models. COSTS MONEY (under $1)
+just eval                           # live eval of production's models. COSTS MONEY (about $0.50)
 just deploy <stage>                 # ALERT_EMAIL check, cdk diff, typed confirmation, deploy
 just logs <stage> <fn>              # follow one Lambda's logs, e.g. `just logs prod processor`
 just dlq <stage>                    # count the messages on the dead-letter queue
@@ -64,7 +64,7 @@ cd infra   && npm test              # CDK assertions + synth
 cd infra   && npx cdk synth         # render CloudFormation
 cd evals   && npm run generate -- --count 40 --seed 42   # regenerate synthetic dataset
 cd evals   && npm test              # scoring/generator unit tests (no API key)
-cd evals   && npm run eval -- --models claude-haiku-5-5,claude-sonnet-5 --dataset synthetic
+cd evals   && npm run eval -- --models claude-haiku-4-5,claude-sonnet-5-5 --dataset synthetic
                                     # live eval, needs ANTHROPIC_API_KEY
 ```
 

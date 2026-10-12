@@ -74,7 +74,7 @@ description. The common ones:
 ```bash
 just install    # npm ci in all four packages
 just check      # what the PR checks run: typecheck, lint, tests, mock eval
-just eval       # live eval of production's models (costs under $1 a run)
+just eval       # live eval of production's models (costs about $0.50 a run)
 ```
 
 Backend + web deploy automatically on merge to `main` (staging, then a prod
