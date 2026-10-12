@@ -1,14 +1,22 @@
 // Sign-in and the invite-only sign-up gate: a new Google account gets a user
 // record only when its verified email is on the allowlist, existing users are
 // never checked, and every refusal fails closed without logging the email.
-// Also the new-user sign-in where Google returns no refresh token.
+// Also sign-ins where Google returns no refresh token: a new user, and an
+// existing user whose stored token is still good or is flagged needsReauth.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 import { makeHandler, parseAllowlist } from '../../src/handlers/auth-google.js';
+import { decrypt } from '../../src/lib/crypto.js';
 import { logger } from '../../src/lib/logger.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
 
 const CLIENT_ID = 'client-id.apps.googleusercontent.com'; // matches fake-deps config
+const ENC_KEY = 'a'.repeat(64); // fake-deps token-enc-key
+const NO_REFRESH_TOKEN = {
+  error:
+    'Google did not return a refresh token. Remove the access you gave this app in your Google Account settings, then sign in again.',
+  code: 'no_refresh_token',
+};
 
 function idToken(claims: { sub: string; email: string; email_verified: boolean }): string {
   const b64 = (v: unknown) => Buffer.from(JSON.stringify(v)).toString('base64url');
@@ -178,11 +186,7 @@ describe('auth-google without a refresh token', () => {
     const res = await signIn(fake);
 
     expect(res.statusCode).toBe(400);
-    expect(res.body).toEqual({
-      error:
-        'Google did not return a refresh token. Remove the access you gave this app in your Google Account settings, then sign in again.',
-      code: 'no_refresh_token',
-    });
+    expect(res.body).toEqual(NO_REFRESH_TOKEN);
     expect(fake.store.users.size).toBe(0);
     expect(revoked).toEqual([]);
   });
@@ -198,7 +202,44 @@ describe('auth-google without a refresh token', () => {
 
     expect(res.statusCode).toBe(200);
     expect(fake.store.users.get('user-1')?.encRefreshToken).toEqual(stored.encRefreshToken);
+    expect(fake.store.users.get('user-1')?.needsReauth).toBeFalsy();
     expect(revoked).toEqual([]);
+  });
+
+  it('refuses a user flagged needsReauth and keeps the flag, so Reconnect does not look fixed', async () => {
+    const logs = silenceLogs();
+    const revoked = stubGoogle({ sub: 'gsub-1', email: 'test@example.com', refreshToken: null });
+    const fake = makeFakeDeps();
+    const stored = testUser({ needsReauth: true });
+    await fake.store.putUser(stored);
+
+    const res = await signIn(fake);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual(NO_REFRESH_TOKEN);
+    expect(res.body.token).toBeUndefined();
+    const after = fake.store.users.get('user-1');
+    expect(after?.needsReauth).toBe(true);
+    expect(after?.encRefreshToken).toEqual(stored.encRefreshToken);
+    expect(revoked).toEqual([]);
+    expect(logs.warn).toHaveBeenCalledWith('reauth_without_refresh_token', { userId: 'user-1' });
+  });
+});
+
+describe('auth-google with a refresh token for an existing user', () => {
+  it('stores the new refresh token and clears needsReauth', async () => {
+    silenceLogs();
+    stubGoogle({ sub: 'gsub-1', email: 'test@example.com', refreshToken: 'refresh-2' });
+    const fake = makeFakeDeps();
+    await fake.store.putUser(testUser({ needsReauth: true }));
+
+    const res = await signIn(fake);
+
+    expect(res.statusCode).toBe(200);
+    expect(typeof res.body.token).toBe('string');
+    const after = fake.store.users.get('user-1');
+    expect(after?.needsReauth).toBe(false);
+    expect(after?.encRefreshToken && decrypt(after.encRefreshToken, ENC_KEY)).toBe('refresh-2');
   });
 });
 

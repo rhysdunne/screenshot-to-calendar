@@ -19,6 +19,21 @@ interface AuthRequest {
   serverAuthCode: string;
 }
 
+/**
+ * The refusal for a sign-in that needs a refresh token but got none. Google
+ * leaves the refresh token out when this Google account has already granted
+ * the app access, so the user must remove that access in their Google Account
+ * to make the next sign-in ask for consent again. The app shows the message in
+ * its sign-in alert.
+ */
+function noRefreshTokenError(): HttpError {
+  return new HttpError(
+    400,
+    'Google did not return a refresh token. Remove the access you gave this app in your Google Account settings, then sign in again.',
+    'no_refresh_token',
+  );
+}
+
 /** Lower-cased emails from the allowlist parameter (comma- or newline-separated). */
 export function parseAllowlist(raw: string): Set<string> {
   return new Set(
@@ -80,17 +95,11 @@ export function makeHandler(deps: Deps): ApiHandler {
           // the calendar. Google leaves it out when this Google account has
           // already granted the app access, for example after a refused
           // sign-up or an account deletion whose revoke failed. Nothing
-          // retries automatically: the app shows this message in its sign-in
-          // alert, and the user removes the app's access in their Google
-          // Account so the next sign-in asks for consent again. This handler
-          // never revokes the grant itself: staging and prod share one OAuth
-          // client, so a revoke here would also cut off the refresh token the
-          // other stage holds for the same Google account.
-          throw new HttpError(
-            400,
-            'Google did not return a refresh token. Remove the access you gave this app in your Google Account settings, then sign in again.',
-            'no_refresh_token',
-          );
+          // retries automatically. This handler never revokes the grant
+          // itself: staging and prod share one OAuth client, so a revoke here
+          // would also cut off the refresh token the other stage holds for
+          // the same Google account.
+          throw noRefreshTokenError();
         }
         user = {
           userId: ulid(),
@@ -103,15 +112,23 @@ export function makeHandler(deps: Deps): ApiHandler {
         } satisfies UserRecord;
         await deps.store.putUser(user);
         logger.info('user_created', { userId: user.userId });
-      } else {
-        const updates: Partial<UserRecord> = {
+      } else if (tokens.refreshToken) {
+        await deps.store.updateUser(user.userId, {
           email: tokens.idClaims.email,
+          encRefreshToken: encrypt(tokens.refreshToken, encKey),
           needsReauth: false,
-        };
-        if (tokens.refreshToken) {
-          updates.encRefreshToken = encrypt(tokens.refreshToken, encKey);
-        }
-        await deps.store.updateUser(user.userId, updates);
+        });
+      } else if (user.needsReauth) {
+        // The stored refresh token is dead (Google answered invalid_grant, or
+        // Calendar refused it), and Google sent no new one. Signing in with
+        // the dead token would make Reconnect look successful while the next
+        // calendar call fails again, so keep the flag and refuse.
+        logger.warn('reauth_without_refresh_token', { userId: user.userId });
+        throw noRefreshTokenError();
+      } else {
+        // Usual for a returning user: Google sends a refresh token only on
+        // first consent, and the stored one still works.
+        await deps.store.updateUser(user.userId, { email: tokens.idClaims.email });
       }
 
       const jwtSecret = await deps.getSecret('jwt-secret');

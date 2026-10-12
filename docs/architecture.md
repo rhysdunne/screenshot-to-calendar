@@ -30,7 +30,7 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 
 | Route | Body → Response |
 |---|---|
-| `POST /v1/auth/google` | `{serverAuthCode}` → `{token, user:{id,email,settings}}`. A Google account with no user yet gets one only if its verified email is on the sign-up allowlist, else 403 `signup_closed` |
+| `POST /v1/auth/google` | `{serverAuthCode}` → `{token, user:{id,email,settings}}`. A Google account with no user yet gets one only if its verified email is on the sign-up allowlist, else 403 `signup_closed`. 400 `no_refresh_token` when Google sends no refresh token and the account is new or flagged `needsReauth` (see the auth flow below) |
 | `POST /v1/captures` | `{imageBase64}` → 202 `{captureId, status:"queued"}` or 200 `{captureId, status:"duplicate", duplicateOf}` |
 | `GET /v1/captures` | → `{captures:[CaptureView], cursor}`, newest first, up to 200 per page (the app reads only the first page) |
 | `GET /v1/captures/{id}` | → CaptureView (the app's poll target) |
@@ -86,6 +86,17 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
    A Calendar 401, or a 403 for a missing calendar scope, also answers
    401 `needs_reauth`; in the processor it fails the capture terminally
    and flags `needsReauth`.
+5. Google sends a refresh token only when the user gives consent, so a
+   returning user's sign-in usually brings none. A new refresh token is
+   stored and clears `needsReauth`. With no refresh token, an unflagged user
+   signs in with the stored one. A new user, or a user flagged
+   `needsReauth`, gets 400 `no_refresh_token` instead, and the flag stays
+   set: Google or Calendar already refused the stored token, so a session
+   would only fail again at the next calendar call. The error message tells
+   the user to remove the app's access in their Google Account settings and
+   sign in again, which makes Google ask for consent and send a new refresh
+   token. Removing that access also revokes the refresh token the other
+   stage holds for the same Google account.
 
 ## Cost model
 
