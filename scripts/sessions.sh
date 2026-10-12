@@ -17,10 +17,12 @@
 # user's tokens stop working on their next request. It does not stop them
 # signing in again with Google: existing accounts skip the sign-up allowlist.
 #
-# revoke-all generates a new jwt-secret in the Keychain and pushes it with
-# scripts/secrets.sh (gen + push). push sends all five parameters, so all five
-# must be in the Keychain (macOS only). Each warm Lambda container keeps its
-# cached copy of a parameter for up to 5 minutes (CACHE_TTL_MS in
+# revoke-all generates a new jwt-secret in the Keychain (scripts/secrets.sh
+# gen, macOS only) and puts that one parameter into Parameter Store. It does
+# not run `secrets.sh push`, which would overwrite all five SecureStrings from
+# the Keychain: a stale token-enc-key there would make every stored Google
+# refresh token unreadable. Each warm Lambda container keeps its cached copy
+# of a parameter for up to 5 minutes (CACHE_TTL_MS in
 # backend/src/lib/config.ts). For up to 5 minutes after the push, a warm
 # container can still accept old tokens, and a sign-in it handles gets a token
 # signed with the old secret, which then fails and needs a second sign-in.
@@ -67,15 +69,18 @@ cmd_revoke_user() {
 }
 
 cmd_revoke_all() {
-  local stage="${1:?usage: revoke-all <stage>}" confirm
+  local stage="${1:?usage: revoke-all <stage>}" confirm secret
   check_stage "$stage"
   echo "This rotates /s2c/$stage/jwt-secret and signs out every $stage user, you included." >&2
   read -rp "Type the stage name to confirm: " confirm
   [[ "$confirm" == "$stage" ]] || die "not confirmed, nothing changed"
 
   "$SCRIPT_DIR/secrets.sh" gen "$stage" jwt-secret
-  "$SCRIPT_DIR/secrets.sh" push "$stage"
-  echo "done: new jwt-secret pushed for $stage" >&2
+  # Push only jwt-secret; the other four parameters stay as they are.
+  secret="$("$SCRIPT_DIR/secrets.sh" get "$stage" jwt-secret)"
+  aws ssm put-parameter --region "$REGION" --type SecureString --overwrite \
+    --name "/s2c/$stage/jwt-secret" --value "$secret" >/dev/null
+  echo "done: new jwt-secret pushed to /s2c/$stage/jwt-secret" >&2
   echo "warm Lambda containers switch within 5 minutes; until then a sign-in may need repeating" >&2
 }
 
