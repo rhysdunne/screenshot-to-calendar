@@ -68,13 +68,17 @@ dlq STAGE: (_stage STAGE)
         --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible \
         --query Attributes --output table
 
-# Live eval on the full dataset, production's models by default. COSTS MONEY: about $1.30 a run
+# Live eval on the full dataset, production's models by default. COSTS MONEY: about $0.85 a run
 eval MODELS="":
     #!/usr/bin/env bash
     set -euo pipefail
-    # Cost: ~77 cases at the baseline's $/100 images (evals/reports/baseline):
-    # Haiku 4.5 ~$0.30 + Sonnet 5 ~$1.00. To eval other models, pass a
-    # comma-separated list: `just eval claude-haiku-4-5,claude-opus-4-8`.
+    # Cost: the harness runs each model through both stages on all 82 cases
+    # (evals/README.md). Sonnet 5 costs about $0.80 a run, $0.49 of it for
+    # extract (evals/reports/prompt-v4-2026-10/), and Haiku 5.5 about $0.04
+    # (evals/reports/model-refresh-2026-10/). To eval other models, pass a
+    # comma-separated list: `just eval claude-haiku-4-5,claude-sonnet-5-5`.
+    # Each model needs classify and extract tuning in MODELS
+    # (backend/src/lib/models.ts), or the harness stops before the first case.
     eval "$(scripts/secrets.sh env staging)"
     cd evals
     models="{{ MODELS }}"

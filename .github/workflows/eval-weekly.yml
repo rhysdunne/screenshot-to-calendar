@@ -10,15 +10,14 @@ name: Weekly eval smoke
 # pipeline. Read classification accuracy from the classify model's row and
 # extraction scores from the extract model's row.
 #
-# Cost: about $0.17 a run with today's models (Haiku 4.5 ~$0.04 + Sonnet 5
-# ~$0.13 for 10 cases, from the $/100 images in evals/reports/baseline),
-# so under $1 a month.
+# Cost: about $0.10 a run, so under $0.50 a month. Each model runs both
+# stages, so Sonnet 5 classifies as well as extracts. Over the full 82 cases
+# that is about $0.80 for Sonnet 5 and $0.04 for Haiku 5.5 (evals/README.md,
+# evals/reports/model-refresh-2026-10/), and 10 cases are about an eighth.
 #
-# Red runs: the harness PR (feat/claude-calls-and-model-refresh) makes the
-# harness exit non-zero when a case hits an API error. After that lands, a
-# failed call turns this run red. Until then the run stays green and an
-# errored case only shows in the report's error count, left out of the
-# scores. The report is uploaded either way.
+# Red runs: the harness exits non-zero when any case hits an API error, so a
+# failed model call (a revoked key, a retired model) turns this run red. The
+# report is uploaded either way.
 on:
   schedule:
     - cron: "17 3 * * 1" # Mondays 03:17 UTC

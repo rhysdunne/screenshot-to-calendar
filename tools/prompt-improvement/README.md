@@ -92,10 +92,10 @@ a repository secret of that name, so add the secret before the first run
 so GitHub masks the value in the public logs. Without it, the step stops with
 `Set OWNER_USER_ID`.
 
-A run that reaches the gate costs roughly $1.50: two runs of about 77 cases on
-Sonnet 5 at about $0.008 per extract call, plus one proposal call. This is an
-estimate from the per-image costs in `evals/reports/baseline/`. A run with no
-patterns stops before any Claude call.
+A run that reaches the gate costs about $1: two extract-only runs of the 82
+cases on Sonnet 5 at about $0.49 each, plus one proposal call. The per-run
+figure comes from the gate run in `evals/reports/prompt-v4-2026-10/`. A run
+with no patterns stops before any Claude call.
 
 ## Thresholds
 

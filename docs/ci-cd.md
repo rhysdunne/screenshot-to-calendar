@@ -30,7 +30,7 @@ the matching recipe in the same PR.
 | `just deploy staging` | ALERT_EMAIL check, `cdk diff`, typed confirmation, `cdk deploy` of both stacks | `deploy-stage.yml` |
 | `just logs prod processor` | follow one Lambda's CloudWatch logs | none |
 | `just dlq prod` | count the messages on the dead-letter queue | none |
-| `just eval` | live eval of production's models on the full dataset (about $1.30 a run) | none |
+| `just eval` | live eval of production's models on the full dataset (about $0.85 a run) | none |
 | `just ship-ios` | compute the next `ios-v*` tag, confirm, tag and push it | starts `release.yml` and Xcode Cloud |
 
 ## 1. PR gates (every pull request)
@@ -107,7 +107,7 @@ version pin, and build-number stamping live in
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| [`eval-weekly.yml`](../.github/workflows/eval-weekly.yml) | Mondays 03:17 UTC + dispatch | Live eval of 10 synthetic cases on production's classify and extract models (about $0.17 a run), so extraction-quality drift shows up week to week. |
+| [`eval-weekly.yml`](../.github/workflows/eval-weekly.yml) | Mondays 03:17 UTC + dispatch | Live eval of 10 synthetic cases on production's classify and extract models (about $0.10 a run), so extraction-quality drift shows up week to week. |
 | [`prompt-improvement.yml`](../.github/workflows/prompt-improvement.yml) | Manual dispatch only | Clusters the owner's consented corrections, proposes a prompt revision, runs the eval gate, opens a PR. Never auto-merges. |
 | [`dependabot.yml`](../.github/dependabot.yml) | Monthly | npm updates across the four packages, plus GitHub Actions bumps. |
 
@@ -115,11 +115,9 @@ version pin, and build-number stamping live in
 `backend/src/lib/models.ts` at run time, so it always tests what production
 runs. The harness uses one model for both stages, so read classification
 accuracy from the classify model's row and extraction scores from the extract
-model's row. Once the harness PR (`feat/claude-calls-and-model-refresh`) lands,
-the harness exits non-zero on per-case API errors, so a failed model call turns
-the run red. Until then the run stays green: an errored case is left out of
-the scores and shows only in the report's error count. The report is uploaded
-as an artifact either way.
+model's row. The harness exits non-zero when any case hits an API error, so a
+failed model call, such as a revoked key or a retired model, turns the run red.
+The report is uploaded as an artifact either way.
 
 **Prompt improvement** has no schedule
 ([ADR 0006](decisions/0006-prompt-improvement-manual-only.md)). The loop needs
