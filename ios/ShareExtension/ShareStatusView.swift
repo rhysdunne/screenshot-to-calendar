@@ -54,7 +54,7 @@ struct ShareStatusView: View {
 
 #Preview("Success") {
     let model = ShareStatusModel()
-    model.phase = .success("Added — processing.\nOpen the app to see the result.")
+    model.phase = .success("Sent.\nCheck the app if it needs review.")
     return ShareStatusView(model: model)
 }
 

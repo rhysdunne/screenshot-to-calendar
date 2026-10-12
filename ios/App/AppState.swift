@@ -48,6 +48,7 @@ final class AppState: ObservableObject {
     /// or a retry tap is safe.
     func bootstrap() async {
         guard isSignedIn, !didBootstrap else { return }
+        if signOutIfSessionExpiring() { return }
         bootstrapError = nil
         do {
             settings = try await api.getSettings()
@@ -100,6 +101,7 @@ final class AppState: ObservableObject {
         foregroundRefresh?.cancel()
         foregroundRefresh = nil
         KeychainStore.clear()
+        UploadBodyStore.removeAll()
         GIDSignIn.sharedInstance.signOut()
         isSignedIn = false
         didBootstrap = false
@@ -109,6 +111,15 @@ final class AppState: ObservableObject {
         capturesError = nil
         needsReauth = false
         images.removeAll()
+    }
+
+    /// Signs out if the stored session has expired or expires within the
+    /// hour. The share extension refuses shares in that window, so the app
+    /// shows sign-in too rather than look signed in. True if it signed out.
+    private func signOutIfSessionExpiring() -> Bool {
+        guard let token = KeychainStore.token, SessionToken.expiresSoon(token) else { return false }
+        signOutLocally()
+        return true
     }
 
     // MARK: Captures
@@ -137,6 +148,7 @@ final class AppState: ObservableObject {
     /// processing. `fetchFirst` is false when the library first appears,
     /// because bootstrap or sign-in has only just fetched.
     func refreshOnForeground(fetchFirst: Bool) {
+        if signOutIfSessionExpiring() { return }
         foregroundRefresh?.cancel()
         foregroundRefresh = Task {
             if fetchFirst { await refreshCaptures() }

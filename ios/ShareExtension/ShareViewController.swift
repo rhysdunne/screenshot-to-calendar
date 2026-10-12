@@ -3,9 +3,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The core interaction: share an image from Photos/Instagram/anywhere →
-/// resize → upload → "Added, processing". The upload runs on a background
-/// URLSession scoped to the App Group so it survives the extension being
-/// torn down moments after completeRequest().
+/// resize → upload → "Sent". The upload runs on a background URLSession
+/// scoped to the App Group so it survives the extension being torn down
+/// moments after completeRequest().
 final class ShareViewController: UIViewController {
     private let model = ShareStatusModel()
 
@@ -41,33 +41,36 @@ final class ShareViewController: UIViewController {
     }
 
     private func handleSharedItem() async {
-        guard KeychainStore.token != nil else {
+        guard let token = KeychainStore.token else {
             finish(.failure("Open Screenshot to Calendar and sign in first."), after: 2.5)
             return
         }
-        guard let image = await loadSharedImage() else {
+        // The backend would reject an expired token, but only after the
+        // background upload, where nothing can tell the user. Say so now.
+        guard !SessionToken.expiresSoon(token) else {
+            finish(.failure("Session expired. Open Screenshot to Calendar to sign in."), after: 2.5)
+            return
+        }
+        guard let jpeg = await loadSharedJPEG() else {
             finish(.failure("Couldn't read that image."), after: 2)
             return
         }
-        guard let jpeg = ImageResizer.resizeAndEncode(image) else {
-            finish(.failure("Couldn't process that image."), after: 2)
-            return
-        }
         do {
-            try enqueueUpload(imageData: jpeg)
-            finish(.success("Added — processing.\nOpen the app to see the result."))
+            try enqueueUpload(imageData: jpeg, token: token)
+            finish(.success("Sent.\nCheck the app if it needs review."))
         } catch {
             finish(.failure("Upload failed: \(error.localizedDescription)"), after: 2.5)
         }
     }
 
-    private func loadSharedImage() async -> UIImage? {
+    /// The first shared image, resized and encoded for upload.
+    private func loadSharedJPEG() async -> Data? {
         let providers = (extensionContext?.inputItems as? [NSExtensionItem])?
             .compactMap(\.attachments)
             .flatMap { $0 } ?? []
         for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
-            if let image = try? await provider.loadImage() {
-                return image
+            if let jpeg = try? await provider.loadUploadJPEG() {
+                return jpeg
             }
         }
         return nil
@@ -76,26 +79,14 @@ final class ShareViewController: UIViewController {
     /// Background upload: the request body is written to the App Group
     /// container and handed to a background URLSession, which iOS runs to
     /// completion even after this extension exits.
-    private func enqueueUpload(imageData: Data) throws {
+    private func enqueueUpload(imageData: Data, token: String) throws {
         let body = try JSONEncoder().encode(["imageBase64": imageData.base64EncodedString()])
-        guard let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: AppConfig.appGroupId
-        ) else {
-            throw NSError(domain: "s2c", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "App Group container unavailable",
-            ])
-        }
-        let uploadsDir = container.appendingPathComponent("uploads", isDirectory: true)
-        try FileManager.default.createDirectory(at: uploadsDir, withIntermediateDirectories: true)
-        let bodyFile = uploadsDir.appendingPathComponent("\(UUID().uuidString).json")
-        try body.write(to: bodyFile)
+        let bodyFile = try UploadBodyStore.write(body)
 
         var request = URLRequest(url: AppConfig.apiBase.appending(path: "/v1/captures"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = KeychainStore.token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         let config = URLSessionConfiguration.background(
             withIdentifier: "digital.callaeas.s2c.upload.\(UUID().uuidString)")
@@ -107,7 +98,10 @@ final class ShareViewController: UIViewController {
 }
 
 private extension NSItemProvider {
-    func loadImage() async throws -> UIImage? {
+    /// Loads the shared image as an upload JPEG. A file or data item is
+    /// downsampled without ever decoding at full size. The resize runs inside
+    /// the callback, while the item's file URL is certain to be readable.
+    func loadUploadJPEG() async throws -> Data? {
         try await withCheckedThrowingContinuation { continuation in
             loadItem(forTypeIdentifier: UTType.image.identifier, options: nil) { item, error in
                 if let error {
@@ -116,11 +110,12 @@ private extension NSItemProvider {
                 }
                 switch item {
                 case let url as URL:
-                    continuation.resume(returning: UIImage(contentsOfFile: url.path))
+                    continuation.resume(returning: ImageResizer.resizeAndEncode(contentsOf: url))
                 case let data as Data:
-                    continuation.resume(returning: UIImage(data: data))
+                    continuation.resume(returning: ImageResizer.resizeAndEncode(data))
                 case let image as UIImage:
-                    continuation.resume(returning: image)
+                    // Some apps share an already decoded image.
+                    continuation.resume(returning: ImageResizer.resizeAndEncode(image))
                 default:
                     continuation.resume(returning: nil)
                 }
