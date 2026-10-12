@@ -331,8 +331,20 @@ if (isMain) {
     mock: process.argv.includes('--mock'),
     label: process.argv.includes('--label') ? arg('label', '') : undefined,
     classify: !process.argv.includes('--no-classify'),
-  }).catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
+  })
+    .then(({ reports }) => {
+      // runCase errors are caught per case so one bad call does not sink a run,
+      // but a revoked key or a retired model errors every case and the run
+      // would still exit 0. Any errored case fails the process instead, so a
+      // scheduled eval goes red.
+      const errored = reports.filter((r) => r.errors > 0);
+      for (const r of errored) {
+        console.error(`${r.model}: ${r.errors} of ${r.cases} cases errored`);
+      }
+      if (errored.length > 0) process.exit(1);
+    })
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
 }
