@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { summarize } from '../src/harness.js';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { resolveTunings, runEval, summarize } from '../src/harness.js';
 import { scoreCase } from '../src/score.js';
 import type { ExtractedEvent } from '../../backend/src/pipeline/types.js';
 
@@ -77,5 +80,50 @@ describe('summarize classification and tuning', () => {
     };
     expect(summarize('claude-sonnet-5', [result('a')], tuning).tuning).toEqual(tuning);
     expect(summarize('claude-sonnet-5', [result('a')])).not.toHaveProperty('tuning');
+  });
+});
+
+describe('model validation before a run', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('resolves each model\'s tuning, leaving out classify when it is skipped', () => {
+    const both = resolveTunings(['claude-sonnet-5'], true, undefined).get('claude-sonnet-5');
+    expect(both?.classify).toBeDefined();
+    expect(both?.extract).toBeDefined();
+    const extractOnly = resolveTunings(['claude-sonnet-5'], false, { effort: 'low' });
+    expect(extractOnly.get('claude-sonnet-5')).not.toHaveProperty('classify');
+    expect(extractOnly.get('claude-sonnet-5')?.extract?.effort).toBe('low');
+  });
+
+  it('throws for a model not in MODELS or without tuning for a stage it runs', () => {
+    expect(() => resolveTunings(['claude-nonexistent'], true, undefined)).toThrow(
+      /claude-nonexistent/,
+    );
+    // In MODELS with prices, but no pipeline tuning.
+    expect(() => resolveTunings(['claude-opus-4-8'], false, undefined)).toThrow(
+      /no extract tuning/,
+    );
+  });
+
+  it('fails a run with a typo in --models before any case runs or report is written', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const label = 'test-model-validation-should-not-exist';
+
+    await expect(
+      runEval({
+        models: ['claude-sonnet-5', 'claude-nonexistent'],
+        dataset: 'synthetic',
+        mock: true,
+        label,
+      }),
+    ).rejects.toThrow(/claude-nonexistent/);
+
+    // Not even the valid model before the typo started.
+    expect(log).not.toHaveBeenCalled();
+    const reportDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'reports', label);
+    expect(existsSync(reportDir)).toBe(false);
   });
 });

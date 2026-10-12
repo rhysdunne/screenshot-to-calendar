@@ -104,6 +104,29 @@ function tuningFor(
   return { ...stageTuning(model, stage), ...override };
 }
 
+/**
+ * Each model's tuning for every stage the run calls, worked out before any
+ * case runs. tuningFor throws for a model that is not in MODELS or has no
+ * tuning for a stage, so a typo in --models fails here at no cost. Checked
+ * per case instead, it would error every case of that model and then lose
+ * the report of every model that ran before it.
+ */
+export function resolveTunings(
+  models: string[],
+  classify: boolean,
+  override: Partial<StageTuning> | undefined,
+): Map<string, NonNullable<ModelReport['tuning']>> {
+  return new Map(
+    models.map((model) => [
+      model,
+      {
+        ...(classify ? { classify: tuningFor(model, 'classify', override) } : {}),
+        extract: tuningFor(model, 'extract', override),
+      },
+    ]),
+  );
+}
+
 async function runCase(
   model: string,
   c: DatasetCase,
@@ -298,6 +321,8 @@ export async function runEval(options: {
    */
   tuning?: Partial<StageTuning>;
 }): Promise<EvalRunResult> {
+  const classify = options.classify ?? true;
+  const tunings = resolveTunings(options.models, classify, options.tuning);
   const apiKey = process.env.ANTHROPIC_API_KEY ?? '';
   if (!options.mock && !apiKey) {
     throw new Error('ANTHROPIC_API_KEY is required for a live eval (or pass --mock)');
@@ -316,7 +341,7 @@ export async function runEval(options: {
           apiKey,
           promptVersion: options.promptVersion,
           mock: options.mock ?? false,
-          classify: options.classify ?? true,
+          classify,
           tuning: options.tuning,
         });
         console.log(
@@ -335,13 +360,7 @@ export async function runEval(options: {
         } satisfies CaseResult;
       }
     });
-    const classify = options.classify ?? true;
-    reports.push(
-      summarize(model, results, {
-        ...(classify ? { classify: tuningFor(model, 'classify', options.tuning) } : {}),
-        extract: tuningFor(model, 'extract', options.tuning),
-      }),
-    );
+    reports.push(summarize(model, results, tunings.get(model)));
   }
 
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -355,7 +374,7 @@ export async function runEval(options: {
         dataset: options.dataset,
         promptVersion: options.promptVersion ?? 'pinned',
         mock: options.mock ?? false,
-        classify: options.classify ?? true,
+        classify,
         tuningOverride: options.tuning ?? null,
         reports,
       },
