@@ -48,7 +48,7 @@ just --list                         # every recipe (a bare `just` does the same)
 just install                        # npm ci in backend, infra, evals, tools/prompt-improvement
 just check                          # what the PR checks run: typecheck, lint, tests, mock eval
 just ios-build                      # unsigned iOS compile, like ios.yml (Mac only)
-just eval                           # live eval of production's models. COSTS MONEY (~$1.30)
+just eval                           # live eval of production's models. COSTS MONEY (under $1)
 just deploy <stage>                 # ALERT_EMAIL check, cdk diff, typed confirmation, deploy
 just logs <stage> <fn>              # follow one Lambda's logs, e.g. `just logs prod processor`
 just dlq <stage>                    # count the messages on the dead-letter queue
