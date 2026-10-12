@@ -197,9 +197,10 @@ export async function createCalendarEntry(
   const calendarBody = mapEventToCalendar(event, { today, timeZone, captureLink });
   // Google rejects an event that ends before it starts, and a zero-length one
   // is no use either. Mapping already moves a same-day earlier end time to the
-  // next day, so what is left here (an end date before the start, equal start
-  // and end times) is a misread that a retry would read the same way.
-  if (!endsAfterStart(calendarBody)) {
+  // next day, so what is left here (an end date before the start, an end time
+  // given equal to the start time) is a misread that a retry would read the
+  // same way.
+  if (!endsAfterStart(calendarBody, event)) {
     throw new TerminalProcessingError(
       'The event must end after it starts. Fix the dates or times, then add it to your calendar.',
     );

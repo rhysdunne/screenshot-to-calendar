@@ -314,6 +314,57 @@ describe('captures-update (corrections)', () => {
     expect(fake.store.corrections).toHaveLength(0);
   });
 
+  it('an end time sent equal to the start time is stored as no end time', async () => {
+    // The app's "Add an end time" switch starts the end at the start time.
+    const fake = makeFakeDeps();
+    const token = await seed(fake, { event: { ...extracted, end_date: null } });
+    const res = await invoke(
+      makeUpdateHandler(fake.deps),
+      apiEvent({
+        token,
+        pathParameters: { id: 'cap-1' },
+        body: { start_time: '20:00', end_time: '20:00' },
+      }),
+    );
+    expect(res.statusCode).toBe(200);
+    expect(res.body.corrected).toEqual({ start_time: '20:00' });
+    expect(fake.store.corrections.map((c) => c.field)).toEqual(['start_time']);
+    // With no end time the calendar gets the start + 2 h default.
+    expect(fake.patchedEvents[0]!.event.end).toEqual({
+      dateTime: '2026-10-14T22:00:00',
+      timeZone: 'Europe/London',
+    });
+  });
+
+  it('accepts a 23:59 start with no end time, whose default end is also 23:59', async () => {
+    const fake = makeFakeDeps();
+    const token = await seed(fake, { event: { ...extracted, end_date: null } });
+    const res = await invoke(
+      makeUpdateHandler(fake.deps),
+      apiEvent({ token, pathParameters: { id: 'cap-1' }, body: { start_time: '23:59' } }),
+    );
+    expect(res.statusCode).toBe(200);
+    expect(fake.patchedEvents[0]!.event.end).toEqual({
+      dateTime: '2026-10-14T23:59:00',
+      timeZone: 'Europe/London',
+    });
+  });
+
+  it('refuses a start moved onto an end time it did not send (400)', async () => {
+    const fake = makeFakeDeps();
+    const token = await seed(fake, {
+      event: { ...extracted, end_date: null, start_time: '19:00', end_time: '22:00' },
+    });
+    const res = await invoke(
+      makeUpdateHandler(fake.deps),
+      apiEvent({ token, pathParameters: { id: 'cap-1' }, body: { start_time: '22:00' } }),
+    );
+    expect(res.statusCode).toBe(400);
+    expect(res.body.code).toBe('invalid_time_range');
+    expect(fake.patchedEvents).toHaveLength(0);
+    expect(fake.store.corrections).toHaveLength(0);
+  });
+
   it('a capture that failed for ending before it starts takes other edits, then the fix', async () => {
     const fake = makeFakeDeps();
     const token = await seed(fake, {

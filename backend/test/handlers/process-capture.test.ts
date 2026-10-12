@@ -251,6 +251,20 @@ describe('processCapture', () => {
     expect(fake.insertedEvents).toHaveLength(0);
   });
 
+  it('a 23:59 start with no end time is created, though its default end clamps to the start', async () => {
+    const fake = makeFakeDeps({
+      extractResult: { ...GOOD_EXTRACTION, end_date: null, start_time: '23:59', end_time: null },
+    });
+    await seedCapture(fake);
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('completed');
+    expect(fake.insertedEvents[0]!.event.end).toEqual({
+      dateTime: '2026-10-14T23:59:00',
+      timeZone: 'Europe/London',
+    });
+  });
+
   it('a Google grant that needs a fresh sign-in fails terminally and flags the user', async () => {
     const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
     await seedCapture(fake);

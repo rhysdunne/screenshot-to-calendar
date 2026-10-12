@@ -36,10 +36,27 @@ export function makeHandler(deps: Deps): ApiHandler {
 
       const body = parseBody<UpdateRequest>(event);
       const effective: ExtractedEvent = { ...capture.event, ...capture.corrected };
+      const requested: UpdateRequest = {};
+      for (const field of CORRECTABLE_FIELDS) {
+        if (field in body) requested[field] = body[field] === '' ? null : (body[field] ?? null);
+      }
+      // The app's "Add an end time" switch starts the end at the start time,
+      // so saving without moving it sends a zero-length event. A sent end time
+      // equal to the start time on the start day is taken as no end time, and
+      // the event gets the default length. Only a range that runs backwards, or
+      // a start moved onto an end the user did not send, is refused below.
+      const next: ExtractedEvent = { ...effective, ...requested };
+      if (
+        requested.end_time &&
+        next.end_time === next.start_time &&
+        (next.end_date ?? next.start_date) === next.start_date
+      ) {
+        requested.end_time = null;
+      }
       const changes: Array<{ field: CorrectableField; oldValue: string | null; newValue: string | null }> = [];
       for (const field of CORRECTABLE_FIELDS) {
-        if (!(field in body)) continue;
-        const newValue = body[field] === '' ? null : (body[field] ?? null);
+        if (!(field in requested)) continue;
+        const newValue = requested[field] ?? null;
         if (newValue !== effective[field]) {
           changes.push({ field, oldValue: effective[field], newValue });
         }
@@ -91,7 +108,7 @@ export function makeHandler(deps: Deps): ApiHandler {
           timeZone,
           captureLink: `${deps.config.deepLinkBase}/c/${captureId}`,
         });
-        if (!endsAfterStart(calendarBody)) {
+        if (!endsAfterStart(calendarBody, merged)) {
           throw new HttpError(400, 'The event must end after it starts', 'invalid_time_range');
         }
       }

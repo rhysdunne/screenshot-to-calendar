@@ -97,12 +97,20 @@ export function mapEventToCalendar(
 
 /**
  * Whether a mapped event ends after it starts. Google rejects an end before
- * the start, and a zero-length event is a misread too. Both ends share one
- * format and one time zone, so string order is time order. An all-day end is
- * already exclusive, so it must be after the start date.
+ * the start, and a given end time equal to the start time is a misread too.
+ * Both ends share one format and one time zone, so string order is time order.
+ * An all-day end is already exclusive, so it must be after the start date.
+ *
+ * The one exception is the mapper's own default: a timed event with no end
+ * time ends 2 h after the start, clamped to 23:59, so one that starts at 23:59
+ * also ends then. Nothing was misread there, so it passes.
  */
-export function endsAfterStart(body: CalendarEventInput): boolean {
+export function endsAfterStart(
+  body: CalendarEventInput,
+  event: Pick<ExtractedEvent, 'end_time'>,
+): boolean {
   const start = 'date' in body.start ? body.start.date : body.start.dateTime;
   const end = 'date' in body.end ? body.end.date : body.end.dateTime;
-  return end > start;
+  const defaultEnd = 'dateTime' in body.end && !event.end_time;
+  return end > start || (end === start && defaultEnd);
 }
