@@ -51,6 +51,13 @@ figures come from the runs' `claude_call` logs.
 
 - About 19% less per capture ($0.0077 to $0.0063), for about 0.3s more
   background time.
+- Haiku 5.5 runs safety classifiers that Haiku 4.5 did not (`cyber`, `bio`,
+  `frontier_llm` and `general_harms`, which benign images can also trigger),
+  and it has no server-side fallback model. A classify call can now be
+  refused. A refusal is terminal: the capture fails with `ModelRefusalError`,
+  keeps no event and is not retried. Its category is the `refusalCategory`
+  field of that call's `claude_call` log. The eval saw no refusals in its 76
+  cases.
 - The classify half of 0001 no longer holds. Its extract decision stands.
 - `evals/reports/baseline/` still reflects July (prompt v2, Haiku 4.5
   classify, the old $3/$15 Sonnet price) until it is regenerated.
