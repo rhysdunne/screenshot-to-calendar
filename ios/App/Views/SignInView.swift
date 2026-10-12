@@ -37,10 +37,10 @@ struct SignInView: View {
             .padding(.horizontal, 32)
             .padding(.bottom, 24)
         }
-        .alert("Sign-in failed", isPresented: .constant(appState.lastError != nil)) {
-            Button("OK") { appState.lastError = nil }
+        .alert("Sign-in failed", isPresented: .constant(appState.signInError != nil)) {
+            Button("OK") { appState.signInError = nil }
         } message: {
-            Text(appState.lastError ?? "")
+            Text(appState.signInError ?? "")
         }
     }
 }
@@ -50,5 +50,17 @@ extension UIApplication {
         connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.keyWindow }
             .first?.rootViewController
+    }
+
+    /// The view controller at the top of the presentation stack: the open
+    /// sheet if there is one, else the root. Presenting Google sign-in from
+    /// here keeps the sheet, and its unsaved edits, in place. A controller
+    /// that is on its way out (a just-tapped alert) is skipped.
+    var topViewController: UIViewController? {
+        var top = rootViewController
+        while let presented = top?.presentedViewController, !presented.isBeingDismissed {
+            top = presented
+        }
+        return top
     }
 }

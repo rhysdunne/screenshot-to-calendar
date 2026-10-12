@@ -10,7 +10,7 @@ struct CaptureDetailView: View {
     @State private var capture: Capture?
     /// Decoded via the app-wide CaptureImageStore, so a tile that already
     /// loaded this capture makes the detail image instant (and vice versa).
-    @State private var image: UIImage?
+    @State private var imageState: ImageState = .loading
     /// Drives the full-screen viewer. Item-based (not a bool) so the image is
     /// passed into the cover atomically at tap time — presenting via
     /// `isPresented` + reading the image state inside the cover raced: on a
@@ -18,8 +18,14 @@ struct CaptureDetailView: View {
     /// visible to its closure, presenting an empty (black) cover. See #67.
     @State private var viewerImage: ViewerImage?
     @State private var form = ExtractedEvent()
+    /// Today's date, when it was put in `form` only because the extraction had
+    /// no start date. Opening a capture is not an edit, so `hasChanges` and
+    /// Save ignore it. Approve sends it, because approving accepts what's on
+    /// screen and a calendar event needs a date.
+    @State private var seededStartDate: String?
     @State private var isSaving = false
     @State private var showDeleteConfirm = false
+    @State private var showDiscardConfirm = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -47,19 +53,53 @@ struct CaptureDetailView: View {
                         .disabled(isSaving || !hasChanges)
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("Close") {
+                        if hasChanges { showDiscardConfirm = true } else { dismiss() }
+                    }
                 }
+            }
+            // A swipe down would drop unsaved edits without asking, so block it
+            // while there are any. Close asks first (SwiftUI has no hook to ask
+            // on the swipe itself).
+            .interactiveDismissDisabled(hasChanges)
+            .confirmationDialog("Discard changes?", isPresented: $showDiscardConfirm,
+                                titleVisibility: .visible) {
+                Button("Discard changes", role: .destructive) { dismiss() }
+                Button("Keep editing", role: .cancel) {}
             }
             .task { await load() }
             .alert("Error", isPresented: .constant(errorMessage != nil)) {
-                Button("OK") { errorMessage = nil }
-            } message: { Text(errorMessage ?? "") }
-            .confirmationDialog("Delete this capture?", isPresented: $showDeleteConfirm) {
-                Button("Delete capture and calendar event", role: .destructive) {
-                    Task { await delete(deleteEvent: true) }
+                if appState.needsReauth {
+                    // Reconnecting here keeps the form, so Save or Approve
+                    // can be tapped again. Close would discard the edits.
+                    Button("Reconnect") {
+                        errorMessage = nil
+                        Task { await reconnect() }
+                    }
+                    Button("Not now", role: .cancel) { errorMessage = nil }
+                } else {
+                    Button("OK") { errorMessage = nil }
                 }
-                Button("Delete capture only", role: .destructive) {
-                    Task { await delete(deleteEvent: false) }
+            } message: { Text(errorMessage ?? "") }
+            .confirmationDialog("Delete this capture?", isPresented: $showDeleteConfirm,
+                                titleVisibility: isDuplicate ? .visible : .automatic) {
+                if isDuplicate {
+                    // A duplicate's calendar event is the one it matched, which
+                    // belongs to another capture or was already in the calendar.
+                    Button("Delete capture", role: .destructive) {
+                        Task { await delete(deleteEvent: false) }
+                    }
+                } else {
+                    Button("Delete capture and calendar event", role: .destructive) {
+                        Task { await delete(deleteEvent: true) }
+                    }
+                    Button("Delete capture only", role: .destructive) {
+                        Task { await delete(deleteEvent: false) }
+                    }
+                }
+            } message: {
+                if isDuplicate {
+                    Text("The matching event stays in your calendar.")
                 }
             }
             // Presented from Form level, like the alert/dialog above — a
@@ -72,22 +112,44 @@ struct CaptureDetailView: View {
         }
     }
 
+    /// Loading, failed or loaded, each visibly different. Only a loaded image
+    /// is tappable (and announced as a button), so a tap never silently
+    /// does nothing while the image is still on its way (#68).
     private var imageSection: some View {
         Section {
             Group {
-                if let image {
-                    Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
-                } else {
+                switch imageState {
+                case .loading:
                     Rectangle().fill(.quaternary).frame(height: 200)
+                        .overlay { ProgressView() }
+                        .accessibilityElement()
+                        .accessibilityLabel("Loading image")
+                case .failed:
+                    Rectangle().fill(.quaternary).frame(height: 200)
+                        .overlay {
+                            VStack(spacing: 8) {
+                                Image(systemName: "photo.badge.exclamationmark")
+                                    .font(.title2)
+                                    .foregroundStyle(.secondary)
+                                Text("Image unavailable")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                // Failures are never cached, so a retry refetches.
+                                Button("Try again") { Task { await loadImage() } }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                            }
+                        }
+                case let .loaded(image):
+                    Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
+                        .contentShape(Rectangle())
+                        .onTapGesture { viewerImage = ViewerImage(image: Image(uiImage: image)) }
+                        .accessibilityLabel("Capture image")
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityHint("Opens the image full screen")
                 }
             }
             .listRowInsets(EdgeInsets())
-            .contentShape(Rectangle())
-            .onTapGesture {
-                if let image { viewerImage = ViewerImage(image: Image(uiImage: image)) }
-            }
-            .accessibilityAddTraits(.isButton)
-            .accessibilityHint("Opens the image full screen")
         }
     }
 
@@ -155,9 +217,16 @@ struct CaptureDetailView: View {
             Text("Event details")
         } footer: {
             // Editable rows look just like read-only ones — say so once.
-            Text("Tap a field to correct anything the AI got wrong.")
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Tap a field to correct anything the AI got wrong.")
+                if isDuplicate {
+                    Text("This matched an event already in your calendar. Edits here don't change that event.")
+                }
+            }
         }
     }
+
+    private var isDuplicate: Bool { capture?.status == .duplicate }
 
     // MARK: Date & time field mapping
 
@@ -239,11 +308,7 @@ struct CaptureDetailView: View {
                 // primary action of the review flow reads as one.
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
-                .disabled(isSaving || hasChanges) // save edits first, then approve
-                if hasChanges {
-                    Text("Save your edits first, then add to calendar.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
+                .disabled(isSaving)
             }
             if let link = capture.eventLink, let url = URL(string: link) {
                 Link(destination: url) { Label("Open in Google Calendar", systemImage: "calendar") }
@@ -259,17 +324,22 @@ struct CaptureDetailView: View {
         }
     }
 
+    /// One tap: saves any pending edits (and a seeded start date) first, so
+    /// the event is created from what's on screen, then approves.
     private func approve() async {
+        guard let original = capture?.effectiveEvent else { return }
         isSaving = true
         defer { isSaving = false }
         do {
-            let updated = try await appState.api.approveCapture(id: captureId)
-            capture = updated
-            form = updated.effectiveEvent ?? form
+            let edits = changedFields(from: original, includingSeededDate: true)
+            if !edits.isEmpty {
+                apply(try await appState.api.updateCapture(id: captureId, fields: edits))
+            }
+            apply(try await appState.api.approveCapture(id: captureId))
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             await appState.refreshCaptures()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = appState.message(for: error)
         }
     }
 
@@ -279,18 +349,34 @@ struct CaptureDetailView: View {
         // Image and capture load in parallel — the image is usually already
         // cached by the grid tile, so it paints immediately instead of
         // waiting out the getCapture round-trip.
-        Task { image = await appState.images.image(for: captureId) }
+        Task { await loadImage() }
         do {
-            let loaded = try await appState.api.getCapture(id: captureId)
-            capture = loaded
-            form = loaded.effectiveEvent ?? ExtractedEvent()
-            // A calendar event needs a date; if the extraction had none, seed
-            // today so the always-visible Start date picker has a value to edit.
-            if loaded.event != nil, form.startDate == nil {
-                form.startDate = WireFormat.date.string(from: Date())
-            }
+            apply(try await appState.api.getCapture(id: captureId))
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Resets the form to a capture fresh from the server.
+    private func apply(_ loaded: Capture) {
+        capture = loaded
+        form = loaded.effectiveEvent ?? ExtractedEvent()
+        seededStartDate = nil
+        // A calendar event needs a date; if the extraction had none, seed
+        // today so the always-visible Start date picker has a value to edit.
+        if loaded.event != nil, form.startDate == nil {
+            let today = WireFormat.date.string(from: Date())
+            form.startDate = today
+            seededStartDate = today
+        }
+    }
+
+    private func loadImage() async {
+        imageState = .loading
+        if let image = await appState.images.image(for: captureId) {
+            imageState = .loaded(image)
+        } else {
+            imageState = .failed
         }
     }
 
@@ -299,7 +385,11 @@ struct CaptureDetailView: View {
         return changedFields(from: original).isEmpty == false
     }
 
-    private func changedFields(from original: ExtractedEvent) -> [String: String?] {
+    /// The fields to PATCH. An untouched seeded start date counts only when
+    /// `includingSeededDate` is set (approve), so Save never records today as
+    /// a correction the user didn't make.
+    private func changedFields(from original: ExtractedEvent,
+                               includingSeededDate: Bool = false) -> [String: String?] {
         var changes: [String: String?] = [:]
         func diff(_ key: String, _ old: String?, _ new: String?) {
             let normalizedNew = (new?.isEmpty == true) ? nil : new
@@ -308,7 +398,10 @@ struct CaptureDetailView: View {
         diff("title", original.title, form.title)
         diff("venue", original.venue, form.venue)
         diff("address", original.address, form.address)
-        diff("start_date", original.startDate, form.startDate)
+        let untouchedSeed = seededStartDate != nil && form.startDate == seededStartDate
+        if includingSeededDate || !untouchedSeed {
+            diff("start_date", original.startDate, form.startDate)
+        }
         diff("end_date", original.endDate, form.endDate)
         diff("start_time", original.startTime, form.startTime)
         diff("end_time", original.endTime, form.endTime)
@@ -321,14 +414,12 @@ struct CaptureDetailView: View {
         isSaving = true
         defer { isSaving = false }
         do {
-            let updated = try await appState.api.updateCapture(
-                id: captureId, fields: changedFields(from: original))
-            capture = updated
-            form = updated.effectiveEvent ?? form
+            apply(try await appState.api.updateCapture(
+                id: captureId, fields: changedFields(from: original)))
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             await appState.refreshCaptures()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = appState.message(for: error)
         }
     }
 
@@ -338,7 +429,20 @@ struct CaptureDetailView: View {
             await appState.refreshCaptures()
             dismiss()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = appState.message(for: error)
+        }
+    }
+
+    /// Runs Google sign-in over this sheet rather than the library, so the
+    /// form and any unsaved edits stay. A success clears `needsReauth`. A
+    /// failure shows here, because the library's "Couldn't reconnect" alert
+    /// can't present while the sheet is up. A cancel shows nothing.
+    private func reconnect() async {
+        guard let top = UIApplication.shared.topViewController else { return }
+        await appState.signIn(presenting: top)
+        if let failure = appState.signInError {
+            appState.signInError = nil
+            errorMessage = "Couldn't reconnect. \(failure)"
         }
     }
 
@@ -349,6 +453,13 @@ struct CaptureDetailView: View {
             set: { form[keyPath: keyPath] = $0 }
         )
     }
+}
+
+private enum ImageState {
+    case loading
+    /// The store returns nil for any failure (network, expired URL, bad data).
+    case failed
+    case loaded(UIImage)
 }
 
 /// Identifiable wrapper so the full-screen image viewer can be presented with
