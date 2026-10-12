@@ -8,11 +8,14 @@ it there and redeploy `S2cWeb-{stage}` to publish changes.
 Summary of the commitments it makes (keep code changes consistent with these):
 
 - Stored: Google identity (email + sub), an encrypted Calendar refresh token,
-  shared images, extracted event data, corrections. All in eu-west-2,
-  encrypted at rest. Invited emails sit on the sign-up allowlist
+  shared images, extracted event data, corrections, and settings (target
+  calendar, timezone, consent choice). The app takes the timezone from the
+  device at onboarding; Settings can reset it. All in eu-west-2, encrypted at
+  rest. Invited emails sit on the sign-up allowlist
   (`/s2c/{stage}/signup-allowlist`); account deletion does not remove them.
 - Processing: images go to Anthropic (Claude) for classification/extraction;
-  venue names may go to Google Places. No other third parties, no ads, no
+  venue names may go to Google Places, with "London" added only when the
+  user's timezone is `Europe/London`. No other third parties, no ads, no
   analytics.
 - Prompt-improvement use of corrections is **opt-in** (`consentEvalUse`,
   default false, snapshotted per correction). It uses the correction's field
