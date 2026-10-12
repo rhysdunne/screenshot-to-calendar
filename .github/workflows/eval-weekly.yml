@@ -1,7 +1,22 @@
 name: Weekly eval smoke
 
-# A small live eval (10 cases, one model, ~$0.10) so extraction quality drift
-# — from model updates or accidental prompt changes — shows up week to week.
+# A small live eval (10 synthetic cases) on production's models, so drift in
+# extraction quality, from model updates or accidental prompt changes, shows
+# up week to week.
+#
+# Models: production's classify and extract models, read from DEFAULT_MODELS
+# in backend/src/lib/models.ts at run time, so this follows any model change.
+# The harness uses one model for both stages, so each model runs the whole
+# pipeline. Read classification accuracy from the classify model's row and
+# extraction scores from the extract model's row.
+#
+# Cost: about $0.17 a run with today's models (Haiku 4.5 ~$0.04 + Sonnet 5
+# ~$0.13 for 10 cases, from the $/100 images in evals/reports/baseline),
+# so under $1 a month.
+#
+# Red runs: a separate PR makes the harness exit non-zero when a case hits an
+# API error. After that lands, a failed call turns this run red instead of
+# quietly lowering the score. The report is uploaded either way.
 on:
   schedule:
     - cron: "17 3 * * 1" # Mondays 03:17 UTC
@@ -21,8 +36,15 @@ jobs:
         working-directory: evals
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: npm run eval -- --models claude-haiku-4-5 --dataset synthetic --limit 10 --label weekly
+        run: |
+          models=$(npx tsx --eval "import { DEFAULT_MODELS as m } from '../backend/src/lib/models.ts'; console.log([...new Set([m.classify, m.extract])].join(','))")
+          # An empty --models makes the harness fall back to its own default.
+          test -n "$models"
+          echo "Production models: $models"
+          npm run eval -- --models "$models" --dataset synthetic --limit 10 --label weekly
       - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
         with:
           name: eval-report-${{ github.run_id }}
           path: evals/reports/weekly/
+          if-no-files-found: warn
