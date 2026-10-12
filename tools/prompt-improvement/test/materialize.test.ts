@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildEvalCase } from '../src/materialize-eval-cases.js';
+import {
+  buildEvalCase,
+  ownerCorrectionsQuery,
+  ownerUserIdFrom,
+} from '../src/materialize-eval-cases.js';
 import type { ExtractedEvent } from '../../../backend/src/pipeline/types.js';
 
 const event: ExtractedEvent = {
@@ -49,5 +53,24 @@ describe('buildEvalCase', () => {
         [],
       ),
     ).toBeNull();
+  });
+});
+
+describe('owner-only materialising', () => {
+  it('refuses to run without OWNER_USER_ID', () => {
+    expect(() => ownerUserIdFrom({})).toThrow(/OWNER_USER_ID/);
+    expect(() => ownerUserIdFrom({ OWNER_USER_ID: '  ' })).toThrow(/OWNER_USER_ID/);
+    expect(ownerUserIdFrom({ OWNER_USER_ID: ' 01OWNER ' })).toBe('01OWNER');
+  });
+
+  it("reads consented corrections from the owner's partition only", () => {
+    const input = ownerCorrectionsQuery('s2c-main-prod', '01OWNER');
+    expect(input.KeyConditionExpression).toBe('PK = :pk AND begins_with(SK, :sk)');
+    expect(input.ExpressionAttributeValues).toEqual({
+      ':pk': 'USER#01OWNER',
+      ':sk': 'CORRECTION#',
+      ':consent': true,
+    });
+    expect(input.FilterExpression).toBe('consentEvalUse = :consent');
   });
 });
