@@ -41,8 +41,14 @@ final class ShareViewController: UIViewController {
     }
 
     private func handleSharedItem() async {
-        guard KeychainStore.token != nil else {
+        guard let token = KeychainStore.token else {
             finish(.failure("Open Screenshot to Calendar and sign in first."), after: 2.5)
+            return
+        }
+        // The backend would reject an expired token, but only after the
+        // background upload, where nothing can tell the user. Say so now.
+        guard !SessionToken.expiresSoon(token) else {
+            finish(.failure("Session expired. Open Screenshot to Calendar to sign in."), after: 2.5)
             return
         }
         guard let image = await loadSharedImage() else {
@@ -54,7 +60,7 @@ final class ShareViewController: UIViewController {
             return
         }
         do {
-            try enqueueUpload(imageData: jpeg)
+            try enqueueUpload(imageData: jpeg, token: token)
             finish(.success("Added — processing.\nOpen the app to see the result."))
         } catch {
             finish(.failure("Upload failed: \(error.localizedDescription)"), after: 2.5)
@@ -76,7 +82,7 @@ final class ShareViewController: UIViewController {
     /// Background upload: the request body is written to the App Group
     /// container and handed to a background URLSession, which iOS runs to
     /// completion even after this extension exits.
-    private func enqueueUpload(imageData: Data) throws {
+    private func enqueueUpload(imageData: Data, token: String) throws {
         let body = try JSONEncoder().encode(["imageBase64": imageData.base64EncodedString()])
         guard let container = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: AppConfig.appGroupId
@@ -93,9 +99,7 @@ final class ShareViewController: UIViewController {
         var request = URLRequest(url: AppConfig.apiBase.appending(path: "/v1/captures"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        if let token = KeychainStore.token {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        }
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
         let config = URLSessionConfiguration.background(
             withIdentifier: "digital.callaeas.s2c.upload.\(UUID().uuidString)")
