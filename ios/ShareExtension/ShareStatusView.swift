@@ -14,9 +14,8 @@ final class ShareStatusModel {
     var phase: Phase = .working
 }
 
-/// The extension's whole UI: the PipelineMark brand animation while the shared
-/// image is being read and enqueued, then a symbol + message. The mark doubles
-/// as the progress indicator (and carries its own reduced-motion fallback).
+/// The extension's whole UI: a spinner while the shared image is being read and
+/// enqueued, then a symbol + message.
 struct ShareStatusView: View {
     let model: ShareStatusModel
 
@@ -24,7 +23,8 @@ struct ShareStatusView: View {
         VStack(spacing: 20) {
             switch model.phase {
             case .working:
-                PipelineMark(width: 160)
+                ProgressView()
+                    .controlSize(.large)
                 Text("Capturing…")
                     .font(.headline)
             case .success(let message):

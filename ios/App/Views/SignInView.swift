@@ -8,10 +8,9 @@ struct SignInView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            PipelineMark(width: 200)
             Text("Screenshot to Calendar")
                 .font(.title2.weight(.semibold))
-            Text("Share a poster or Instagram post from anywhere — the event lands in your Google Calendar, checked for duplicates, with the original image a tap away.")
+            Text("Screenshot an event poster or post, then share the screenshot and pick “Capture Event” — the event lands in your Google Calendar, checked for duplicates.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
