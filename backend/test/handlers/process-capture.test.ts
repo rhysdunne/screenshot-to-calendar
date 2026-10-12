@@ -63,6 +63,38 @@ describe('processCapture', () => {
     expect(inserted.event.description).toContain('View capture: https://app.example.com/c/cap-1');
   });
 
+  it('passes the user timezone to the venue lookup', async () => {
+    const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
+    await seedCapture(fake);
+    await fake.store.updateUser('user-1', {
+      settings: { calendarId: 'cal-events', timezone: 'Pacific/Auckland', consentEvalUse: false },
+    });
+    const lookups: Array<[string, string]> = [];
+    fake.deps.resolveVenue = async (_key, venue, timeZone) => {
+      lookups.push([venue, timeZone]);
+      return null;
+    };
+
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+
+    expect(lookups).toEqual([['Regents Park', 'Pacific/Auckland']]);
+  });
+
+  it('a timed-out venue lookup still creates the event, without an address', async () => {
+    const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
+    await seedCapture(fake);
+    fake.deps.resolveVenue = async () => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    };
+
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('completed');
+    expect(capture?.event?.address).toBeNull();
+    expect(fake.insertedEvents).toHaveLength(1);
+  });
+
   it('timed events carry the user timezone on the calendar body', async () => {
     const fake = makeFakeDeps({
       extractResult: { ...GOOD_EXTRACTION, start_time: '19:30', end_time: '22:00' },
