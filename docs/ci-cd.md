@@ -1,9 +1,9 @@
 # CI/CD pipeline
 
 How change reaches production. Two independent lanes meet at `main`: the
-**backend/web lane** (GitHub Actions → CDK → AWS) deploys automatically on merge;
-the **iOS lane** (Xcode Cloud → TestFlight) ships on a tag. Neither can deploy
-code that hasn't passed the PR gates first.
+**backend/web lane** (GitHub Actions → CDK → AWS) deploys automatically when a
+merge changes it; the **iOS lane** (Xcode Cloud → TestFlight) ships on a tag.
+Neither can deploy code that hasn't passed the PR gates first.
 
 ## The whole shape
 
@@ -31,8 +31,9 @@ checks pass, each the job id of a workflow:
 
 ## 2. Backend + web deploy (automatic on merge)
 
-[`deploy.yml`](../.github/workflows/deploy.yml) runs on every push to `main` (and
-by manual dispatch). The pipeline is:
+[`deploy.yml`](../.github/workflows/deploy.yml) runs on a push to `main` that
+changes `backend/`, `infra/` or the deploy workflows (`deploy.yml`,
+`deploy-stage.yml`, `ci.yml`), and by manual dispatch. The pipeline is:
 
 1. **CI** — reruns [`ci.yml`](../.github/workflows/ci.yml) via `workflow_call`, so
    `main` is verified once more before anything deploys.
@@ -43,11 +44,13 @@ by manual dispatch). The pipeline is:
    **required-reviewer rule on the `prod` environment**. The run pauses in the
    Actions UI until approved; an ignored gate expires after 30 days.
 
-Prod can never receive a commit that didn't just deploy to staging. A docs-only
-merge still redeploys staging — it's idempotent and keeps staging exactly at
-`main`. To redeploy without a merge, dispatch **Deploy** and either approve the
-prod gate (ship prod) or don't (staging only). Local `cdk deploy` remains
-available as the manual fallback — see [deploy.md](deploy.md).
+Prod can never receive a commit that didn't just deploy to staging. A merge that
+only touches iOS, evals, tools or docs starts no Deploy run: the PR's required
+checks already covered it, it deploys nothing, and each such run used to open a
+prod gate that sat until it expired. To redeploy without a merge, dispatch
+**Deploy** and either approve the prod gate (ship prod) or don't (staging only).
+Local `cdk deploy` remains available as the manual fallback — see
+[deploy.md](deploy.md).
 
 ## 3. iOS release lane (Xcode Cloud → TestFlight, on a tag)
 
