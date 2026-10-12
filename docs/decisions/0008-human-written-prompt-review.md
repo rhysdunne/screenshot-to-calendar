@@ -81,7 +81,9 @@ Options considered:
 ## Consequences
 
 - Targeted fixes can ship. `extract-event.v4` for #27 is the first to use
-  report mode.
+  report mode. Its review found a regression that repeats (an invented start
+  time on `syn-009-gig`), so it is not pinned
+  ([runs](../../evals/reports/prompt-v4-2026-10/)).
 - The decision moves from a rule to a reviewer, so a careless review can pass a
   regression. The per-case table and the re-run rule keep each claim checkable,
   and the PR review checks them.

@@ -12,7 +12,7 @@ the images, and what does it cost?** — and gates every prompt change.
 | `src/harness.ts` | Runs each case through the **real production request path** (`backend/src/lib/anthropic.ts` + pinned prompts + `pipeline/extract.ts`) per model, concurrency 4. |
 | `dataset/synthetic/` | Committed generated cases: `image.png` + `gold.json` + `meta.json`. `meta.frozenToday` pins `{{TODAY}}` so relative dates ("This Saturday") stay deterministic forever. 40 drawn event cases, 4 menus, and 6 fixed `just-past` cases: year-less dates shortly before `frozenToday` plus one months-past control (#27). |
 | `dataset/real/` | Hand-labeled real screenshots — see `docs/adding-eval-images.md`. Only add images you have consent to use; the loader refuses a case without `"consent": true` in its `meta.json`. |
-| `reports/` | Run outputs (gitignored except committed baselines). `model-refresh-2026-10/` holds the runs behind ADR 0007, and `prompt-v4-2026-10/` the report-mode gate run for the v4 candidate (#27), both force-added. |
+| `reports/` | Run outputs (gitignored except committed baselines). `model-refresh-2026-10/` holds the runs behind ADR 0007, and `prompt-v4-2026-10/` the ADR 0008 review of the v4 candidate (#27): the report-mode gate run and three `--cases` re-runs on each version. Both are force-added. |
 
 ## Commands
 

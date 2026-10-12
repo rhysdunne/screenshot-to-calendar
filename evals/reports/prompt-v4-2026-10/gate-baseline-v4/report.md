@@ -2,14 +2,14 @@
 
 - Dataset: `all`
 - Prompt version: `pinned`
-- Generated: 2026-10-12T13:06:43.262Z
+- Generated: 2026-10-12T14:30:25.593Z
 
 
 ## Summary
 
 | Model | Aggregate | Halluc./case | Miss/case | Classify | is_event | Errors | Mean latency | p95 latency | $/100 images |
 |---|---|---|---|---|---|---|---|---|---|
-| claude-sonnet-5 | **97.3%** | 0.09 | 0.00 | — | — | 0 | 2.3s | 3.0s | $0.58 |
+| claude-sonnet-5 | **98.0%** | 0.09 | 0.00 | — | — | 0 | 2.2s | 2.9s | $0.58 |
 
 ## Thinking settings
 
@@ -22,8 +22,8 @@
 | title | 100.0% |
 | venue | 98.7% |
 | address | 93.6% |
-| start_date | 92.3% |
-| end_date | 97.4% |
+| start_date | 94.9% |
+| end_date | 98.7% |
 | start_time | 100.0% |
 | end_time | 100.0% |
 | url | 100.0% |

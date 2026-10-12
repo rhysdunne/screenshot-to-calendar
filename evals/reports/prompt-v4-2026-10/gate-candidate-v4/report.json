@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-12T13:07:24.473Z",
+  "generatedAt": "2026-10-12T14:31:15.095Z",
   "dataset": "all",
   "promptVersion": "v4",
   "mock": false,
@@ -9,25 +9,25 @@
     {
       "model": "claude-sonnet-5",
       "cases": 82,
-      "aggregate": 0.9884529051195714,
+      "aggregate": 0.9883300460223535,
       "fieldAccuracy": {
-        "title": 0.9924242424242424,
-        "venue": 0.9848484848484849,
-        "address": 0.9696969696969697,
+        "title": 0.9935897435897436,
+        "venue": 0.9871794871794872,
+        "address": 0.9487179487179487,
         "start_date": 1,
         "end_date": 1,
-        "start_time": 0.9848484848484849,
+        "start_time": 1,
         "end_time": 1,
         "url": 1
       },
-      "hallucinationRate": 0.06060606060606061,
+      "hallucinationRate": 0.0641025641025641,
       "missRate": 0,
       "classificationAccuracy": null,
       "isEventAccuracy": null,
-      "meanLatencyMs": 1946.7317073170732,
-      "p95LatencyMs": 3005,
-      "costPer100Images": 0.5158634146341464,
-      "errors": 12,
+      "meanLatencyMs": 2315.9634146341464,
+      "p95LatencyMs": 3728,
+      "costPer100Images": 0.605909756097561,
+      "errors": 0,
       "tuning": {
         "extract": {
           "thinking": "disabled",
@@ -56,7 +56,7 @@
         },
         {
           "id": "syn-001-gig",
-          "aggregate": 1,
+          "aggregate": 0.9629629629629629,
           "fields": {
             "title": 1,
             "venue": 1,
@@ -67,7 +67,7 @@
             "end_time": 1,
             "url": 1,
             "price": 1,
-            "category": 1
+            "category": 0
           },
           "hallucinations": 0,
           "misses": 0,
@@ -200,20 +200,20 @@
         },
         {
           "id": "syn-009-gig",
-          "aggregate": 0.8518518518518519,
+          "aggregate": 1,
           "fields": {
             "title": 1,
             "venue": 1,
             "address": 1,
             "start_date": 1,
             "end_date": 1,
-            "start_time": 0,
+            "start_time": 1,
             "end_time": 1,
             "url": 1,
             "price": 1,
             "category": 1
           },
-          "hallucinations": 1,
+          "hallucinations": 0,
           "misses": 0,
           "errored": false
         },
@@ -1203,9 +1203,9 @@
         },
         {
           "id": "real-017-ig-ad-bodies-in-action",
-          "aggregate": 0.9444444444444444,
+          "aggregate": 1,
           "fields": {
-            "title": 0.5,
+            "title": 1,
             "venue": 1,
             "address": 1,
             "start_date": 1,
@@ -1279,99 +1279,231 @@
         },
         {
           "id": "real-021-ig-ad-ual-summer-festival",
-          "aggregate": null,
-          "fields": {},
+          "aggregate": 0.9444444444444444,
+          "fields": {
+            "title": 0.5,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
           "hallucinations": 0,
           "misses": 0,
-          "errored": true
+          "errored": false
         },
         {
           "id": "real-022-ig-post-london-bike-studio",
-          "aggregate": null,
-          "fields": {},
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
           "hallucinations": 0,
           "misses": 0,
-          "errored": true
+          "errored": false
         },
         {
           "id": "real-023-ig-post-ballet-black",
-          "aggregate": null,
-          "fields": {},
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
           "hallucinations": 0,
           "misses": 0,
-          "errored": true
+          "errored": false
         },
         {
           "id": "real-024-ig-post-algorhythms",
-          "aggregate": null,
-          "fields": {},
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
           "hallucinations": 0,
           "misses": 0,
-          "errored": true
+          "errored": false
         },
         {
           "id": "real-025-ig-post-holy-pop-somerset-house",
-          "aggregate": null,
-          "fields": {},
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
           "hallucinations": 0,
           "misses": 0,
-          "errored": true
+          "errored": false
         },
         {
           "id": "real-026-ig-post-mountain-photography-alpine",
-          "aggregate": null,
-          "fields": {},
-          "hallucinations": 0,
+          "aggregate": 0.9259259259259259,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 0,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
           "misses": 0,
-          "errored": true
+          "errored": false
         },
         {
           "id": "real-027-ig-post-julio-le-parc-tate",
-          "aggregate": null,
-          "fields": {},
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
           "hallucinations": 0,
           "misses": 0,
-          "errored": true
+          "errored": false
         },
         {
           "id": "real-028-ig-post-first-light-barbican",
-          "aggregate": null,
-          "fields": {},
-          "hallucinations": 0,
+          "aggregate": 0.8888888888888888,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 0,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 1,
           "misses": 0,
-          "errored": true
+          "errored": false
         },
         {
           "id": "real-029-webview-yard-theatre-philosophy",
-          "aggregate": null,
-          "fields": {},
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
           "hallucinations": 0,
           "misses": 0,
-          "errored": true
+          "errored": false
         },
         {
           "id": "real-030-poster-zurbaran-national-gallery",
-          "aggregate": null,
-          "fields": {},
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
           "hallucinations": 0,
           "misses": 0,
-          "errored": true
+          "errored": false
         },
         {
           "id": "real-031-poster-the-invite-film",
-          "aggregate": null,
-          "fields": {},
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
           "hallucinations": 0,
           "misses": 0,
-          "errored": true
+          "errored": false
         },
         {
           "id": "real-032-poster-henry-moore-kew",
-          "aggregate": null,
-          "fields": {},
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
           "hallucinations": 0,
           "misses": 0,
-          "errored": true
+          "errored": false
         }
       ]
     }

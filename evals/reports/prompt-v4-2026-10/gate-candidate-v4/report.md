@@ -2,14 +2,14 @@
 
 - Dataset: `all`
 - Prompt version: `v4`
-- Generated: 2026-10-12T13:07:24.473Z
+- Generated: 2026-10-12T14:31:15.095Z
 
 
 ## Summary
 
 | Model | Aggregate | Halluc./case | Miss/case | Classify | is_event | Errors | Mean latency | p95 latency | $/100 images |
 |---|---|---|---|---|---|---|---|---|---|
-| claude-sonnet-5 | **98.8%** | 0.06 | 0.00 | — | — | 12 | 1.9s | 3.0s | $0.52 |
+| claude-sonnet-5 | **98.8%** | 0.06 | 0.00 | — | — | 0 | 2.3s | 3.7s | $0.61 |
 
 ## Thinking settings
 
@@ -19,12 +19,12 @@
 
 | Field | claude-sonnet-5 |
 |---|---|
-| title | 99.2% |
-| venue | 98.5% |
-| address | 97.0% |
+| title | 99.4% |
+| venue | 98.7% |
+| address | 94.9% |
 | start_date | 100.0% |
 | end_date | 100.0% |
-| start_time | 98.5% |
+| start_time | 100.0% |
 | end_time | 100.0% |
 | url | 100.0% |
 
