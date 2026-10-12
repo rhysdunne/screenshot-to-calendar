@@ -1,10 +1,10 @@
 // GET  /v1/calendars — the user's writable calendars (for the picker)
 // POST /v1/calendars — create a new calendar and return it
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
-import { authenticate, errorResponse, HttpError, json, parseBody } from '../lib/http.js';
+import { authenticate, errorResponse, HttpError, json, parseBody, type ApiHandler } from '../lib/http.js';
 
-export function makeListHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeListHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -23,7 +23,7 @@ export function makeListHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export function makeCreateHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeCreateHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -42,7 +42,7 @@ export function makeCreateHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export const listHandler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makeListHandler(realDeps())(e, c, cb);
-export const createHandler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makeCreateHandler(realDeps())(e, c, cb);
+export const listHandler = (event: APIGatewayProxyEventV2) =>
+  makeListHandler(realDeps())(event);
+export const createHandler = (event: APIGatewayProxyEventV2) =>
+  makeCreateHandler(realDeps())(event);

@@ -1,11 +1,11 @@
 // DELETE /v1/captures/{id}[?deleteEvent=true] — remove a capture (image +
 // records); optionally also delete the calendar event it created.
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
-import { authenticate, errorResponse, HttpError, json } from '../lib/http.js';
+import { authenticate, errorResponse, HttpError, json, type ApiHandler } from '../lib/http.js';
 import { logger } from '../lib/logger.js';
 
-export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -33,5 +33,5 @@ export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export const handler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makeHandler(realDeps())(e, c, cb);
+export const handler = (event: APIGatewayProxyEventV2) =>
+  makeHandler(realDeps())(event);

@@ -1,9 +1,9 @@
 // GET /v1/captures          — library feed (newest first, cursor pagination)
 // GET /v1/captures/{id}     — capture detail; the app's processing-status poll target
 // GET /v1/captures/{id}/image — short-lived presigned URL for the source image
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
-import { authenticate, errorResponse, HttpError, json } from '../lib/http.js';
+import { authenticate, errorResponse, HttpError, json, type ApiHandler } from '../lib/http.js';
 import type { CaptureRecord } from '../lib/ddb.js';
 
 export function captureView(c: CaptureRecord) {
@@ -21,7 +21,7 @@ export function captureView(c: CaptureRecord) {
   };
 }
 
-export function makeListHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeListHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -34,7 +34,7 @@ export function makeListHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export function makeGetHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeGetHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -49,7 +49,7 @@ export function makeGetHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export function makeImageUrlHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeImageUrlHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -65,9 +65,9 @@ export function makeImageUrlHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export const listHandler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makeListHandler(realDeps())(e, c, cb);
-export const getHandler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makeGetHandler(realDeps())(e, c, cb);
-export const imageUrlHandler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makeImageUrlHandler(realDeps())(e, c, cb);
+export const listHandler = (event: APIGatewayProxyEventV2) =>
+  makeListHandler(realDeps())(event);
+export const getHandler = (event: APIGatewayProxyEventV2) =>
+  makeGetHandler(realDeps())(event);
+export const imageUrlHandler = (event: APIGatewayProxyEventV2) =>
+  makeImageUrlHandler(realDeps())(event);

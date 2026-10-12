@@ -1,10 +1,10 @@
 // POST /v1/captures — accept a base64 image, exact-dup check by content hash,
 // store to S3, record the capture, queue processing. Returns 202 (queued) or
 // 200 (exact duplicate of a previous upload).
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { ulid } from 'ulid';
 import { realDeps, type Deps } from './deps.js';
-import { authenticate, errorResponse, HttpError, json, parseBody } from '../lib/http.js';
+import { authenticate, errorResponse, HttpError, json, parseBody, type ApiHandler } from '../lib/http.js';
 import {
   cleanBase64,
   detectMediaType,
@@ -21,7 +21,7 @@ interface CreateRequest {
 // backstop well under API Gateway's 10MB payload cap.
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
-export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -64,5 +64,5 @@ export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export const handler: APIGatewayProxyHandlerV2 = (event, context, callback) =>
-  makeHandler(realDeps())(event, context, callback);
+export const handler = (event: APIGatewayProxyEventV2) =>
+  makeHandler(realDeps())(event);

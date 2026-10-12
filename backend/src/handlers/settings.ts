@@ -1,9 +1,9 @@
 // GET/PUT /v1/settings — {calendarId, timezone, consentEvalUse}.
 // consentEvalUse is the GDPR consent flag gating whether this user's images
 // and corrections may enter the eval dataset / prompt-improvement pipeline.
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
-import { authenticate, errorResponse, HttpError, json, parseBody } from '../lib/http.js';
+import { authenticate, errorResponse, HttpError, json, parseBody, type ApiHandler } from '../lib/http.js';
 import type { UserSettings } from '../lib/ddb.js';
 
 function isValidTimezone(tz: string): boolean {
@@ -15,7 +15,7 @@ function isValidTimezone(tz: string): boolean {
   }
 }
 
-export function makeGetHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeGetHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -26,7 +26,7 @@ export function makeGetHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export function makePutHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makePutHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -48,7 +48,7 @@ export function makePutHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export const getHandler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makeGetHandler(realDeps())(e, c, cb);
-export const putHandler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makePutHandler(realDeps())(e, c, cb);
+export const getHandler = (event: APIGatewayProxyEventV2) =>
+  makeGetHandler(realDeps())(event);
+export const putHandler = (event: APIGatewayProxyEventV2) =>
+  makePutHandler(realDeps())(event);

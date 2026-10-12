@@ -1,9 +1,9 @@
 // POST /v1/auth/google — exchange a GoogleSignIn serverAuthCode for an app
 // session token, storing the (encrypted) refresh token server-side.
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { ulid } from 'ulid';
 import { realDeps, type Deps } from './deps.js';
-import { errorResponse, HttpError, json, parseBody } from '../lib/http.js';
+import { errorResponse, HttpError, json, parseBody, type ApiHandler } from '../lib/http.js';
 import { exchangeAuthCode } from '../lib/google-auth.js';
 import { encrypt } from '../lib/crypto.js';
 import { signSession } from '../lib/jwt.js';
@@ -14,7 +14,7 @@ interface AuthRequest {
   serverAuthCode: string;
 }
 
-export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const { serverAuthCode } = parseBody<AuthRequest>(event);
@@ -75,5 +75,5 @@ export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export const handler: APIGatewayProxyHandlerV2 = (event, context, callback) =>
-  makeHandler(realDeps())(event, context, callback);
+export const handler = (event: APIGatewayProxyEventV2) =>
+  makeHandler(realDeps())(event);

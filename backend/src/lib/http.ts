@@ -11,6 +11,13 @@ interface UserLookup {
   getUser(userId: string): Promise<UserRecord | null>;
 }
 
+/**
+ * The shape of every API route handler: one event in, a response promise out.
+ * Not `APIGatewayProxyHandlerV2`, which also allows the (event, context,
+ * callback) form that the Node.js 24 Lambda runtime no longer supports.
+ */
+export type ApiHandler = (event: APIGatewayProxyEventV2) => Promise<APIGatewayProxyResultV2>;
+
 export function json(statusCode: number, body: unknown): APIGatewayProxyResultV2 {
   return {
     statusCode,

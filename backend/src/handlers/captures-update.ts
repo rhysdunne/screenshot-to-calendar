@@ -4,9 +4,9 @@
 // and the merged view is returned.
 //
 // Poisoning defense #1 lives here: max 20 corrections per user per day.
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
-import { authenticate, errorResponse, HttpError, json, parseBody } from '../lib/http.js';
+import { authenticate, errorResponse, HttpError, json, parseBody, type ApiHandler } from '../lib/http.js';
 import { mapEventToCalendar } from '../pipeline/map-to-calendar.js';
 import { todayInZone } from '../pipeline/dates.js';
 import {
@@ -21,7 +21,7 @@ const DAILY_CORRECTION_LIMIT = 20;
 
 type UpdateRequest = Partial<Record<CorrectableField, string | null>>;
 
-export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -97,5 +97,5 @@ export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export const handler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makeHandler(realDeps())(e, c, cb);
+export const handler = (event: APIGatewayProxyEventV2) =>
+  makeHandler(realDeps())(event);
