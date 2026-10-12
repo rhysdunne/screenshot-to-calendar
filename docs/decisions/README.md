@@ -28,8 +28,8 @@ Keep it to a page: Status / Context / Decision / Consequences. **Link** evidence
 
 `Status` is one of `Accepted`, `Partly superseded by NNNN (<the part>)`,
 `Superseded by NNNN`, or `Deprecated`. Never edit the Decision of an accepted ADR.
-Supersede it with a new one and update the old Status. (Same principle as the
-versioned prompt files; see ADR 0003.)
+Supersede it with a new one and update the old Status. This is the same
+principle as the versioned prompt files (see ADR 0003).
 
 Use `Partly superseded` when a new ADR replaces only part of an old decision.
 The rest of the old decision still holds. A short note after it can point to a

@@ -39,11 +39,11 @@ are registered to this Apple team. A fork also renames them in `project.yml`,
 
 ## Structure
 
-- `App/`: the app target, with sign-in (Google, calendar scope), onboarding
-  calendar picker (it also saves the device's timezone), capture library grid,
-  editable capture detail (corrections, approve for a capture that needs
-  review), settings (calendar, timezone, consent toggle, export, delete
-  account).
+- `App/`: the app target. It has sign-in (Google, calendar scope), an
+  onboarding calendar picker that also saves the device's timezone, and the
+  capture library grid. It also has the editable capture detail (corrections,
+  and approve for a capture that needs review) and settings (calendar,
+  timezone, consent toggle, export, delete account).
 - `ShareExtension/`: receives an image from the share sheet and resizes it to
   1000px/JPEG 0.8. A file or data item is downsampled with ImageIO, so the
   full-size image is never decoded. The extension then uploads through a
@@ -53,10 +53,11 @@ are registered to this Apple team. A fork also renames them in `project.yml`,
   and the app signs out at the same point. Upload bodies live in the App Group
   container. The extension sweeps them after 24 hours, and the app deletes them
   on sign-out.
-- `Shared/`: API client, model mirrors of the backend contracts, keychain
-  store, image resizer, config, `SessionToken.swift` (reads the session JWT's
-  expiry) and `UploadBodyStore.swift` (writes, sweeps and deletes upload
-  bodies). Compiled into both targets.
+- `Shared/`: compiled into both targets. It holds the API client, model
+  mirrors of the backend contracts, the keychain store, the image resizer and
+  config. It also holds `SessionToken.swift`, which reads the session JWT's
+  expiry, and `UploadBodyStore.swift`, which writes, sweeps and deletes upload
+  bodies.
 
 Deep links: `https://<cloudfront-domain>/c/<captureId>` (from calendar event
 descriptions) open the capture detail via Associated Domains.

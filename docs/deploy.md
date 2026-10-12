@@ -80,9 +80,9 @@ the choice in a new ADR.
   works: give its CDK name in any case, for example `authgoogle` or
   `capturescreate`. A third argument sets the look-back window (default `10m`).
 - **DLQ alarm** (`s2c-dlq-not-empty-*`) fires when a capture failed processing
-  3 times. A failure that a retry cannot fix (no date, an end that is not after
-  the start, a model refusal, a Google grant that needs a new sign-in) goes to
-  `failed` at once and never reaches the DLQ. So the DLQ holds only failures
+  3 times. A failure that a retry cannot fix goes to `failed` at once and never
+  reaches the DLQ: no date, an end that is not after the start, a model refusal,
+  or a Google grant that needs a new sign-in. So the DLQ holds only failures
   that a retry might have fixed. `just dlq prod` counts the messages. After you
   fix the cause, redrive from the SQS console.
 - **API 5xx alarm** (`s2c-api-5xx-*`) fires when the HTTP API returns any 5xx.

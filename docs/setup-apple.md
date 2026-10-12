@@ -1,8 +1,8 @@
 # Apple / Xcode / TestFlight setup
 
-Prereqs: a Mac with Xcode (CI and Xcode Cloud build with Xcode 26.6), an
-Apple Developer Program membership ($99/year), and the AWS + Google setup done
-(you need the CloudFront domain, API URLs, and OAuth client ids).
+Prereqs: a Mac with Xcode and an Apple Developer Program membership
+($99/year). CI and Xcode Cloud build with Xcode 26.6. Do the AWS + Google setup
+first, because you need the CloudFront domain, API URLs, and OAuth client ids.
 
 ## 1. Generate the project
 

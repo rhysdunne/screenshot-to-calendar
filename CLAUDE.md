@@ -7,7 +7,7 @@
 >   macOS Keychain (see the Secrets invariant below), never in the tree or env vars.
 > - **Real user/eval data** must come from the owner's own account, needs the
 >   user's recorded `consent` **and** any in-image third-party PII (names,
->   handles, faces) redacted *before* commit — check the pixels, not just the
+>   handles, faces) redacted *before* commit. Check the pixels, not just the
 >   label. Keep source camera-roll filenames (`IMG_####`) out of `meta.json`.
 > - **`docs/corrections-to-prompt-improvement.md` stays untracked** until the
 >   prompt-injection / eval-poisoning gaps it documents are hardened — publishing
@@ -28,7 +28,7 @@ for the port map).
 | `backend/src/pipeline/` | **Pure functions, no AWS/network imports.** Date math (`dates.ts` — all arithmetic in the user's IANA timezone, never bare `new Date()`), extraction parsing, calendar mapping, image sniffing, dedup. Unit tests mirror in `backend/test/pipeline/`. |
 | `backend/src/lib/` | Clients and cross-cutting: `models.ts` (ALL model IDs, prices and per-stage tuning, the only place models are configured), `anthropic.ts` (single Claude entry point: sends the stage's tuning, logs `claude_call`, emits the spend metric), `google-*.ts`, `crypto.ts` (AES-256-GCM refresh-token encryption), `jwt.ts` (180-day app sessions), `ddb.ts`, `s3.ts`, `config.ts` (Parameter Store cache for the SecureStrings and the sign-up allowlist), `http.ts` (JWT middleware + response helpers), `logger.ts`. |
 | `backend/src/handlers/` | Lambda handlers, each a one-argument async function. `process-capture.ts` is the pipeline orchestrator (SQS-triggered). The other files hold the API route handlers, one or more per file (`captures-read.ts` serves three routes). `infra/lib/backend-stack.ts` gives each route its own Lambda. `deps.ts` wires the real clients. |
-| `backend/src/prompts/` | Versioned prompt files (`extract-event.v2.md` to `v4.md`, `classify-image.v1.md`) + `prompts.ts`, which pins the active version of each: `extract-event` v3 and `classify-image` v1. `extract-event.v4.md` is an unpinned candidate, because its review found a regression that repeats (ADR 0008). Prompt changes = new version file + bump the pin; never edit an existing version in place (eval reports reference them). |
+| `backend/src/prompts/` | Versioned prompt files (`extract-event.v2.md` to `v4.md`, `classify-image.v1.md`) + `prompts.ts`, which pins the active version of each: `extract-event` v3 and `classify-image` v1. `extract-event.v4.md` is an unpinned candidate, because its review found a regression that repeats (ADR 0008). Prompt changes = new version file + bump the pin. Never edit an existing version in place, because eval reports reference them. |
 | `infra/` | CDK app. `lib/backend-stack.ts` = the whole AWS shape; `lib/web-stack.ts` = CloudFront (AASA for universal links, /c/* fallback, privacy/terms). |
 | `evals/` | Synthetic poster generator (Playwright), labeled datasets, scoring, model-comparison harness. `reports/baseline/` is the July 2026 run (prompt v2, Haiku 4.5 classify, the old Sonnet price). It stays as a historical reference until someone regenerates it. `reports/model-refresh-2026-10/` and `reports/prompt-v4-2026-10/` hold the evidence for ADRs 0007 and 0008. |
 | `tools/prompt-improvement/` | The owner's consented corrections → clustered failure patterns → proposed prompt version → eval gate → PR. Runs on demand only (ADR 0006). |
@@ -147,8 +147,8 @@ cd evals   && npm run eval -- --models claude-haiku-5-5,claude-sonnet-5 --datase
 
 - Stages: `staging` and `prod`, same AWS account, resources suffixed with the stage.
 - Deploy (backend + web): a merge to `main` that touches `backend/`, `infra/`,
-  `.tool-versions` or the deploy workflows auto-deploys staging, then pauses at a prod
-  approval gate (GitHub Actions `deploy.yml`, OIDC role). Dispatch the workflow to
+  `.tool-versions` or the deploy workflows auto-deploys staging. Then it pauses at a
+  prod approval gate (GitHub Actions `deploy.yml`, OIDC role). Dispatch the workflow to
   redeploy. Locally, run `just deploy <stage>`. Both refuse to run with an empty
   `ALERT_EMAIL`. iOS ships separately via an `ios-v*` tag (`just ship-ios`) → Xcode
   Cloud → TestFlight. Full pipeline: `docs/ci-cd.md`.

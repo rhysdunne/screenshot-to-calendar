@@ -66,10 +66,10 @@ POST /v1/search {query}
 ```
 
 - Runs in `process-capture.ts` for **every** capture (events too — an event
-  poster is also scrapbook content), model `claude-haiku-5-5` (the classify
-  model since ADR 0007), via the existing `lib/anthropic.ts`. That logs cost
-  and latency and emits the AiCostUsd metric, and `process-capture.ts` stores
-  the AICALL record. Non-fatal on failure.
+  poster is also scrapbook content), with model `claude-haiku-5-5`. That is
+  the classify model since ADR 0007. It calls the existing `lib/anthropic.ts`,
+  which logs cost and latency and emits the AiCostUsd metric.
+  `process-capture.ts` stores the AICALL record. Non-fatal on failure.
 - Stored as `describe` on the capture record; surfaced in `captureView`.
 
 The `summary` field is the key to the LinkedIn use case: it captures what

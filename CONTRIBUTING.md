@@ -46,8 +46,8 @@ obey → **add a `CLAUDE.md` invariant**.
   because both arms run at API default temperature, and four runs of an identical
   prompt spanned 0.9pt. An absolute threshold on two independent means was inside
   its own noise floor. A human-written candidate cannot move enough cases to pass
-  that test, so it runs the gate with `--report-only`, and the author reviews every
-  changed case ([ADR 0008](docs/decisions/0008-human-written-prompt-review.md)).
+  that test. It runs the gate with `--report-only` instead, and the author reviews
+  every changed case ([ADR 0008](docs/decisions/0008-human-written-prompt-review.md)).
 - **Prompt-improvement PR loop.**
   [`prompt-improvement.yml`](.github/workflows/prompt-improvement.yml) proposes
   prompt changes from the owner's consented corrections (aggregate needs
