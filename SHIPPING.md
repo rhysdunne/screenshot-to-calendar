@@ -79,7 +79,7 @@ now completes end to end.
 - [ ] Back to step 2: add `https://<WebDomain>/privacy.html` and `/terms.html`
       to the Google consent screen now that the domain exists
 
-## 5. First live eval baseline (≈10 min, about $0.50)
+## 5. First live eval baseline (≈10 min, about $0.85)
 
 The datum every future model/prompt decision compares against.
 

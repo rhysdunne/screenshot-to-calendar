@@ -72,7 +72,7 @@ per-stage tuning in `MODELS` first, or the Lambda fails at cold start.
 
 Run the eval first. `just eval claude-haiku-4-5,claude-sonnet-5-5` runs the
 full dataset on the models you list. With no argument, it runs production's
-models (about $0.50 a run).
+models (about $0.85 a run).
 Compare the result with a fresh run of the current models, not with the July
 baseline in `evals/reports/baseline/`.
 [ADR 0007](decisions/0007-model-refresh-2026-10.md) shows the method. Record
