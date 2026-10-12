@@ -100,6 +100,7 @@ final class AppState: ObservableObject {
         foregroundRefresh?.cancel()
         foregroundRefresh = nil
         KeychainStore.clear()
+        UploadBodyStore.removeAll()
         GIDSignIn.sharedInstance.signOut()
         isSignedIn = false
         didBootstrap = false

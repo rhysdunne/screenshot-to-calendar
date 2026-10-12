@@ -84,17 +84,7 @@ final class ShareViewController: UIViewController {
     /// completion even after this extension exits.
     private func enqueueUpload(imageData: Data, token: String) throws {
         let body = try JSONEncoder().encode(["imageBase64": imageData.base64EncodedString()])
-        guard let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: AppConfig.appGroupId
-        ) else {
-            throw NSError(domain: "s2c", code: 1, userInfo: [
-                NSLocalizedDescriptionKey: "App Group container unavailable",
-            ])
-        }
-        let uploadsDir = container.appendingPathComponent("uploads", isDirectory: true)
-        try FileManager.default.createDirectory(at: uploadsDir, withIntermediateDirectories: true)
-        let bodyFile = uploadsDir.appendingPathComponent("\(UUID().uuidString).json")
-        try body.write(to: bodyFile)
+        let bodyFile = try UploadBodyStore.write(body)
 
         var request = URLRequest(url: AppConfig.apiBase.appending(path: "/v1/captures"))
         request.httpMethod = "POST"
