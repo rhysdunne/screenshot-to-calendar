@@ -32,11 +32,11 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 |---|---|
 | `POST /v1/auth/google` | `{serverAuthCode}` → `{token, user:{id,email,settings}}` |
 | `POST /v1/captures` | `{imageBase64}` → 202 `{captureId, status:"queued"}` or 200 `{captureId, status:"duplicate", duplicateOf}` |
-| `GET /v1/captures` | → `{captures:[CaptureView], cursor}` |
+| `GET /v1/captures` | → `{captures:[CaptureView], cursor}`, newest first, up to 200 per page (the app reads only the first page) |
 | `GET /v1/captures/{id}` | → CaptureView (the app's poll target) |
 | `GET /v1/captures/{id}/image` | → `{url, expiresInSeconds}` (presigned, 5 min) |
-| `PATCH /v1/captures/{id}` | partial `{title?, venue?, address?, start_date?, end_date?, start_time?, end_time?, description?, url?}` (empty string or null clears) → CaptureView. Each changed field is a `CORRECTION#` item (max 20 per user per day, else 429 `correction_limit`); the Google event is patched only through `calendarEventId`, so never for a duplicate |
-| `POST /v1/captures/{id}/approve` | no body → CaptureView. Only for a `needs_review` or `failed` capture that has an extracted `event` (else 409). Runs the processor's dedup + insert on the effective event (corrections overlaid) and clears `error`; 409 if it has no date |
+| `PATCH /v1/captures/{id}` | partial `{title?, venue?, address?, start_date?, end_date?, start_time?, end_time?, description?, url?}` (empty string or null clears) → CaptureView. A changed date must be `YYYY-MM-DD` and a changed time `HH:MM` (else 400). When the event goes to Google or a date or time changed, the merged event must end after it starts (else 400 `invalid_time_range`). Both are checked before anything is written. The Google event is patched only through `calendarEventId`, so never for a duplicate. Each changed field then becomes a `CORRECTION#` item, only once any patch has succeeded (max 20 per user per day, else 429 `correction_limit`) |
+| `POST /v1/captures/{id}/approve` | no body → CaptureView. Only for a `needs_review` or `failed` capture that has an extracted `event` (else 409). Runs the processor's dedup + insert on the effective event (corrections overlaid) and clears a stale `error`; 409 if it has no date or does not end after it starts. With no target calendar it returns the capture still `failed`, with `error` saying to pick one |
 | `DELETE /v1/captures/{id}?deleteEvent=true` | → `{deleted:true}`. `deleteEvent=true` also deletes the event in `calendarEventId`; a duplicate ignores it and only the capture goes |
 | `GET /v1/calendars` / `POST /v1/calendars` | → `{calendars:[{id,summary,primary}]}` / `{summary}` → `{id,summary}` |
 | `GET/PUT /v1/settings` | `{calendarId, timezone, consentEvalUse}` |
@@ -48,6 +48,7 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 
 - `event` is the original extraction (never mutated). `corrected` is the user's overlay, keyed by field name: a key with a string value replaces the extracted value, a key with `null` means the user cleared that field, and an absent key means not corrected.
 - `needs_review`: the extraction came back with `confidence: "low"`, so no calendar event was created. The app shows the fields for checking and calls `approve`.
+- `failed`: `error` says why. A failure that a retry cannot fix (no date, an event that does not end after it starts, a Google grant that needs a new sign-in) keeps `classification` and `event`, so the app can show the fields for fixing and call `approve`. Other failures are retried by SQS and keep no `event`.
 - `calendarEventId` is only ever an event this capture created. It is null for a duplicate.
 - `duplicate`: the dedup step matched an existing event, so nothing was created. `matchedEventId` is that event, and `eventLink` opens it. The capture never edits or deletes it. `matchedEventId` is null for every other status.
 - `possibleDuplicateOf`: the event was created, but a similar existing event (by title) was found.
@@ -73,6 +74,9 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
    (bump = revoke all sessions).
 4. Calendar calls mint short-lived Google access tokens from the refresh
    token; `invalid_grant` flags `needsReauth` and the app re-runs sign-in.
+   A Calendar 401, or a 403 for a missing calendar scope, also answers
+   401 `needs_reauth`; in the processor it fails the capture terminally
+   and flags `needsReauth`.
 
 ## Cost model
 
