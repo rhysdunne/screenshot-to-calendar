@@ -25,8 +25,10 @@ enum KeychainStore {
         return prefix + AppConfig.keychainAccessGroupSuffix
     }
 
-    /// Matches the item whatever its accessibility class, so reads and the
-    /// delete in `save` still find a token written before the class changed.
+    /// Matches the item whatever its accessibility class, so reads, the update
+    /// in `save` and `clear` still find a token written before the class
+    /// changed. The class is not part of the item's identity, so there is only
+    /// ever one item to match.
     private static func baseQuery() -> [String: Any] {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
@@ -51,20 +53,23 @@ enum KeychainStore {
         return String(data: data, encoding: .utf8)
     }
 
-    /// Replaces the stored token. `ThisDeviceOnly` keeps the long-lived token
-    /// out of backups, so it never moves to another device. A token saved
-    /// under the old `AfterFirstUnlock` class stays readable and is rewritten
-    /// with the new class on the next sign-in.
+    /// Replaces the stored token. Updates the item in place and adds one only
+    /// when none exists, so a refused write leaves the previous token working
+    /// (a delete then add would lose it if the add failed, signing a
+    /// reconnecting user out). `ThisDeviceOnly` keeps the long-lived token out
+    /// of backups, so it never moves to another device. A token saved under
+    /// the old `AfterFirstUnlock` class stays readable, and the update moves
+    /// it to the new class on the next sign-in.
     static func save(_ token: String) throws {
         let query = baseQuery()
-        let deleted = SecItemDelete(query as CFDictionary)
-        guard deleted == errSecSuccess || deleted == errSecItemNotFound else {
-            throw KeychainError(status: deleted)
-        }
-        var add = query
-        add[kSecValueData as String] = Data(token.utf8)
-        add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        let added = SecItemAdd(add as CFDictionary, nil)
+        let attributes: [String: Any] = [
+            kSecValueData as String: Data(token.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
+        let updated = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+        if updated == errSecSuccess { return }
+        guard updated == errSecItemNotFound else { throw KeychainError(status: updated) }
+        let added = SecItemAdd(query.merging(attributes) { $1 } as CFDictionary, nil)
         guard added == errSecSuccess else { throw KeychainError(status: added) }
     }
 
