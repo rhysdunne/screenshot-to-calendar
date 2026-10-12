@@ -1,7 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_MODELS, MODELS, costUsd } from '../../src/lib/models.js';
-import { ACTIVE_VERSIONS, loadPrompt, renderPrompt } from '../../src/prompts/prompts.js';
-import { CLASSIFY_IMAGE_SCHEMA, EXTRACT_EVENT_SCHEMA } from '../../src/prompts/schemas.js';
+import {
+  ACTIVE_VERSIONS,
+  extractSchemaFor,
+  loadPrompt,
+  renderPrompt,
+} from '../../src/prompts/prompts.js';
+import {
+  CLASSIFY_IMAGE_SCHEMA,
+  EXTRACT_EVENT_SCHEMA,
+  EXTRACT_EVENT_SCHEMA_V3,
+} from '../../src/prompts/schemas.js';
 
 describe('models', () => {
   it('default models exist in the price table', () => {
@@ -37,6 +46,13 @@ describe('prompts', () => {
     });
     expect(rendered).toContain('2026-07-06');
     expect(rendered).not.toContain('{{TODAY}}');
+  });
+
+  it('picks the extraction schema by prompt version, numerically past v9', () => {
+    expect(extractSchemaFor('v2')).toBe(EXTRACT_EVENT_SCHEMA);
+    expect(extractSchemaFor('v3')).toBe(EXTRACT_EVENT_SCHEMA_V3);
+    // 'v10' >= 'v3' is false as strings: the regression in #90.
+    expect(extractSchemaFor('v10')).toBe(EXTRACT_EVENT_SCHEMA_V3);
   });
 
   it('schemas require every extraction field and forbid extras', () => {

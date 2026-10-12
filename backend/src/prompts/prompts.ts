@@ -12,10 +12,14 @@ export const ACTIVE_VERSIONS = {
   'classify-image': 'v1',
 } as const;
 
-/** Structured-output schema matching an extract-event prompt version. */
+/**
+ * Structured-output schema matching an extract-event prompt version. Only v2
+ * predates the price and category fields. An exact match, because comparing
+ * version strings sorts 'v10' below 'v3' and would quietly drop those fields.
+ */
 export function extractSchemaFor(version?: string): object {
   const v = version ?? ACTIVE_VERSIONS['extract-event'];
-  return v >= 'v3' ? EXTRACT_EVENT_SCHEMA_V3 : EXTRACT_EVENT_SCHEMA;
+  return v === 'v2' ? EXTRACT_EVENT_SCHEMA : EXTRACT_EVENT_SCHEMA_V3;
 }
 
 export type PromptName = keyof typeof ACTIVE_VERSIONS;
