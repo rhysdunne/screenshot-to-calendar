@@ -6,6 +6,12 @@
 //   (c) no drop in the mean aggregate, and no worse hallucination rate.
 //
 //   ANTHROPIC_API_KEY=... npm run gate -- --candidate v4 [--model claude-sonnet-5]
+//   ANTHROPIC_API_KEY=... npm run gate -- --candidate v4 --report-only
+//
+// --report-only is for human-written candidates (ADR 0008). It runs the same
+// comparison, prints every case that changed with its field deltas, writes them
+// to per-case.md, and exits 0 whatever the verdict. The author reviews the diff
+// instead of the rules above deciding. Machine-proposed candidates never use it.
 //
 // (b) replaces an earlier "aggregate must improve by ≥0.5pt" rule. Both arms run
 // at API default temperature, and four runs of an IDENTICAL prompt were measured
@@ -15,7 +21,7 @@
 // "on this same image, did the candidate do better or worse".
 //
 // Exit codes:
-//   0 = candidate passed
+//   0 = candidate passed (or any verdict with --report-only)
 //   1 = gate REJECTED the candidate (the mechanism working; not a broken job)
 //   2 = misuse, crash, or a comparison too error-ridden to trust
 //
@@ -204,6 +210,54 @@ export function compareReports(baseline: ModelReport, candidate: ModelReport): G
   };
 }
 
+export interface CaseDelta {
+  id: string;
+  baseline: number;
+  candidate: number;
+  /** Only the fields whose score moved, as [baseline, candidate]. */
+  fields: Record<string, [number, number]>;
+}
+
+/**
+ * Every paired case whose aggregate or any field score moved, worst regression
+ * first. Report mode only: real case ids can be `corr-<captureId>`, so this
+ * never goes into gate.md or gate.json.
+ */
+export function perCaseDeltas(baseline: ModelReport, candidate: ModelReport): CaseDelta[] {
+  const base = scoredById(baseline.perCase ?? []);
+  const cand = scoredById(candidate.perCase ?? []);
+  const deltas: CaseDelta[] = [];
+  for (const id of [...base.keys()].filter((k) => cand.has(k)).sort()) {
+    const b = base.get(id)!;
+    const c = cand.get(id)!;
+    const fields: Record<string, [number, number]> = {};
+    for (const field of new Set([...Object.keys(b.fields), ...Object.keys(c.fields)])) {
+      const bs = b.fields[field] ?? 0;
+      const cs = c.fields[field] ?? 0;
+      if (bs !== cs) fields[field] = [bs, cs];
+    }
+    const moved = Math.abs((c.aggregate as number) - (b.aggregate as number)) > CASE_EPSILON;
+    if (moved || Object.keys(fields).length > 0) {
+      deltas.push({ id, baseline: b.aggregate as number, candidate: c.aggregate as number, fields });
+    }
+  }
+  return deltas.sort((x, y) => x.candidate - x.baseline - (y.candidate - y.baseline));
+}
+
+export function renderCaseDeltas(deltas: CaseDelta[]): string {
+  const pct = (v: number): string => `${(v * 100).toFixed(1)}%`;
+  const lines = ['## Per-case changes', ''];
+  if (deltas.length === 0) return [...lines, 'No case changed.'].join('\n');
+  lines.push('| Case | Baseline | Candidate | Fields (baseline → candidate) |', '|---|---|---|---|');
+  for (const d of deltas) {
+    const fields = Object.entries(d.fields)
+      .map(([f, [b, c]]) => `${f} ${b} → ${c}`)
+      .join(', ');
+    lines.push(`| ${d.id} | ${pct(d.baseline)} | ${pct(d.candidate)} | ${fields || '—'} |`);
+  }
+  return lines.join('\n');
+}
+
 /**
  * Legacy unpaired comparison, kept verbatim for reports predating per-case
  * scores (the committed baselines under `evals/reports`). Live gate runs take
@@ -239,10 +293,22 @@ function compareAggregates(baseline: ModelReport, candidate: ModelReport): GateR
   };
 }
 
-export function renderGate(candidate: string, model: string, result: GateResult): string {
+export function renderGate(
+  candidate: string,
+  model: string,
+  result: GateResult,
+  reportOnly = false,
+): string {
   const lines = [
     `# Prompt gate: candidate ${candidate} (${model})`,
     '',
+    ...(reportOnly
+      ? [
+          'Report mode (ADR 0008): the verdict below is advisory. The author reviews',
+          'the per-case changes in per-case.md.',
+          '',
+        ]
+      : []),
     `Baseline aggregate: ${(result.baselineAggregate * 100).toFixed(1)}%`,
     `Candidate aggregate: ${(result.candidateAggregate * 100).toFixed(1)}%`,
   ];
@@ -275,9 +341,10 @@ if (isMain) {
   };
   const candidate = arg('candidate', '');
   if (!candidate) {
-    console.error('Usage: npm run gate -- --candidate v4 [--model <model>]');
+    console.error('Usage: npm run gate -- --candidate v4 [--model <model>] [--report-only]');
     process.exit(2);
   }
+  const reportOnly = process.argv.includes('--report-only');
   const model = arg('model', DEFAULT_MODELS.extract);
 
   // Validate before spending anything on evals.
@@ -313,7 +380,7 @@ if (isMain) {
     });
     const result = compareReports(baseline.reports[0]!, cand.reports[0]!);
 
-    const summary = renderGate(candidate, model, result);
+    const summary = renderGate(candidate, model, result, reportOnly);
     writeFileSync(join(cand.reportDir, 'gate.md'), summary);
     // Counts only — per-case ids are `corr-<captureId>` for real cases, and this
     // repo is public. The id-bearing report.json stays in the run artifact.
@@ -322,8 +389,13 @@ if (isMain) {
       `${JSON.stringify({ candidate, model, ...result, reasons: result.reasons }, null, 2)}\n`,
     );
     console.log(`\n${summary}`);
+    if (reportOnly) {
+      const deltas = renderCaseDeltas(perCaseDeltas(baseline.reports[0]!, cand.reports[0]!));
+      writeFileSync(join(cand.reportDir, 'per-case.md'), `${deltas}\n`);
+      console.log(`\n${deltas}`);
+    }
     if (result.unusable) process.exit(2);
-    process.exit(result.pass ? 0 : 1);
+    process.exit(result.pass || reportOnly ? 0 : 1);
   })().catch((e) => {
     console.error(e);
     process.exit(2);

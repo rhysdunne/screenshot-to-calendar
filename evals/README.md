@@ -57,6 +57,20 @@ case, and a scheduled run should go red when that happens.
 ## The eval gate
 
 `tools/prompt-improvement/run-gate.ts` runs this harness twice (candidate
-prompt vs pinned) and fails unless the candidate shows **no per-field
-regression and an aggregate improvement** — the reason a poisoned correction
-can't quietly degrade the prompt.
+prompt vs pinned, extract only) and compares the two runs case by case. It
+fails unless no field regresses, more cases improve than regress by a margin a
+sign test calls significant, and the mean and hallucination rate hold — the
+reason a poisoned correction can't quietly degrade the prompt.
+
+A human-written fix aimed at one or two cases cannot pass that rule, so it runs
+the gate in report mode instead ([ADR 0008](../docs/decisions/0008-human-written-prompt-review.md)):
+
+```bash
+cd tools/prompt-improvement
+ANTHROPIC_API_KEY=... npm run gate -- --candidate v4 --report-only
+```
+
+Report mode writes `per-case.md` beside `gate.md`, listing every case that
+changed with its field scores, and exits 0. The author checks that the
+targeted cases are fixed and no case loses a field, and re-runs any regression
+once with `--cases` to rule out noise.

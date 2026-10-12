@@ -6,6 +6,9 @@ import {
 } from '../src/cluster.js';
 import {
   compareReports,
+  perCaseDeltas,
+  renderCaseDeltas,
+  renderGate,
   signTestP,
   validateCandidate,
   MIN_AGGREGATE_GAIN,
@@ -347,5 +350,54 @@ describe('compareReports (paired per-case comparison)', () => {
     expect(result.better).toBe(20);
     expect(result.pass).toBe(false);
     expect(result.reasons.join()).toContain('mean aggregate decreased');
+  });
+});
+
+describe('report mode (human-written candidates, ADR 0008)', () => {
+  it('shows why the strict gate rejects a targeted fix by construction', () => {
+    // A fix aimed at one or two cases: two improve, nothing regresses.
+    const base = Array.from({ length: 72 }, (_, i) => (i < 2 ? 0.7 : 0.96));
+    const cand = Array.from({ length: 72 }, () => 0.96);
+    const result = compareReports(paired(base), paired(cand));
+    expect(result.better).toBe(2);
+    expect(result.worse).toBe(0);
+    expect(result.pass).toBe(false);
+    expect(result.reasons.join()).toContain('within noise');
+    // The smallest pass is five improved and none regressed.
+    expect(signTestP(4, 0)).toBeGreaterThan(SIGN_TEST_ALPHA);
+    expect(signTestP(5, 0)).toBeLessThan(SIGN_TEST_ALPHA);
+  });
+
+  it('lists every changed case with its field deltas, worst regression first', () => {
+    const baseline = paired([0.9, 0.9, 0.9, 0.7]);
+    const candidate = paired([0.9, 0.8, 0.95, 1.0]);
+    candidate.perCase![1]!.fields = { ...candidate.perCase![1]!.fields, start_date: 0 };
+    candidate.perCase![3]!.fields = { ...candidate.perCase![3]!.fields, start_date: 1 };
+
+    const deltas = perCaseDeltas(baseline, candidate);
+    expect(deltas.map((d) => d.id)).toEqual(['case-1', 'case-2', 'case-3']);
+    expect(deltas[0]!.fields).toEqual({ start_date: [0.95, 0] });
+    // An aggregate move with no field change is still listed.
+    expect(deltas[1]!.fields).toEqual({});
+    expect(deltas[2]!.fields).toEqual({ start_date: [0.95, 1] });
+  });
+
+  it('leaves out unchanged, non-event and errored cases', () => {
+    const baseline = paired([0.9, 0.9]);
+    const candidate = paired([0.9, 0.5]);
+    candidate.perCase![1] = perCase('case-1', null, { errored: true });
+    expect(perCaseDeltas(baseline, candidate)).toEqual([]);
+    expect(renderCaseDeltas([])).toContain('No case changed');
+  });
+
+  it('renders the deltas as a table and marks gate.md as advisory', () => {
+    const table = renderCaseDeltas([
+      { id: 'case-1', baseline: 0.7, candidate: 1, fields: { start_date: [0, 1] } },
+    ]);
+    expect(table).toContain('| case-1 | 70.0% | 100.0% | start_date 0 → 1 |');
+
+    const result = compareReports(paired([0.9]), paired([0.9]));
+    expect(renderGate('v4', 'claude-sonnet-5', result, true)).toContain('advisory');
+    expect(renderGate('v4', 'claude-sonnet-5', result)).not.toContain('advisory');
   });
 });
