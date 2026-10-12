@@ -54,12 +54,25 @@ struct CaptureDetailView: View {
             .alert("Error", isPresented: .constant(errorMessage != nil)) {
                 Button("OK") { errorMessage = nil }
             } message: { Text(errorMessage ?? "") }
-            .confirmationDialog("Delete this capture?", isPresented: $showDeleteConfirm) {
-                Button("Delete capture and calendar event", role: .destructive) {
-                    Task { await delete(deleteEvent: true) }
+            .confirmationDialog("Delete this capture?", isPresented: $showDeleteConfirm,
+                                titleVisibility: isDuplicate ? .visible : .automatic) {
+                if isDuplicate {
+                    // A duplicate's calendar event is the one it matched, which
+                    // belongs to another capture or was already in the calendar.
+                    Button("Delete capture", role: .destructive) {
+                        Task { await delete(deleteEvent: false) }
+                    }
+                } else {
+                    Button("Delete capture and calendar event", role: .destructive) {
+                        Task { await delete(deleteEvent: true) }
+                    }
+                    Button("Delete capture only", role: .destructive) {
+                        Task { await delete(deleteEvent: false) }
+                    }
                 }
-                Button("Delete capture only", role: .destructive) {
-                    Task { await delete(deleteEvent: false) }
+            } message: {
+                if isDuplicate {
+                    Text("The matching event stays in your calendar.")
                 }
             }
             // Presented from Form level, like the alert/dialog above — a
@@ -177,9 +190,16 @@ struct CaptureDetailView: View {
             Text("Event details")
         } footer: {
             // Editable rows look just like read-only ones — say so once.
-            Text("Tap a field to correct anything the AI got wrong.")
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Tap a field to correct anything the AI got wrong.")
+                if isDuplicate {
+                    Text("This matched an event already in your calendar. Edits here don't change that event.")
+                }
+            }
         }
     }
+
+    private var isDuplicate: Bool { capture?.status == .duplicate }
 
     // MARK: Date & time field mapping
 
