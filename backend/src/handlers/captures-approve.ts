@@ -7,7 +7,7 @@ import { realDeps, type Deps } from './deps.js';
 import { authenticate, errorResponse, HttpError, json, type ApiHandler } from '../lib/http.js';
 import { createCalendarEntry } from './process-capture.js';
 import { captureView } from './captures-read.js';
-import { NoDateError, type ExtractedEvent } from '../pipeline/types.js';
+import { NoDateError, TerminalProcessingError, type ExtractedEvent } from '../pipeline/types.js';
 import { logger } from '../lib/logger.js';
 
 export function makeHandler(deps: Deps): ApiHandler {
@@ -33,6 +33,7 @@ export function makeHandler(deps: Deps): ApiHandler {
         if (e instanceof NoDateError) {
           throw new HttpError(409, 'Add a date before approving — none was extracted.');
         }
+        if (e instanceof TerminalProcessingError) throw new HttpError(409, e.message);
         throw e;
       }
       await deps.store.updateCapture(user.userId, captureId, { ...updates, error: null });

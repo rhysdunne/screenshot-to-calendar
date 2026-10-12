@@ -94,3 +94,15 @@ export function mapEventToCalendar(
     end,
   };
 }
+
+/**
+ * Whether a mapped event ends after it starts. Google rejects an end before
+ * the start, and a zero-length event is a misread too. Both ends share one
+ * format and one time zone, so string order is time order. An all-day end is
+ * already exclusive, so it must be after the start date.
+ */
+export function endsAfterStart(body: CalendarEventInput): boolean {
+  const start = 'date' in body.start ? body.start.date : body.start.dateTime;
+  const end = 'date' in body.end ? body.end.date : body.end.dateTime;
+  return end > start;
+}

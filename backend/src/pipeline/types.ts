@@ -87,7 +87,20 @@ export interface ExistingCalendarEvent {
   start?: { date?: string; dateTime?: string };
 }
 
-export class NoDateError extends Error {
+/**
+ * A failure that retrying cannot fix, such as an extraction with no date. The
+ * processor marks the capture failed without an SQS retry and keeps the
+ * extraction, so the user can fix it in the app and approve it. The message
+ * is shown to the user.
+ */
+export class TerminalProcessingError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TerminalProcessingError';
+  }
+}
+
+export class NoDateError extends TerminalProcessingError {
   constructor() {
     super('No start or end date could be extracted from the image');
     this.name = 'NoDateError';
