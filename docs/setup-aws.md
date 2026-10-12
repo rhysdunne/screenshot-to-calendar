@@ -95,7 +95,8 @@ just deploy prod
 ```
 
 Each `just deploy` shows a `cdk diff` and asks you to type the stage name
-before it deploys. It refuses to run when `ALERT_EMAIL` is empty. Details:
+before it deploys. It refuses to run when `ALERT_EMAIL` is empty. Install
+`just` first if you do not have it (`brew install just`). Details:
 [deploy.md](deploy.md).
 
 Note the outputs:

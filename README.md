@@ -67,8 +67,9 @@ the three detailed guides:
 3. **[docs/setup-apple.md](docs/setup-apple.md)** — generate the Xcode project, configure
    signing and capabilities, ship to TestFlight.
 
-Day-to-day development uses the [`justfile`](justfile). Run `just --list` to see
-every recipe with a one-line description. The common ones:
+Day-to-day development uses the [`justfile`](justfile) (install `just` with
+`brew install just`). Run `just --list` to see every recipe with a one-line
+description. The common ones:
 
 ```bash
 just install    # npm ci in all four packages
