@@ -131,6 +131,20 @@ describe('confidence gating', () => {
     expect(fake.insertedEvents).toHaveLength(0);
   });
 
+  it('approve with no target calendar keeps the guidance instead of clearing it', async () => {
+    const fake = makeFakeDeps({ extractResult: LOW_CONFIDENCE_EXTRACTION });
+    await seedProcessedLowConfidence(fake);
+    await fake.store.updateUser('user-1', {
+      settings: { calendarId: null, timezone: 'Europe/London', consentEvalUse: false },
+    });
+
+    const res = await invokeApprove(fake);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.status).toBe('failed');
+    expect(res.body.error).toContain('pick a calendar');
+    expect(fake.insertedEvents).toHaveLength(0);
+  });
+
   it('rejects approval of captures not awaiting review', async () => {
     const fake = makeFakeDeps({
       extractResult: { ...LOW_CONFIDENCE_EXTRACTION, confidence: 'high' },
