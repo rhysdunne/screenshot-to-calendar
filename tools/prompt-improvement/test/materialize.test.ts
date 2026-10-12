@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  buildEvalCase,
-  ownerCorrectionsQuery,
-  ownerUserIdFrom,
-} from '../src/materialize-eval-cases.js';
+import { buildEvalCase, ownerCorrectionsQuery } from '../src/materialize-eval-cases.js';
+import { ownerUserIdFrom } from '../src/owner.js';
 import type { ExtractedEvent } from '../../../backend/src/pipeline/types.js';
 
 const event: ExtractedEvent = {

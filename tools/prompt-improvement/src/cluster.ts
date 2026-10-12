@@ -2,6 +2,7 @@
 // here and are unit-tested:
 //   #2  a pattern is only eligible with corrections from ≥3 DISTINCT captures
 //   (+) only consented corrections ever reach this module (filtered upstream)
+//   (+) only the owner's corrections reach it: aggregate reads one partition
 import type { CorrectionRecord } from '../../../backend/src/lib/ddb.js';
 
 export const MIN_INDEPENDENT_CAPTURES = 3;

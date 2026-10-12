@@ -1,8 +1,8 @@
 // GET/PUT /v1/settings — {calendarId, timezone, consentEvalUse}.
 // consentEvalUse is the GDPR consent flag gating whether this user's
-// corrections may feed the prompt-improvement pipeline. Images never do, and
-// only the owner's own captures ever become eval cases (materialize requires
-// OWNER_USER_ID).
+// corrections may feed the prompt-improvement pipeline. Images never do. Today
+// only the owner's data is read at all: aggregate and materialize both require
+// OWNER_USER_ID, so another user's consent has no effect yet.
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
 import { authenticate, errorResponse, HttpError, json, parseBody, type ApiHandler } from '../lib/http.js';

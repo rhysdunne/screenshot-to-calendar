@@ -21,7 +21,9 @@ Summary of the commitments it makes (keep code changes consistent with these):
   default false, snapshotted per correction). It uses the correction's field
   and old/new value, never images, and drops corrections whose capture was
   deleted. Correction values are sent to Anthropic to draft a candidate
-  prompt, and are never printed in CI logs.
+  prompt, and are never printed in CI logs. Today only the owner's
+  corrections are read: `npm run aggregate` reads only the `OWNER_USER_ID`
+  account, so another user's consent has no effect yet.
 - The eval dataset is built **only from the owner's own captures** and
   synthetic images, never from other users' data, even with consent.
   `npm run materialize` reads only the `OWNER_USER_ID` account.

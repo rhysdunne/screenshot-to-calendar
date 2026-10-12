@@ -39,6 +39,7 @@ import {
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { CaptureRecord, CorrectionRecord } from '../../../backend/src/lib/ddb.js';
 import type { ExtractedEvent } from '../../../backend/src/pipeline/types.js';
+import { ownerUserIdFrom } from './owner.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REAL_DATASET_DIR = join(__dirname, '..', '..', '..', 'evals', 'dataset', 'real');
@@ -79,18 +80,6 @@ export function buildEvalCase(
       consent: true,
     },
   };
-}
-
-/** The required owner userId; throws when OWNER_USER_ID is unset or blank. */
-export function ownerUserIdFrom(env: Record<string, string | undefined>): string {
-  const ownerUserId = env.OWNER_USER_ID?.trim();
-  if (!ownerUserId) {
-    throw new Error(
-      'Set OWNER_USER_ID to your own userId. Only the owner\'s captures may become ' +
-        'eval cases (see the header of materialize-eval-cases.ts to look it up).',
-    );
-  }
-  return ownerUserId;
 }
 
 /**
