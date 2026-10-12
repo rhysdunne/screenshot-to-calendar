@@ -6,6 +6,9 @@
 
 ## Context
 
+Supersedes the gate rule of ADR 0003 for human-written candidates. The rest of
+0003 stands.
+
 [0003](0003-prompt-change-control.md) gates every prompt change with
 `tools/prompt-improvement/src/run-gate.ts`. The gate pairs the candidate and the
 pinned prompt on each case and passes only if all of these hold:
@@ -22,10 +25,10 @@ right there.
 
 A human-written fix for a known failure cannot pass it. The smallest sign-test
 pass is 5 cases improved and 0 regressed (p = 1/32 ≈ 0.031; 4 and 0 gives
-0.0625, and 6 and 1 gives 0.055). A targeted fix such as #27 (just-passed dates
+0.0625, and 8 and 2 gives 0.055). A targeted fix such as #27 (just-passed dates
 roll to the wrong year) changes one or two cases, so the gate rejects it by
 construction. The field rule is just as tight: one binary field flipping in one
-case of ~72 scored cases moves that field by 1/72 ≈ 1.4pt, above the 1pt
+case of 78 scored cases moves that field by 1/78 ≈ 1.3pt, above the 1pt
 tolerance. Noise flips cases on its own: four runs of one prompt spanned 0.9pt
 (the comment in `run-gate.ts`), and two Sonnet 5 thinking settings with the
 same score differed on 8 cases (5 better, 3 worse, [0007](0007-model-refresh-2026-10.md)).
@@ -82,8 +85,9 @@ Options considered:
 - The decision moves from a rule to a reviewer, so a careless review can pass a
   regression. The per-case table and the re-run rule keep each claim checkable,
   and the PR review checks them.
-- Report mode never runs in CI. Real case ids from materialised corrections
-  are `corr-<captureId>`, and the workflow posts `gate.md` to a public step
-  summary, so the id-bearing `per-case.md` stays local.
+- Report mode never runs in CI, and `per-case.md` is never posted to the CI
+  step summary, which is public. Real case ids from materialised corrections
+  are `corr-<captureId>`, so the reports are committed only when the local
+  dataset has no uncommitted `corr-*` cases.
 - Revisit if the dataset grows enough for a targeted fix to move five cases, or
   if a change adopted this way later shows a regression the review missed.
