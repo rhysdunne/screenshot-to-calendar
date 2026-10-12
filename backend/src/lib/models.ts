@@ -5,7 +5,6 @@
 export interface ModelInfo {
   inputPerMTok: number;
   outputPerMTok: number;
-  maxOutputTokens: number;
   /** Whether the model supports output_config.format structured outputs. */
   structuredOutputs: boolean;
 }
@@ -14,26 +13,22 @@ export const MODELS: Record<string, ModelInfo> = {
   'claude-haiku-4-5': {
     inputPerMTok: 1.0,
     outputPerMTok: 5.0,
-    maxOutputTokens: 64_000,
     structuredOutputs: true,
   },
   'claude-sonnet-4-6': {
     inputPerMTok: 3.0,
     outputPerMTok: 15.0,
-    maxOutputTokens: 128_000,
     structuredOutputs: false,
   },
   'claude-sonnet-5': {
     // Intro pricing $2/$10 through 2026-08-31; sticker $3/$15 used here.
     inputPerMTok: 3.0,
     outputPerMTok: 15.0,
-    maxOutputTokens: 128_000,
     structuredOutputs: true,
   },
   'claude-opus-4-8': {
     inputPerMTok: 5.0,
     outputPerMTok: 25.0,
-    maxOutputTokens: 128_000,
     structuredOutputs: true,
   },
 };

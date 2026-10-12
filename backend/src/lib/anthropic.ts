@@ -1,8 +1,8 @@
 // The single entry point for every Claude call in the product. Centralizes:
 // model selection (lib/models.ts), structured outputs, latency + token
-// measurement, cost computation, structured logging, and the AICALL# usage
-// record. The eval harness reuses callClaude with recordUsage disabled so
-// eval results go through the exact production request path.
+// measurement, cost computation and structured logging. It returns the usage
+// for the caller to store as the AICALL# record. The eval harness calls it
+// too, so eval results go through the exact production request path.
 import Anthropic from '@anthropic-ai/sdk';
 import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
 import { MODELS, costUsd } from './models.js';

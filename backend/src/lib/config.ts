@@ -40,8 +40,3 @@ export function env(name: string): string {
 export function envOr(name: string, fallback: string): string {
   return process.env[name] ?? fallback;
 }
-
-/** Test hook. */
-export function clearConfigCache(): void {
-  cache.clear();
-}
