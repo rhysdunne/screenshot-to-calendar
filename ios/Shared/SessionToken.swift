@@ -2,7 +2,8 @@ import Foundation
 
 /// Reads the expiry of the app's session JWT. The signature is not checked:
 /// the backend does that. This only lets the share extension spot a session
-/// that is over before it queues an upload that can only fail.
+/// that is over before it queues an upload that can only fail, and lets the
+/// app sign out at the same point so the two agree.
 enum SessionToken {
     private struct Claims: Decodable {
         let exp: TimeInterval
