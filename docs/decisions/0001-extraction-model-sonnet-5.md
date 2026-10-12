@@ -1,6 +1,6 @@
 # 0001. Sonnet 5 for event extraction
 
-- **Status:** Accepted
+- **Status:** Partly superseded by [0007](0007-model-refresh-2026-10.md) (classify model). The extract decision still holds.
 - **Date:** 2026-07-09
 - **Deciders:** Rhys + Claude Code
 

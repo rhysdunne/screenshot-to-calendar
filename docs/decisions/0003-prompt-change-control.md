@@ -1,6 +1,6 @@
 # 0003. Prompt change-control: versioned files, eval gate, PR review
 
-- **Status:** Accepted
+- **Status:** Partly superseded by [0008](0008-human-written-prompt-review.md) (gate rule for human-written candidates). The workflow is no longer monthly: [0006](0006-prompt-improvement-manual-only.md) made it manual-only.
 - **Date:** 2026-07-09 (records existing practice)
 - **Deciders:** Rhys + Claude Code
 

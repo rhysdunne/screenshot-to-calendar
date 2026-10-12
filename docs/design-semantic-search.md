@@ -1,8 +1,11 @@
 # Design: semantic search over captures (the scrapbook layer)
 
-Status: **designed, not implemented** — to be validated against real usage
-of the shipped event pipeline first. This doc is written to be executable in
-a future session without re-deriving decisions.
+Status: **parked**. Designed, not built and not planned. Nothing in the
+current roadmap depends on it. Non-event captures stay in the library so that
+the user can review them, not as groundwork for this feature. The doc stays
+so that a future session can pick the design up without re-deriving
+decisions. The embeddings vendor and its prices date from July 2026. Check
+them again before any build starts.
 
 ## Product framing
 
@@ -63,9 +66,10 @@ POST /v1/search {query}
 ```
 
 - Runs in `process-capture.ts` for **every** capture (events too — an event
-  poster is also scrapbook content), model `claude-haiku-4-5`, via the
-  existing `lib/anthropic.ts` (cost/latency tracked automatically, AICALL
-  record, AiCostUsd metric). Non-fatal on failure.
+  poster is also scrapbook content), with model `claude-haiku-5-5`. That is
+  the classify model since ADR 0007. It calls the existing `lib/anthropic.ts`,
+  which logs cost and latency and emits the AiCostUsd metric.
+  `process-capture.ts` stores the AICALL record. Non-fatal on failure.
 - Stored as `describe` on the capture record; surfaced in `captureView`.
 
 The `summary` field is the key to the LinkedIn use case: it captures what
@@ -145,10 +149,11 @@ Captions, summaries, and embeddings are derived personal data:
 
 ### 8. Cost
 
-- Describe: ~1.5k input tokens on Haiku ≈ $0.002/capture.
+- Describe: ~1.5k input tokens on Haiku 5.5 ($0.10/$0.50 per MTok) ≈
+  $0.0003/capture.
 - Embedding: ≈ $0.0001/capture; queries ≈ $0.0001 each.
-- Net: the scrapbook layer roughly **doubles** per-capture AI cost to
-  ~$0.01–0.015 — still trivially inside the spend alarm.
+- Net: the scrapbook layer adds about $0.0004 to the ~$0.006 a capture costs
+  today, well inside the spend alarm.
 
 ## Non-goals (now)
 

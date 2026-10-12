@@ -2,68 +2,108 @@
 
 ## Backend + web (CDK)
 
-Local:
+A merge to `main` deploys automatically (see [ci-cd.md](ci-cd.md)). To deploy
+from your own machine:
 
 ```bash
-cd infra
-export ALERT_EMAIL=you@example.com   # ops alarm address; kept out of source (public repo)
-npx cdk diff S2cBackend-staging      # review
-npx cdk deploy S2cWeb-staging S2cBackend-staging
+export ALERT_EMAIL=$(gh variable get ALERT_EMAIL)   # ops alarm address, kept out of source (public repo)
+just deploy staging
 # validate on staging, then:
-npx cdk deploy S2cWeb-prod S2cBackend-prod
+just deploy prod
 ```
 
-`ALERT_EMAIL` is the address AWS subscribes to the CloudWatch alarms topic. It's
-non-secret but personal, so it lives in your environment, not `cdk.json`. Omit it
-and the stack still deploys — alarms just have no email subscriber.
+`just deploy <stage>` installs the backend and infra packages and shows a
+`cdk diff` of both stacks. Then it asks you to type the stage name. It deploys
+`S2cWeb-<stage>` and `S2cBackend-<stage>` only after you confirm.
+
+`ALERT_EMAIL` is the address AWS subscribes to the CloudWatch alarms topic. It
+is not secret, but it is personal, so it lives in your environment and in a
+repository variable, not in `cdk.json`. An empty value still deploys, but the
+stack then drops the email subscription and the alarms notify nobody. For this
+reason `just deploy` and the CI deploy (`deploy-stage.yml`) both refuse to run
+when `ALERT_EMAIL` is empty.
 
 GitHub Actions: run the **Deploy** workflow (Actions tab → Deploy → Run
-workflow → pick stage). Requires the `AWS_DEPLOY_ROLE_ARN` and `ALERT_EMAIL`
-repository **variables** (Settings → Secrets and variables → Actions → Variables;
-see docs/setup-aws.md §6).
+workflow). It runs CI, deploys staging, then waits for approval before prod.
+Leave the prod gate unapproved to redeploy staging only. It needs the
+`AWS_DEPLOY_ROLE_ARN` and `ALERT_EMAIL` repository **variables** (Settings →
+Secrets and variables → Actions → Variables). See
+[setup-aws.md](setup-aws.md) §6.
 
 The iOS app points at prod in Release builds and staging in Debug builds
 (`ios/Shared/AppConfig.swift`).
 
-## Adopting the v3 prompt (price + category)
-
-`extract-event.v3.md` ships as a **candidate** adding `price` and `category`
-(issues #4/#7); its schema is wired via `extractSchemaFor()` and the eval
-harness/generator already score the new fields. To adopt it:
-
-```bash
-cd tools/prompt-improvement
-ANTHROPIC_API_KEY=... npm run gate -- --candidate v3
-# gate passed → bump ACTIVE_VERSIONS['extract-event'] to 'v3' in
-# backend/src/prompts/prompts.ts, commit with the gate report, deploy
-```
-
 ## Changing the extraction prompt
 
-1. Create `backend/src/prompts/extract-event.v{N+1}.md` (never edit an
-   existing version — eval baselines reference them).
-2. Gate it: `cd tools/prompt-improvement && ANTHROPIC_API_KEY=... npm run gate -- --candidate v{N+1}`
-3. If the gate passes, bump `ACTIVE_VERSIONS` in
-   `backend/src/prompts/prompts.ts`, commit the version file + gate report,
-   PR, merge, deploy.
+Prompt versions are immutable files. One pin, `ACTIVE_VERSIONS` in
+`backend/src/prompts/prompts.ts`, selects the live version
+([ADR 0003](decisions/0003-prompt-change-control.md)). Today the pin is
+`extract-event` v3. `extract-event.v4.md` is a candidate that its review did
+not adopt.
 
-The scheduled prompt-improvement workflow automates steps 1–2 from user
-corrections; adoption is always a human-reviewed PR.
+For a prompt fix that you write yourself
+([ADR 0008](decisions/0008-human-written-prompt-review.md)):
+
+1. Create `backend/src/prompts/extract-event.v{N+1}.md`. Never edit an existing
+   version, because eval reports reference them.
+2. Run the gate in report mode:
+   `cd tools/prompt-improvement && ANTHROPIC_API_KEY=... npm run gate -- --candidate v{N+1} --report-only`
+3. Read `per-case.md`. Make sure that the targeted cases are fixed and that no
+   case loses a field.
+4. Re-run each regression once on both versions with `--cases` (the command is
+   in ADR 0008). A regression that repeats blocks the candidate.
+5. If the review passes, bump `ACTIVE_VERSIONS` in `prompts.ts`. Commit the
+   version file, the pin and the reports under `evals/reports/` in one PR.
+
+A candidate from the prompt-improvement workflow must pass the strict gate,
+without `--report-only`. That workflow runs on demand only
+([ADR 0006](decisions/0006-prompt-improvement-manual-only.md)). It proposes
+candidates from the owner's consented corrections. Its aggregate step takes the
+owner's userId from the `OWNER_USER_ID` repository secret and runs a DynamoDB
+Query on that one partition of the prod table. Adoption is always a
+human-reviewed PR.
 
 ## Changing the models
 
-Edit `backend/src/lib/models.ts` (defaults) or set `CLASSIFY_MODEL` /
-`EXTRACT_MODEL` on the Lambdas via `infra/lib/backend-stack.ts`. Run the eval
-first: `cd evals && npm run eval -- --models <candidates> --dataset all` and
-compare the report against the committed baseline.
+Edit `DEFAULT_MODELS` in `backend/src/lib/models.ts`. To override one stage
+without a code change, add `CLASSIFY_MODEL` or `EXTRACT_MODEL` to the Lambda
+environment in `infra/lib/backend-stack.ts`. A model needs prices and
+per-stage tuning in `MODELS` first, or the Lambda fails at cold start.
+
+Run the eval first. `just eval claude-haiku-4-5,claude-sonnet-5-5` runs the
+full dataset on the models you list. With no argument, it runs production's
+models (about $0.85 a run).
+Compare the result with a fresh run of the current models, not with the July
+baseline in `evals/reports/baseline/`.
+[ADR 0007](decisions/0007-model-refresh-2026-10.md) shows the method. Record
+the choice in a new ADR.
 
 ## Operations
 
-- **Logs**: `aws logs tail /aws/lambda/s2c-processor-prod --follow --region eu-west-2`
-- **DLQ alarm** (`s2c-dlq-not-empty-*`) fires when a capture failed 3×.
-  Inspect: `aws sqs receive-message --queue-url <dlq-url>`; after fixing,
-  redrive from the SQS console.
-- **Cost per capture**: query `AICALL#` items, or check the `claude_call`
-  structured logs.
-- **Revoke all sessions for a user**: increment `tokenVersion` on their
-  `USER#…/PROFILE` item.
+- **Logs**: `just logs prod processor` follows the processor's logs. Any Lambda
+  works: give its CDK name in any case, for example `authgoogle` or
+  `capturescreate`. A third argument sets the look-back window (default `10m`).
+- **DLQ alarm** (`s2c-dlq-not-empty-*`) fires when a capture failed processing
+  3 times. A failure that a retry cannot fix goes to `failed` at once and never
+  reaches the DLQ: no date, an end that is not after the start, a model refusal,
+  or a Google grant that needs a new sign-in. So the DLQ holds only failures
+  that a retry might have fixed. `just dlq prod` counts the messages. After you
+  fix the cause, redrive from the SQS console.
+- **API 5xx alarm** (`s2c-api-5xx-*`) fires when the HTTP API returns any 5xx.
+  Look for `unhandled_error` in the logs of the route Lambdas
+  (`/aws/lambda/s2c-<route>-prod`), for example
+  `just logs prod capturesupdate 1h`. The log line carries the error class,
+  code, upstream status and Google reason.
+- **Other alarms**: `s2c-processor-errors-*` and `s2c-authgoogle-errors-*`
+  (Lambda errors), and `s2c-ai-spend-*` (Anthropic spend over $2 in 24 hours).
+- **Cost per capture**: query `AICALL#` items (kept for 90 days), or check the
+  `claude_call` structured logs.
+- **Sign users out**: `scripts/sessions.sh revoke-user <stage> <email>` bumps
+  one user's `tokenVersion`. `scripts/sessions.sh revoke-all <stage>` rotates
+  `jwt-secret` and signs out every user.
+- **Let someone sign up**: `scripts/allowlist.sh add <stage> <email>`. Sign-up
+  is invite-only.
+- **Prod data outlives the stack**: the prod table and images bucket use a
+  RETAIN removal policy, so a stack delete leaves them in place. The prod table
+  also has deletion protection. A delete from the console or the CLI fails until
+  you turn deletion protection off by hand.

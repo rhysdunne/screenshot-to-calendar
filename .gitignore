@@ -15,6 +15,12 @@ coverage/
 .web-application-client-secret.txt
 .places-api-key.txt
 
+# Internal threat notes on the corrections-to-prompt loop. They stay untracked
+# until the prompt-injection and eval-poisoning gaps they describe are fixed
+# (#46, #47), because publishing them maps live attack surface. CLAUDE.md names
+# the file, so this rule stops a stray `git add` from committing it.
+docs/corrections-to-prompt-improvement.md
+
 # CDK
 infra/cdk.out/
 

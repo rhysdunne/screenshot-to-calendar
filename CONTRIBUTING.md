@@ -15,7 +15,8 @@ can pick up without archaeology.
 | Bugs, ideas, known issues | **GitHub Issues** — labels `bug`, `enhancement`, `chore`, `docs`, `prompt-eval` |
 | The ordered first-deploy runbook | **[`SHIPPING.md`](SHIPPING.md)** |
 | Setup walkthroughs, architecture, policies | **[`docs/`](docs/)** |
-| A design not yet built | a design doc in `docs/` (e.g. `design-semantic-search.md`) |
+| A design not yet built | a design doc in `docs/` (e.g. `design-semantic-search.md`, now parked) |
+| Routine commands (test, deploy, logs, eval, iOS release) | **[`justfile`](justfile)**: run `just --list` |
 
 **Rule of thumb.** Notice an out-of-scope bug → **file an issue**. Make a
 non-obvious reversible call → **write an ADR**. Establish a rule the AI must always
@@ -33,23 +34,35 @@ obey → **add a `CLAUDE.md` invariant**.
 
 ## How AI-authored change is kept safe
 
-- **CI gate** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) — typecheck +
-  tests on every PR across `backend`, `infra`, `evals`, and `tools/prompt-improvement`.
-- **Eval baseline + gate** — `evals/` scores extraction against a committed baseline
-  (`evals/reports/baseline/`); no prompt change ships without passing the gate
-  against it. See [ADR 0003](docs/decisions/0003-prompt-change-control.md).
-- **Prompt-improvement PR loop**
-  ([`.github/workflows/prompt-improvement.yml`](.github/workflows/prompt-improvement.yml))
-  — proposes prompt changes from consented corrections and opens a PR; never
-  auto-merges. The gate compares baseline and candidate **paired per case** with a
-  sign test, not as two aggregate percentages: both arms run at API default
-  temperature, and four runs of an identical prompt were measured spanning 0.9pt,
-  so an absolute threshold on two independent means was inside its own noise floor.
+- **CI gate.** [`ci.yml`](.github/workflows/ci.yml) runs typecheck + tests on every
+  PR across `backend`, `infra`, `evals`, and `tools/prompt-improvement`, plus lint in
+  `backend` and a mock eval in `evals`.
+  [`ios.yml`](.github/workflows/ios.yml) compiles the iOS app without signing.
+  `just check` runs the `ci.yml` steps locally.
+- **Eval gate for prompt changes.** `tools/prompt-improvement` runs two fresh evals,
+  the candidate prompt and the pinned one, and compares them **paired per case**. It
+  does not compare against the committed baseline. A machine-proposed candidate must
+  pass the strict sign-test gate
+  ([ADR 0003](docs/decisions/0003-prompt-change-control.md)). The pairing exists
+  because both arms run at API default temperature, and four runs of an identical
+  prompt spanned 0.9pt. An absolute threshold on two independent means was inside
+  its own noise floor. A human-written candidate cannot move enough cases to pass
+  that test. It runs the gate with `--report-only` instead, and the author reviews
+  every changed case ([ADR 0008](docs/decisions/0008-human-written-prompt-review.md)).
+- **Prompt-improvement PR loop.**
+  [`prompt-improvement.yml`](.github/workflows/prompt-improvement.yml) proposes
+  prompt changes from the owner's consented corrections and opens a PR. Its
+  aggregate step takes the owner's userId from the `OWNER_USER_ID` repository
+  secret and runs a DynamoDB Query on that one partition of the prod table. It
+  never auto-merges. It runs on demand only, from the Actions tab
+  ([ADR 0006](docs/decisions/0006-prompt-improvement-manual-only.md)).
 - **Growing the real eval set is a manual step.** `cd tools/prompt-improvement &&
-  npm run materialize` pulls consented corrections and their images out of prod
-  into `evals/dataset/real/`. Run it locally, **inspect the pixels** for
-  third-party PII (faces, names, handles), redact, then commit. It is deliberately
-  not in CI — the repo is public and no automated step can do that review.
+  OWNER_USER_ID=<your userId> npm run materialize` pulls the owner's consented
+  corrections and their images out of prod into `evals/dataset/real/`. It reads no
+  other account. Run it locally, **inspect the pixels** for third-party PII (faces,
+  names, handles), redact, then commit. It is deliberately not in CI, because the
+  repo is public and no automated step can do that review. The full command is in
+  [`tools/prompt-improvement/README.md`](tools/prompt-improvement/README.md).
 - **Deploy** — merge to `main` auto-deploys the backend + web to staging, then
   pauses at a prod approval gate ([`deploy.yml`](.github/workflows/deploy.yml));
   the iOS app ships on an `ios-v*` tag via Xcode Cloud. Full pipeline, gates, and
@@ -67,6 +80,7 @@ obey → **add a `CLAUDE.md` invariant**.
 
 ## Running it
 
-See [`README.md`](README.md) for commands and [`SHIPPING.md`](SHIPPING.md) for
+Run `just --list` for the named commands. `just check` runs every PR check that
+`ci.yml` runs, in all four packages. See [`SHIPPING.md`](SHIPPING.md) for
 first-time setup. Per package: `cd <pkg> && npm test && npm run typecheck` for
 `backend`, `infra`, `evals`, and `tools/prompt-improvement`.
