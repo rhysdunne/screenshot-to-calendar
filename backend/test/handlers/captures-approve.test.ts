@@ -96,6 +96,8 @@ describe('confidence gating', () => {
     const res = await invokeApprove(fake);
     expect(res.statusCode).toBe(200);
     expect(res.body.status).toBe('duplicate');
+    expect(res.body.matchedEventId).toBe('existing-9');
+    expect(res.body.calendarEventId).toBeNull();
     expect(fake.insertedEvents).toHaveLength(0);
   });
 

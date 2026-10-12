@@ -186,13 +186,38 @@ export async function createCalendarEntry(
     `${addDays(windowStart, -1)}T00:00:00Z`,
     `${addDays(windowEnd, 1)}T23:59:59Z`,
   );
+
+  // Every event this app creates carries its capture's deep link. One that
+  // carries ours was made by an earlier attempt at this same capture: an SQS
+  // redelivery after insertEvent succeeded but the Lambda died before the
+  // DynamoDB update, or a double approve. Adopt it rather than marking the
+  // capture a duplicate of itself or inserting a second copy. Checked across
+  // the whole window, not just the dedup match, because a re-extraction can
+  // differ enough to miss the duplicate threshold. The adopted event is then
+  // patched with this attempt's body: this attempt's extraction is the one the
+  // caller stores, so the calendar ends up matching what the app shows.
+  const own = existing.find((e) => e.description?.includes(captureLink));
+  if (own) {
+    await deps.calendar.patchEvent(accessToken, calendarId, own.id, calendarBody);
+    return {
+      status: 'completed',
+      calendarEventId: own.id,
+      calendarId,
+      eventLink: own.htmlLink,
+    };
+  }
+
   const verdict = findDuplicate(calendarBody, existing);
 
   if (verdict.kind === 'duplicate') {
+    // The match is someone else's event (another capture's, or one the user
+    // made by hand), so it goes in matchedEventId. calendarEventId stays unset:
+    // edit and "delete with event" act on calendarEventId, and must only ever
+    // touch an event this capture created. eventLink still opens the match.
     return {
       status: 'duplicate',
-      calendarEventId: verdict.event.id,
-      calendarId,
+      matchedEventId: verdict.event.id,
+      matchedCalendarId: calendarId,
       eventLink: verdict.event.htmlLink,
     };
   }

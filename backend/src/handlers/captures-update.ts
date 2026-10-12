@@ -66,8 +66,11 @@ export function makeHandler(deps: Deps): ApiHandler {
       }
       const merged: ExtractedEvent = { ...capture.event, ...corrected };
 
-      // Patch the calendar event to match the corrected data.
-      if (capture.calendarEventId && capture.calendarId) {
+      // Patch the calendar event to match the corrected data. Never for a
+      // duplicate: new duplicates have no calendarEventId, but records written
+      // before matchedEventId existed still carry the matched event's id there,
+      // and that event belongs to another capture or to the user.
+      if (capture.calendarEventId && capture.calendarId && capture.status !== 'duplicate') {
         const timeZone = user.settings.timezone || 'Europe/London';
         const calendarBody = mapEventToCalendar(merged, {
           today: todayInZone(timeZone),

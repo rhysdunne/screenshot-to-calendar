@@ -89,7 +89,7 @@ describe('processCapture', () => {
     expect(fake.claudeCalls).toHaveLength(1); // no extract call
   });
 
-  it('duplicate in the calendar window skips creation and links the existing event', async () => {
+  it('duplicate in the calendar window skips creation and records the match apart from calendarEventId', async () => {
     const fake = makeFakeDeps({
       extractResult: GOOD_EXTRACTION,
       existingEvents: [
@@ -106,8 +106,97 @@ describe('processCapture', () => {
 
     const capture = await fake.store.getCapture('user-1', 'cap-1');
     expect(capture?.status).toBe('duplicate');
-    expect(capture?.calendarEventId).toBe('existing-1');
+    expect(capture?.matchedEventId).toBe('existing-1');
+    expect(capture?.matchedCalendarId).toBe('cal-events');
+    expect(capture?.eventLink).toBe('https://calendar.google.com/event?eid=existing');
+    // Edit and delete act on calendarEventId — it must never name the match.
+    expect(capture?.calendarEventId).toBeUndefined();
+    expect(capture?.calendarId).toBeUndefined();
     expect(fake.insertedEvents).toHaveLength(0);
+    expect(fake.patchedEvents).toHaveLength(0);
+  });
+
+  it('a match carrying this capture’s own link is adopted as its event, not a duplicate', async () => {
+    // SQS redelivery: the first attempt inserted the event, then died before
+    // the DynamoDB update.
+    const fake = makeFakeDeps({
+      extractResult: GOOD_EXTRACTION,
+      existingEvents: [
+        {
+          id: 'own-event-1',
+          summary: 'Frieze London',
+          description: 'Art fair\nView capture: https://app.example.com/c/cap-1\n',
+          htmlLink: 'https://calendar.google.com/event?eid=own',
+          start: { date: '2026-10-14' },
+        },
+      ],
+    });
+    await seedCapture(fake);
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('completed');
+    expect(capture?.calendarEventId).toBe('own-event-1');
+    expect(capture?.calendarId).toBe('cal-events');
+    expect(capture?.eventLink).toBe('https://calendar.google.com/event?eid=own');
+    expect(capture?.matchedEventId).toBeUndefined();
+    expect(fake.insertedEvents).toHaveLength(0);
+    expect(fake.patchedEvents).toMatchObject([
+      { calendarId: 'cal-events', eventId: 'own-event-1' },
+    ]);
+  });
+
+  it('an earlier attempt’s event is adopted even when the re-extraction misses the dedup match', async () => {
+    const fake = makeFakeDeps({
+      // Second extraction read a different start date, so title dedup alone
+      // would only flag a possible duplicate and insert a second copy.
+      extractResult: { ...GOOD_EXTRACTION, start_date: '2026-10-15' },
+      existingEvents: [
+        {
+          id: 'own-event-1',
+          summary: 'Frieze London',
+          description: 'View capture: https://app.example.com/c/cap-1',
+          start: { date: '2026-10-14' },
+        },
+      ],
+    });
+    await seedCapture(fake);
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('completed');
+    expect(capture?.calendarEventId).toBe('own-event-1');
+    expect(capture?.possibleDuplicateOf).toBeUndefined();
+    expect(fake.insertedEvents).toHaveLength(0);
+    // The stored event now says 15 October, so the calendar is moved to match.
+    expect(capture?.event?.start_date).toBe('2026-10-15');
+    expect(fake.patchedEvents).toHaveLength(1);
+    const patched = fake.patchedEvents[0]!;
+    expect(patched.eventId).toBe('own-event-1');
+    expect(patched.event.start).toEqual({ date: '2026-10-15' });
+    expect(patched.event.description).toContain('View capture: https://app.example.com/c/cap-1');
+  });
+
+  it('another capture’s link does not count as this capture’s event', async () => {
+    const fake = makeFakeDeps({
+      extractResult: GOOD_EXTRACTION,
+      existingEvents: [
+        {
+          id: 'other-capture-event',
+          summary: 'Frieze London',
+          description: 'View capture: https://app.example.com/c/cap-other',
+          start: { date: '2026-10-14' },
+        },
+      ],
+    });
+    await seedCapture(fake);
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('duplicate');
+    expect(capture?.matchedEventId).toBe('other-capture-event');
+    expect(capture?.calendarEventId).toBeUndefined();
+    expect(fake.patchedEvents).toHaveLength(0);
   });
 
   it('similar event on a different date creates but flags possibleDuplicateOf', async () => {

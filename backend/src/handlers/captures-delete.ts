@@ -14,11 +14,14 @@ export function makeHandler(deps: Deps): ApiHandler {
       const capture = await deps.store.getCapture(user.userId, captureId);
       if (!capture) throw new HttpError(404, 'Capture not found');
 
-      if (
-        event.queryStringParameters?.deleteEvent === 'true' &&
-        capture.calendarEventId &&
-        capture.calendarId
-      ) {
+      const deleteEvent = event.queryStringParameters?.deleteEvent === 'true';
+      if (deleteEvent && capture.status === 'duplicate') {
+        // A duplicate created no event. New duplicates have no calendarEventId,
+        // but records written before matchedEventId existed still carry the
+        // matched event's id there, and that event belongs to another capture
+        // or to the user. Remove the capture only.
+        logger.info('capture_delete_event_skipped_duplicate', { userId: user.userId, captureId });
+      } else if (deleteEvent && capture.calendarEventId && capture.calendarId) {
         const accessToken = await deps.googleAccessToken(user);
         await deps.calendar.deleteEvent(accessToken, capture.calendarId, capture.calendarEventId);
       }

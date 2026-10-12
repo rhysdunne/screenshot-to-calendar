@@ -65,27 +65,37 @@ struct Capture: Codable, Identifiable, Equatable {
     var createdAt: String
     var classification: Classification?
     var event: ExtractedEvent?
-    var corrected: ExtractedEvent?
+    /// The user's corrections, keyed by wire field name (e.g. "end_time"). A
+    /// key present with a null value means the user cleared that field; an
+    /// absent key means it was not corrected. JSONDecoder keeps null entries in
+    /// a dictionary of optionals, which ExtractedEvent? could not: both cases
+    /// decoded to nil there, so a cleared value came back from the extraction.
+    var corrected: [String: String?]?
+    /// Only ever an event this capture created; nil for a duplicate.
     var calendarEventId: String?
     var eventLink: String?
+    /// Status duplicate: the existing event this capture matched.
+    var matchedEventId: String?
     var possibleDuplicateOf: String?
     var error: String?
 
     var id: String { captureId }
 
     /// The user-facing view of the event: corrections overlaid on extraction.
+    /// `if let v = corrected[key]` binds whenever the key is present, so a
+    /// cleared field (v == nil) overrides the extracted value too.
     var effectiveEvent: ExtractedEvent? {
         guard var merged = event else { return nil }
         guard let corrected else { return merged }
-        if let v = corrected.title { merged.title = v }
-        if let v = corrected.venue { merged.venue = v }
-        if let v = corrected.address { merged.address = v }
-        if let v = corrected.startDate { merged.startDate = v }
-        if let v = corrected.endDate { merged.endDate = v }
-        if let v = corrected.startTime { merged.startTime = v }
-        if let v = corrected.endTime { merged.endTime = v }
-        if let v = corrected.description { merged.description = v }
-        if let v = corrected.url { merged.url = v }
+        if let v = corrected["title"] { merged.title = v }
+        if let v = corrected["venue"] { merged.venue = v }
+        if let v = corrected["address"] { merged.address = v }
+        if let v = corrected["start_date"] { merged.startDate = v }
+        if let v = corrected["end_date"] { merged.endDate = v }
+        if let v = corrected["start_time"] { merged.startTime = v }
+        if let v = corrected["end_time"] { merged.endTime = v }
+        if let v = corrected["description"] { merged.description = v }
+        if let v = corrected["url"] { merged.url = v }
         return merged
     }
 }
