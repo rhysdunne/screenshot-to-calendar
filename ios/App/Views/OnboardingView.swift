@@ -8,6 +8,10 @@ struct OnboardingView: View {
     @State private var isWorking = false
     @State private var errorMessage: String?
 
+    /// The router only shows this view once settings have loaded, so this is a
+    /// backstop: never pick or create a calendar that can't then be saved.
+    private static let settingsMissing = "Your settings haven't loaded, so this choice can't be saved. Close and reopen the app, then try again."
+
     var body: some View {
         NavigationStack {
             List {
@@ -58,7 +62,10 @@ struct OnboardingView: View {
     }
 
     private func select(_ calendarId: String) async {
-        guard var settings = appState.settings else { return }
+        guard var settings = appState.settings else {
+            errorMessage = Self.settingsMissing
+            return
+        }
         isWorking = true
         defer { isWorking = false }
         settings.calendarId = calendarId
@@ -72,6 +79,12 @@ struct OnboardingView: View {
     }
 
     private func createAndSelect() async {
+        // Check first: select() can't save without settings, so creating the
+        // Google calendar would leave it orphaned.
+        guard appState.settings != nil else {
+            errorMessage = Self.settingsMissing
+            return
+        }
         isWorking = true
         do {
             let created = try await appState.api.createCalendar(

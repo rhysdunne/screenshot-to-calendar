@@ -5,10 +5,15 @@ import GoogleSignIn
 @MainActor
 final class AppState: ObservableObject {
     @Published var isSignedIn = KeychainStore.token != nil
-    /// False until the first `bootstrap()` (or a fresh `signIn`) has resolved
-    /// `settings`. The router shows a launch splash while this is false so a
-    /// returning user never flashes the calendar picker before settings load.
+    /// False until `bootstrap()` (or a fresh `signIn`) has loaded `settings`. The
+    /// router shows a launch splash while this is false so a returning user never
+    /// flashes the calendar picker before settings load. A failed load leaves it
+    /// false (and sets `bootstrapError`), so the splash offers a retry rather than
+    /// routing on with no settings.
     @Published var didBootstrap = false
+    /// Why the last `bootstrap()` couldn't load settings (offline, 5xx, timeout).
+    /// Non-nil turns the launch splash into a "Try again" screen.
+    @Published var bootstrapError: String?
     @Published var settings: UserSettings?
     @Published var captures: [Capture] = []
     @Published var pendingDeepLinkCaptureId: String?
@@ -19,16 +24,20 @@ final class AppState: ObservableObject {
 
     // MARK: Lifecycle
 
+    /// Loads settings for a returning user. A no-op once settings are loaded
+    /// (`signIn` loads them itself), so re-running on a route change or a retry
+    /// tap is safe.
     func bootstrap() async {
-        guard isSignedIn else { return }
-        defer { didBootstrap = true }
+        guard isSignedIn, !didBootstrap else { return }
+        bootstrapError = nil
         do {
             settings = try await api.getSettings()
+            didBootstrap = true
             await refreshCaptures()
-        } catch let APIError.unauthorized(code) {
-            if code == "needs_reauth" || code == "unauthorized" { signOutLocally() }
+        } catch let APIError.unauthorized(code) where code == "needs_reauth" || code == "unauthorized" {
+            signOutLocally()
         } catch {
-            lastError = error.localizedDescription
+            bootstrapError = error.localizedDescription
         }
     }
 
