@@ -12,6 +12,10 @@
 > - **`docs/corrections-to-prompt-improvement.md` stays untracked** until the
 >   prompt-injection / eval-poisoning gaps it documents are hardened — publishing
 >   it maps live attack surface.
+> - **No claude.ai links, AWS account IDs or local paths** in commits, PRs or
+>   issues. `.claude/settings.json` turns off the automatic session link
+>   (`attribution.sessionUrl: false`). Do not paste session, artifact or chat
+>   links by hand either.
 
 ## Project: screenshot-to-calendar
 

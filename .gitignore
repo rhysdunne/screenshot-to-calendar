@@ -21,6 +21,9 @@ coverage/
 # the file, so this rule stops a stray `git add` from committing it.
 docs/corrections-to-prompt-improvement.md
 
+# Claude Code: per-session git worktrees. .claude/settings.json stays tracked.
+.claude/worktrees/
+
 # CDK
 infra/cdk.out/
 
