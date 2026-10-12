@@ -72,7 +72,9 @@ final class AppState: ObservableObject {
                 return
             }
             let auth = try await api.signIn(serverAuthCode: code)
-            KeychainStore.token = auth.token
+            // Throws before isSignedIn flips, so a failed save shows as a
+            // sign-in error instead of a session with no token.
+            try KeychainStore.save(auth.token)
             settings = auth.user.settings
             isSignedIn = true
             didBootstrap = true
@@ -85,7 +87,7 @@ final class AppState: ObservableObject {
     }
 
     func signOutLocally() {
-        KeychainStore.token = nil
+        KeychainStore.clear()
         GIDSignIn.sharedInstance.signOut()
         isSignedIn = false
         didBootstrap = false
