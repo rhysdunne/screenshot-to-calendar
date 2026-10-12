@@ -1,0 +1,10 @@
+{
+  "candidate": "v4",
+  "model": "claude-sonnet-5",
+  "pass": false,
+  "reasons": [],
+  "baselineAggregate": 0.9730747315362698,
+  "candidateAggregate": 0.9884529051195714,
+  "paired": 66,
+  "unusable": "only 66 of 78 scorable cases scored on both sides (need 95%) — too many errors to compare"
+}

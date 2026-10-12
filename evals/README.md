@@ -12,7 +12,7 @@ the images, and what does it cost?** — and gates every prompt change.
 | `src/harness.ts` | Runs each case through the **real production request path** (`backend/src/lib/anthropic.ts` + pinned prompts + `pipeline/extract.ts`) per model, concurrency 4. |
 | `dataset/synthetic/` | Committed generated cases: `image.png` + `gold.json` + `meta.json`. `meta.frozenToday` pins `{{TODAY}}` so relative dates ("This Saturday") stay deterministic forever. 40 drawn event cases, 4 menus, and 6 fixed `just-past` cases: year-less dates shortly before `frozenToday` plus one months-past control (#27). |
 | `dataset/real/` | Hand-labeled real screenshots — see `docs/adding-eval-images.md`. Only add images you have consent to use; the loader refuses a case without `"consent": true` in its `meta.json`. |
-| `reports/` | Run outputs (gitignored except committed baselines). `model-refresh-2026-10/` holds the runs behind ADR 0007, force-added. |
+| `reports/` | Run outputs (gitignored except committed baselines). `model-refresh-2026-10/` holds the runs behind ADR 0007, and `prompt-v4-2026-10/` the report-mode gate run for the v4 candidate (#27), both force-added. |
 
 ## Commands
 
@@ -24,8 +24,8 @@ npm run generate -- --count 40 --seed 42          # regenerate synthetic dataset
 npm test                                          # scoring + generator unit tests (no API key)
 npm run eval -- --mock                            # plumbing check, no API calls
 
-# The real thing. Each model runs both stages; over 76 cases that is about
-# $0.75 for Sonnet 5 ($0.45 with --no-classify) and a few cents for Haiku 5.5:
+# The real thing. Each model runs both stages; over 82 cases that is about
+# $0.80 for Sonnet 5 ($0.49 with --no-classify) and a few cents for Haiku 5.5:
 ANTHROPIC_API_KEY=... npm run eval -- \
   --models claude-haiku-5-5,claude-sonnet-5 --dataset all
 
