@@ -81,6 +81,8 @@ export type CaptureStatus =
 export interface ExistingCalendarEvent {
   id: string;
   summary?: string;
+  /** Carries "/c/<captureId>" on events this app created. */
+  description?: string;
   htmlLink?: string;
   start?: { date?: string; dateTime?: string };
 }
