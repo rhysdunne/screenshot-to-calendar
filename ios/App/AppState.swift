@@ -33,6 +33,9 @@ final class AppState: ObservableObject {
 
     let api = APIClient()
     lazy var images = CaptureImageStore(api: api)
+    /// The one foreground refresh-and-poll in flight. Replaced, never stacked,
+    /// so quick background/foreground flips can't run parallel 2s loops.
+    private var foregroundRefresh: Task<Void, Never>?
 
     // MARK: Lifecycle
 
@@ -87,6 +90,8 @@ final class AppState: ObservableObject {
     }
 
     func signOutLocally() {
+        foregroundRefresh?.cancel()
+        foregroundRefresh = nil
         KeychainStore.clear()
         GIDSignIn.sharedInstance.signOut()
         isSignedIn = false
@@ -120,12 +125,35 @@ final class AppState: ObservableObject {
         }
     }
 
+    /// Called when the library comes to the foreground. The share extension
+    /// can't wake the app, so look for new captures, then poll any still
+    /// processing. `fetchFirst` is false when the library first appears,
+    /// because bootstrap or sign-in has only just fetched.
+    func refreshOnForeground(fetchFirst: Bool) {
+        foregroundRefresh?.cancel()
+        foregroundRefresh = Task {
+            if fetchFirst { await refreshCaptures() }
+            // A share still uploading when the app came forward isn't listed
+            // yet. One more look a few seconds later picks it up.
+            if !hasCapturesInProgress {
+                do { try await Task.sleep(for: .seconds(3)) } catch { return }
+                await refreshCaptures(reportErrors: false)
+            }
+            await pollWhileProcessing()
+        }
+    }
+
+    private var hasCapturesInProgress: Bool {
+        captures.contains { !$0.status.isTerminal }
+    }
+
     /// Poll while any capture is still processing (share-extension handoff).
     /// 2s interval, 60s cap — processing normally lands well under 20s.
-    func pollWhileProcessing() async {
+    /// Stops at once if the surrounding task is cancelled.
+    private func pollWhileProcessing() async {
         for _ in 0..<30 {
-            guard captures.contains(where: { !$0.status.isTerminal }) else { return }
-            try? await Task.sleep(for: .seconds(2))
+            guard hasCapturesInProgress else { return }
+            do { try await Task.sleep(for: .seconds(2)) } catch { return }
             await refreshCaptures(reportErrors: false)
         }
     }

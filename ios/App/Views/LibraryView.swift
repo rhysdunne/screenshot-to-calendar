@@ -7,6 +7,10 @@ struct LibraryView: View {
     @State private var selectedCapture: Capture?
     @State private var isRetrying = false
     @State private var isReconnecting = false
+    /// Set when the app goes to the background, so only a real return (from
+    /// sharing, say) fetches first. The launch's own inactive-to-active step
+    /// and a glance at Control Centre don't.
+    @State private var wasInBackground = false
 
     private let columns = [GridItem(.adaptive(minimum: 110), spacing: 12)]
 
@@ -53,14 +57,19 @@ struct LibraryView: View {
             .sheet(item: $selectedCapture) { capture in
                 CaptureDetailView(captureId: capture.captureId)
             }
-            .onChange(of: scenePhase) { _, phase in
+            .onChange(of: scenePhase, initial: true) { _, phase in
                 // The share extension can't wake the app; refresh + poll when
-                // the user comes back after sharing.
-                if phase == .active {
-                    Task {
-                        await appState.refreshCaptures()
-                        await appState.pollWhileProcessing()
-                    }
+                // the user comes back after sharing. The first appearance
+                // comes just after bootstrap or sign-in fetched, so it only
+                // polls.
+                switch phase {
+                case .background:
+                    wasInBackground = true
+                case .active:
+                    appState.refreshOnForeground(fetchFirst: wasInBackground)
+                    wasInBackground = false
+                default:
+                    break
                 }
             }
             // initial: a link that cold-launches the app is set before the
