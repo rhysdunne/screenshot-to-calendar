@@ -32,7 +32,7 @@ struct SettingsView: View {
             Section {
                 Toggle("Help improve extraction", isOn: consentBinding)
             } footer: {
-                Text("Off by default. When on, corrections you make (and the images they belong to) may be used to improve the extraction prompt. See the privacy policy for details.")
+                Text("Off by default. When on, the fixes you make to extracted details (not your images) may be used to find common mistakes and improve the extraction prompt. Prompt changes are tested only on the developer's own screenshots, never on other users' images. See the privacy policy for details.")
             }
 
             Section("Your data") {
