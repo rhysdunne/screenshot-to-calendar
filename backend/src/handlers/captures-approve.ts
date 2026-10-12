@@ -2,15 +2,15 @@
 // failed-but-extracted) capture in the app and wants the calendar event
 // created. Runs the same map → dedup → insert path as the processor, using
 // the effective event (corrections overlaid on the original extraction).
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
-import { authenticate, errorResponse, HttpError, json } from '../lib/http.js';
+import { authenticate, errorResponse, HttpError, json, type ApiHandler } from '../lib/http.js';
 import { createCalendarEntry } from './process-capture.js';
 import { captureView } from './captures-read.js';
 import { NoDateError, type ExtractedEvent } from '../pipeline/types.js';
 import { logger } from '../lib/logger.js';
 
-export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -45,5 +45,5 @@ export function makeHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export const handler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makeHandler(realDeps())(e, c, cb);
+export const handler = (event: APIGatewayProxyEventV2) =>
+  makeHandler(realDeps())(event);

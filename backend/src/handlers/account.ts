@@ -4,15 +4,15 @@
 //                             lifecycle expiry on the exports/ prefix).
 // DELETE /v1/account        — delete all images and records, revoke the Google
 //                             refresh token, and invalidate all sessions.
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda';
+import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { ulid } from 'ulid';
 import { realDeps, type Deps } from './deps.js';
-import { authenticate, errorResponse, json } from '../lib/http.js';
+import { authenticate, errorResponse, json, type ApiHandler } from '../lib/http.js';
 import { decrypt } from '../lib/crypto.js';
 import { revokeToken } from '../lib/google-auth.js';
 import { logger, safeError } from '../lib/logger.js';
 
-export function makeExportHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeExportHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -60,7 +60,7 @@ export function makeExportHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export function makeDeleteHandler(deps: Deps): APIGatewayProxyHandlerV2 {
+export function makeDeleteHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
@@ -89,7 +89,7 @@ export function makeDeleteHandler(deps: Deps): APIGatewayProxyHandlerV2 {
   };
 }
 
-export const exportHandler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makeExportHandler(realDeps())(e, c, cb);
-export const deleteHandler: APIGatewayProxyHandlerV2 = (e, c, cb) =>
-  makeDeleteHandler(realDeps())(e, c, cb);
+export const exportHandler = (event: APIGatewayProxyEventV2) =>
+  makeExportHandler(realDeps())(event);
+export const deleteHandler = (event: APIGatewayProxyEventV2) =>
+  makeDeleteHandler(realDeps())(event);

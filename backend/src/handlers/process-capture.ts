@@ -1,7 +1,7 @@
 // The pipeline orchestrator: SQS-triggered, one capture per message.
 //   classify → extract → resolve venue → dedup → create calendar event
 // Pure logic lives in src/pipeline/; this file sequences I/O.
-import type { SQSHandler } from 'aws-lambda';
+import type { SQSEvent } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
 import { extractSchemaFor, loadPrompt, renderPrompt } from '../prompts/prompts.js';
 import { CLASSIFY_IMAGE_SCHEMA } from '../prompts/schemas.js';
@@ -236,7 +236,7 @@ function extractClassification(response: {
   };
 }
 
-export const handler: SQSHandler = async (sqsEvent) => {
+export const handler = async (sqsEvent: SQSEvent): Promise<void> => {
   const deps = realDeps();
   for (const record of sqsEvent.Records) {
     await processCapture(deps, JSON.parse(record.body) as ProcessMessage);

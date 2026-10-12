@@ -1,7 +1,7 @@
 // API handler tests: auth enforcement, capture upload + exact dedup, and the
 // corrections flow (records + rate limit + calendar patch).
 import { describe, expect, it } from 'vitest';
-import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2, Context } from 'aws-lambda';
+import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 import { makeHandler as makeCreateHandler } from '../../src/handlers/captures-create.js';
 import { makeHandler as makeUpdateHandler } from '../../src/handlers/captures-update.js';
 import { makeGetHandler } from '../../src/handlers/captures-read.js';
@@ -31,12 +31,10 @@ async function invoke(
   handler: ReturnType<typeof makeCreateHandler>,
   event: APIGatewayProxyEventV2,
 ): Promise<{ statusCode: number; body: Record<string, unknown> }> {
-  const result = (await handler(event, {} as Context, () => {})) as
-    | APIGatewayProxyStructuredResultV2
-    | undefined;
+  const result = (await handler(event)) as APIGatewayProxyStructuredResultV2;
   return {
-    statusCode: result?.statusCode ?? 0,
-    body: JSON.parse(result?.body ?? '{}') as Record<string, unknown>,
+    statusCode: result.statusCode ?? 0,
+    body: JSON.parse(result.body ?? '{}') as Record<string, unknown>,
   };
 }
 

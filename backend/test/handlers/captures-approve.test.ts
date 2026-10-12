@@ -1,7 +1,7 @@
 // Confidence gating (#2): low-confidence extractions stop at needs_review;
 // the approve endpoint creates the event through the same dedup path.
 import { describe, expect, it } from 'vitest';
-import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2, Context } from 'aws-lambda';
+import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 import { processCapture } from '../../src/handlers/process-capture.js';
 import { makeHandler as makeApproveHandler } from '../../src/handlers/captures-approve.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
@@ -45,12 +45,10 @@ async function invokeApprove(
     pathParameters: { id: captureId },
     isBase64Encoded: false,
   } as unknown as APIGatewayProxyEventV2;
-  const result = (await makeApproveHandler(fake.deps)(event, {} as Context, () => {})) as
-    | APIGatewayProxyStructuredResultV2
-    | undefined;
+  const result = (await makeApproveHandler(fake.deps)(event)) as APIGatewayProxyStructuredResultV2;
   return {
-    statusCode: result?.statusCode ?? 0,
-    body: JSON.parse(result?.body ?? '{}') as Record<string, unknown>,
+    statusCode: result.statusCode ?? 0,
+    body: JSON.parse(result.body ?? '{}') as Record<string, unknown>,
   };
 }
 
