@@ -128,9 +128,12 @@ and #47 are fixed and real corrections exist. To run it, open Actions, choose
 Scan of the prod table. Stages and commands:
 [`tools/prompt-improvement/README.md`](../tools/prompt-improvement/README.md).
 
-**Dependabot** opens at most two grouped npm PRs a month: `production` and
-`development`. Each holds minor and patch updates only. Every major update
-arrives as its own PR. New releases wait 7 days (`cooldown`) before Dependabot
+**Dependabot** opens at most three grouped npm PRs a month: `cdk`,
+`production` and `development`. Each holds minor and patch updates only. Every
+major update arrives as its own PR. The `cdk` group keeps `aws-cdk`,
+`aws-cdk-lib` and `constructs` in one PR, because the CDK CLI must be at least
+as new as the library. Without it, the CLI (a dev dependency) and the library
+(a production dependency) would land in separate PRs. New releases wait 7 days (`cooldown`) before Dependabot
 proposes them. Two majors are ignored and bumped by hand:
 
 - `typescript`: typescript-eslint 8.x declares TypeScript below 6.1 only, so

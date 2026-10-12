@@ -13,10 +13,18 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 10
-    # Minor and patch updates arrive as at most two PRs a month: runtime
-    # dependencies and dev tooling. The groups leave majors out, so each
-    # major arrives as its own PR and gets its own review.
+    # Minor and patch updates arrive as at most three PRs a month: CDK,
+    # runtime dependencies and dev tooling. The groups leave majors out, so
+    # each major arrives as its own PR and gets its own review. A dependency
+    # joins the first group it matches, so cdk must stay above the others.
     groups:
+      # The CDK CLI (aws-cdk) must be at least as new as the library
+      # (aws-cdk-lib): an older CLI refuses the cloud assembly a newer library
+      # writes. aws-cdk is a dev dependency and aws-cdk-lib a production one,
+      # so the type groups below would split them into separate PRs.
+      cdk:
+        patterns: ["aws-cdk", "aws-cdk-lib", "constructs"]
+        update-types: [minor, patch]
       production:
         dependency-type: production
         update-types: [minor, patch]
