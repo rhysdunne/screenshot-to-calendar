@@ -51,7 +51,11 @@ export const CORRECTABLE_FIELDS = [
 ] as const;
 export type CorrectableField = (typeof CORRECTABLE_FIELDS)[number];
 
-/** The classification step's output. Categories anticipate the scrapbook pivot. */
+/**
+ * The classification step's output. A non-event image is kept in the library
+ * so the user can review it. The scrapbook search the non-event categories
+ * were designed for (docs/design-semantic-search.md) is parked.
+ */
 export interface Classification {
   category: 'event_poster' | 'event_screenshot' | 'ticket' | 'other_scrapbook' | 'not_useful';
   is_event: boolean;

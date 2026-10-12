@@ -58,8 +58,9 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
     const today = todayInZone(timeZone);
     let totalCost = 0;
 
-    // 1. Classify (cheap model). Non-events stay in the library for the
-    // scrapbook direction but skip calendar creation.
+    // 1. Classify (cheap model). Non-events skip calendar creation but stay in
+    // the library so the user can review them. The scrapbook search design
+    // they were kept for is parked.
     const classifyCall = await deps.callClaude({
       apiKey: anthropicApiKey,
       model: config.classifyModel,
