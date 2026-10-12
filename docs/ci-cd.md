@@ -25,7 +25,7 @@ checks pass, each the job id of a workflow:
   [`ci.yml`](../.github/workflows/ci.yml): typecheck, lint (backend), and the
   full mocked test suites. No AWS or API credentials; everything is stubbed.
 - `ios-build` — [`ios.yml`](../.github/workflows/ios.yml): a compile-only check
-  on a macOS runner, pinned to **Xcode 26.5 (17F42)** to match the Xcode Cloud
+  on a macOS runner, pinned to **Xcode 26.6 (17F113)** to match the Xcode Cloud
   release lane. No signing, no tests (there is no XCTest target yet). Separate
   from `ci.yml` so a backend deploy never waits on a macOS build.
 
@@ -80,7 +80,7 @@ version pin, and build-number stamping live in
 
 ## Toolchain pins to keep in lockstep
 
-Two places declare Xcode 26.5 (17F42) and must change together: the
+Two places declare Xcode 26.6 (17F113) and must change together: the
 `xcode-select` line in [`ios.yml`](../.github/workflows/ios.yml) and the Xcode
 Cloud workflow's Environment setting. Pinning both keeps the PR compile gate and
 the release archive on one toolchain. Bumping is a deliberate, paired act.

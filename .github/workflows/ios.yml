@@ -14,10 +14,10 @@ jobs:
       run: { working-directory: ios }
     steps:
       - uses: actions/checkout@v7
-      # Pinned to the same Xcode build (17F42) as the Xcode Cloud TestFlight
+      # Pinned to the same Xcode build (17F113) as the Xcode Cloud TestFlight
       # workflow, so CI and the release lane compile with one toolchain.
       # Fails loudly if a runner-image update drops this version.
-      - run: sudo xcode-select --switch /Applications/Xcode_26.5.app
+      - run: sudo xcode-select --switch /Applications/Xcode_26.6.app
       - run: brew install xcodegen
       - run: xcodegen generate
       - run: >

@@ -34,9 +34,14 @@ fast per-PR compile gate; Xcode Cloud is the release lane.
 4. Workflow settings:
    - Environment: pin a **specific Xcode version**, not "Latest Release" (which
      silently advances and can break a tag push months later). Currently
-     **Xcode 26.5 (17F42)** — kept in lockstep with `ios.yml`'s
+     **Xcode 26.6 (17F113)** — kept in lockstep with `ios.yml`'s
      `xcode-select` pin, so PR CI and the release lane use one toolchain.
      Bumping the version is a deliberate act: change both together.
+     Leave **macOS version** on "Latest Release" so it follows the pinned
+     Xcode. Apple retires old Xcode versions from Xcode Cloud. A retired pin
+     fails the next tag build with "The selected Xcode and macOS versions are
+     no longer supported". To recover, pick the nearest point release still
+     listed, save, rebuild, and move the `ios.yml` pin to match.
    - Start condition: **Tag** matching `ios-v*` (delete the default branch
      condition — most merges to main are backend-only and shouldn't burn
      compute hours on an archive nobody installs).
