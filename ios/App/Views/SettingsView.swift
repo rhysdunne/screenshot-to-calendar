@@ -75,7 +75,7 @@ struct SettingsView: View {
             SafariLink(url: url)
         }
         .confirmationDialog(
-            "Delete your account? All captures, images, and records are removed and Google Calendar access is revoked. Events already in your calendar stay.",
+            "Delete your account? All captures, images, and records are removed, and we ask Google to revoke the app's Calendar access. Events already in your calendar stay.",
             isPresented: $showDeleteConfirm,
             titleVisibility: .visible
         ) {
