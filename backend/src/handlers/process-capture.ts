@@ -193,9 +193,12 @@ export async function createCalendarEntry(
   // DynamoDB update, or a double approve. Adopt it rather than marking the
   // capture a duplicate of itself or inserting a second copy. Checked across
   // the whole window, not just the dedup match, because a re-extraction can
-  // differ enough to miss the duplicate threshold.
+  // differ enough to miss the duplicate threshold. The adopted event is then
+  // patched with this attempt's body: this attempt's extraction is the one the
+  // caller stores, so the calendar ends up matching what the app shows.
   const own = existing.find((e) => e.description?.includes(captureLink));
   if (own) {
+    await deps.calendar.patchEvent(accessToken, calendarId, own.id, calendarBody);
     return {
       status: 'completed',
       calendarEventId: own.id,

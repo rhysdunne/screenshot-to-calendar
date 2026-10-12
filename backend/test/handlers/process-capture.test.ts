@@ -113,6 +113,7 @@ describe('processCapture', () => {
     expect(capture?.calendarEventId).toBeUndefined();
     expect(capture?.calendarId).toBeUndefined();
     expect(fake.insertedEvents).toHaveLength(0);
+    expect(fake.patchedEvents).toHaveLength(0);
   });
 
   it('a match carrying this capture’s own link is adopted as its event, not a duplicate', async () => {
@@ -140,6 +141,9 @@ describe('processCapture', () => {
     expect(capture?.eventLink).toBe('https://calendar.google.com/event?eid=own');
     expect(capture?.matchedEventId).toBeUndefined();
     expect(fake.insertedEvents).toHaveLength(0);
+    expect(fake.patchedEvents).toMatchObject([
+      { calendarId: 'cal-events', eventId: 'own-event-1' },
+    ]);
   });
 
   it('an earlier attempt’s event is adopted even when the re-extraction misses the dedup match', async () => {
@@ -164,6 +168,13 @@ describe('processCapture', () => {
     expect(capture?.calendarEventId).toBe('own-event-1');
     expect(capture?.possibleDuplicateOf).toBeUndefined();
     expect(fake.insertedEvents).toHaveLength(0);
+    // The stored event now says 15 October, so the calendar is moved to match.
+    expect(capture?.event?.start_date).toBe('2026-10-15');
+    expect(fake.patchedEvents).toHaveLength(1);
+    const patched = fake.patchedEvents[0]!;
+    expect(patched.eventId).toBe('own-event-1');
+    expect(patched.event.start).toEqual({ date: '2026-10-15' });
+    expect(patched.event.description).toContain('View capture: https://app.example.com/c/cap-1');
   });
 
   it('another capture’s link does not count as this capture’s event', async () => {
@@ -185,6 +196,7 @@ describe('processCapture', () => {
     expect(capture?.status).toBe('duplicate');
     expect(capture?.matchedEventId).toBe('other-capture-event');
     expect(capture?.calendarEventId).toBeUndefined();
+    expect(fake.patchedEvents).toHaveLength(0);
   });
 
   it('similar event on a different date creates but flags possibleDuplicateOf', async () => {

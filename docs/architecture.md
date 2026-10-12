@@ -91,7 +91,8 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
    was created by an earlier attempt at the same capture (an SQS redelivery,
    or a double approve). The capture adopts it as `completed` with that
    `calendarEventId` instead of inserting again or matching itself as a
-   duplicate.
+   duplicate, and patches it with the current attempt's details so the
+   calendar matches the stored extraction.
 3. **Fuzzy**: otherwise, normalize the titles in that window
    (case/diacritics/punctuation/stopwords) and score max(Jaccard,
    containment). ≥0.7 + same start date → skip, mark the capture `duplicate`
