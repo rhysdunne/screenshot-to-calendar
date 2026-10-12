@@ -63,7 +63,10 @@ struct LibraryView: View {
                     }
                 }
             }
-            .onChange(of: appState.pendingDeepLinkCaptureId) { _, captureId in
+            // initial: a link that cold-launches the app is set before the
+            // library appears (behind the launch splash), so there is no change
+            // to observe. Without it the link was dropped.
+            .onChange(of: appState.pendingDeepLinkCaptureId, initial: true) { _, captureId in
                 guard let captureId else { return }
                 appState.pendingDeepLinkCaptureId = nil
                 selectedCapture = appState.captures.first { $0.captureId == captureId }
