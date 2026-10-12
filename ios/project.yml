@@ -19,7 +19,7 @@ settings:
 packages:
   GoogleSignIn:
     url: https://github.com/google/GoogleSignIn-iOS
-    from: 8.0.0
+    from: 9.2.0
 
 targets:
   Screenshot2Cal:
