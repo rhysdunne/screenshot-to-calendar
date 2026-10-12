@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
-import { DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  BatchWriteCommand,
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  QueryCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { DdbStore } from '../../src/lib/ddb.js';
 
 const ddbMock = mockClient(DynamoDBDocumentClient);
@@ -74,6 +80,37 @@ describe('DdbStore', () => {
     const q = ddbMock.commandCalls(QueryCommand)[0]!.args[0].input;
     expect(q.IndexName).toBe('GSI1');
     expect(q.ExpressionAttributeValues?.[':pk']).toBe('GSUB#gsub-123');
+  });
+
+  it('deleteAllUserItems retries unprocessed deletes until DynamoDB takes them', async () => {
+    ddbMock.on(QueryCommand).resolves({
+      Items: [
+        { PK: 'USER#u1', SK: 'PROFILE' },
+        { PK: 'USER#u1', SK: 'CAPTURE#c1' },
+      ],
+    });
+    const throttled = { DeleteRequest: { Key: { PK: 'USER#u1', SK: 'CAPTURE#c1' } } };
+    ddbMock
+      .on(BatchWriteCommand)
+      .resolvesOnce({ UnprocessedItems: { 's2c-main-test': [throttled] } })
+      .resolves({});
+
+    expect(await store.deleteAllUserItems('u1')).toBe(2);
+    const calls = ddbMock.commandCalls(BatchWriteCommand);
+    expect(calls).toHaveLength(2);
+    expect(calls[1]!.args[0].input.RequestItems?.['s2c-main-test']).toEqual([throttled]);
+  });
+
+  it('deleteAllUserItems throws when items stay unprocessed after 5 attempts', async () => {
+    ddbMock.on(QueryCommand).resolves({ Items: [{ PK: 'USER#u1', SK: 'PROFILE' }] });
+    ddbMock.on(BatchWriteCommand).resolves({
+      UnprocessedItems: {
+        's2c-main-test': [{ DeleteRequest: { Key: { PK: 'USER#u1', SK: 'PROFILE' } } }],
+      },
+    });
+
+    await expect(store.deleteAllUserItems('u1')).rejects.toThrow('still unprocessed');
+    expect(ddbMock.commandCalls(BatchWriteCommand)).toHaveLength(5);
   });
 
   it('countCorrectionsToday only counts today (UTC)', async () => {

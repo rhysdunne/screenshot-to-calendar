@@ -103,6 +103,13 @@ const userPk = (userId: string) => `USER#${userId}`;
 const AICALL_TTL_DAYS = 90;
 const aiCallExpiry = () => Math.floor(Date.now() / 1000) + AICALL_TTL_DAYS * 24 * 60 * 60;
 
+// BatchWrite can succeed overall yet hand back UnprocessedItems when the
+// table throttles. Retried with exponential backoff (50, 100, 200, 400 ms)
+// before giving up.
+const BATCH_WRITE_MAX_ATTEMPTS = 5;
+const BATCH_WRITE_BASE_DELAY_MS = 50;
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 export class DdbStore {
   private readonly doc: DynamoDBDocumentClient;
 
@@ -386,19 +393,29 @@ export class DdbStore {
     return items;
   }
 
+  /**
+   * Delete everything stored for a user. Throws if DynamoDB still leaves
+   * items unprocessed after the retries: account erasure must not report
+   * success while data remains.
+   */
   async deleteAllUserItems(userId: string): Promise<number> {
     const items = await this.listAllUserItems(userId);
     for (let i = 0; i < items.length; i += 25) {
-      const batch = items.slice(i, i + 25);
-      await this.doc.send(
-        new BatchWriteCommand({
-          RequestItems: {
-            [this.tableName]: batch.map((item) => ({
-              DeleteRequest: { Key: { PK: item.PK, SK: item.SK } },
-            })),
-          },
-        }),
-      );
+      let requests = items.slice(i, i + 25).map((item) => ({
+        DeleteRequest: { Key: { PK: item.PK, SK: item.SK } },
+      }));
+      for (let attempt = 1; requests.length > 0; attempt++) {
+        if (attempt > BATCH_WRITE_MAX_ATTEMPTS) {
+          throw new Error(
+            `${requests.length} items still unprocessed after ${BATCH_WRITE_MAX_ATTEMPTS} delete attempts`,
+          );
+        }
+        if (attempt > 1) await sleep(BATCH_WRITE_BASE_DELAY_MS * 2 ** (attempt - 2));
+        const r = await this.doc.send(
+          new BatchWriteCommand({ RequestItems: { [this.tableName]: requests } }),
+        );
+        requests = (r.UnprocessedItems?.[this.tableName] ?? []) as typeof requests;
+      }
     }
     return items.length;
   }
