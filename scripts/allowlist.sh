@@ -43,14 +43,18 @@ normalise_email() {
 }
 
 # Print the stored list, one email per line. Prints nothing when the
-# parameter does not exist yet.
+# parameter does not exist yet. stderr goes to a temp file, not into the
+# value, so a CLI warning can never be saved back as a list entry.
 read_list() {
-  local value
+  local value errfile err
+  errfile="$(mktemp)"
   if ! value="$(aws ssm get-parameter --region "$REGION" --name "$(param "$1")" \
-    --query Parameter.Value --output text 2>&1)"; then
-    [[ "$value" == *ParameterNotFound* ]] && return 0
-    die "could not read $(param "$1"): $value"
+    --query Parameter.Value --output text 2>"$errfile")"; then
+    err="$(cat "$errfile")"; rm -f "$errfile"
+    [[ "$err" == *ParameterNotFound* ]] && return 0
+    die "could not read $(param "$1"): $err"
   fi
+  rm -f "$errfile"
   printf '%s\n' "$value" | tr ',' '\n' | tr '[:upper:]' '[:lower:]' | tr -d ' \t' | grep -v '^$' || true
 }
 
