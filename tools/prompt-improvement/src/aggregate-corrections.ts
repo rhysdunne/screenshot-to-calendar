@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import type { CorrectionRecord } from '../../../backend/src/lib/ddb.js';
-import { clusterCorrections, describePattern, dropOrphanedCorrections } from './cluster.js';
+import { clusterCorrections, dropOrphanedCorrections, summarizePattern } from './cluster.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const WORK_DIR = join(__dirname, '..', 'work');
@@ -67,7 +67,9 @@ async function main(): Promise<void> {
   if (patterns.length === 0) {
     console.log('No eligible failure patterns (need ≥3 independent captures per pattern).');
   }
-  for (const p of patterns) console.log(`\n${describePattern(p)}`);
+  // Counts only: this runs in CI, whose logs are public, and correction
+  // values are what users typed. The values stay in work/patterns.json.
+  for (const p of patterns) console.log(summarizePattern(p));
 
   mkdirSync(WORK_DIR, { recursive: true });
   writeFileSync(join(WORK_DIR, 'patterns.json'), JSON.stringify(patterns, null, 2));

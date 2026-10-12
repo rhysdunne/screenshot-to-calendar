@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   clusterCorrections,
+  describePattern,
   dropOrphanedCorrections,
   MIN_INDEPENDENT_CAPTURES,
+  summarizePattern,
 } from '../src/cluster.js';
 import {
   compareReports,
@@ -85,6 +87,28 @@ describe('clusterCorrections (poisoning defenses)', () => {
       'end_date:hallucination',
       'end_date:miss',
     ]);
+  });
+});
+
+describe('summarizePattern (console output)', () => {
+  it('prints the field and counts, never the corrected values or capture ids', () => {
+    const [pattern] = clusterCorrections(
+      [0, 1, 2, 3].map((i) =>
+        correction({
+          correctionId: `c${i}`,
+          captureId: `cap-${i % 3}`,
+          oldValue: 'Jo Bloggs birthday',
+          newValue: 'Private party at 12 Acacia Avenue',
+        }),
+      ),
+    );
+    const line = summarizePattern(pattern!);
+    expect(line).toBe(
+      'Field "end_date" was extracted incorrectly: 4 corrections across 3 independent captures',
+    );
+    expect(line).not.toMatch(/Bloggs|Acacia|cap-/);
+    // The proposal prompt still gets the examples it needs.
+    expect(describePattern(pattern!)).toContain('Acacia Avenue');
   });
 });
 
