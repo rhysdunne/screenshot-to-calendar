@@ -5,11 +5,13 @@ import GoogleSignIn
 @MainActor
 final class AppState: ObservableObject {
     @Published var isSignedIn = KeychainStore.token != nil
-    /// False until `bootstrap()` (or a fresh `signIn`) has loaded `settings`. The
-    /// router shows a launch splash while this is false so a returning user never
-    /// flashes the calendar picker before settings load. A failed load leaves it
-    /// false (and sets `bootstrapError`), so the splash offers a retry rather than
-    /// routing on with no settings.
+    /// False until `bootstrap()` has loaded `settings` and made the first captures
+    /// fetch (a fresh `signIn` sets it itself). The router shows a launch splash
+    /// while this is false, so a returning user never flashes the calendar picker
+    /// before settings load, or the empty library before their captures arrive. A
+    /// failed settings load leaves it false (and sets `bootstrapError`), so the
+    /// splash offers a retry rather than routing on with no settings. A failed
+    /// captures fetch still routes on (`refreshCaptures()` only sets `lastError`).
     @Published var didBootstrap = false
     /// Why the last `bootstrap()` couldn't load settings (offline, 5xx, timeout).
     /// Non-nil turns the launch splash into a "Try again" screen.
@@ -24,16 +26,17 @@ final class AppState: ObservableObject {
 
     // MARK: Lifecycle
 
-    /// Loads settings for a returning user. A no-op once settings are loaded
-    /// (`signIn` loads them itself), so re-running on a route change or a retry
-    /// tap is safe.
+    /// Loads settings, then captures, for a returning user. `didBootstrap` flips
+    /// only after both, so the splash covers the whole launch. A no-op once that
+    /// has happened (`signIn` loads both itself), so re-running on a route change
+    /// or a retry tap is safe.
     func bootstrap() async {
         guard isSignedIn, !didBootstrap else { return }
         bootstrapError = nil
         do {
             settings = try await api.getSettings()
-            didBootstrap = true
             await refreshCaptures()
+            didBootstrap = true
         } catch let APIError.unauthorized(code) where code == "needs_reauth" || code == "unauthorized" {
             signOutLocally()
         } catch {

@@ -1,8 +1,9 @@
 import SwiftUI
 
-/// Shown while a signed-in user's settings load on launch: the app name and a
-/// spinner, or the error and a retry button if the load failed. Without this the
-/// router would fall through to the calendar picker until `getSettings()` returns.
+/// Shown while a signed-in user's settings and captures load on launch: the app
+/// name and a spinner, or the error and a retry button if settings failed to load.
+/// Without this the router would fall through to the calendar picker until
+/// `getSettings()` returns.
 struct LaunchSplashView: View {
     @EnvironmentObject private var appState: AppState
 
