@@ -105,8 +105,9 @@ cd evals   && npm run eval -- --models claude-haiku-4-5,claude-sonnet-5 --datase
 ## Environments
 
 - Stages: `staging` and `prod`, same AWS account, resources suffixed with the stage.
-- Deploy (backend + web): merge to `main` auto-deploys staging, then pauses at a
-  prod approval gate — GitHub Actions `deploy.yml` (OIDC role); also runnable by
+- Deploy (backend + web): a merge to `main` that touches `backend/` or `infra/`
+  (or the deploy workflows) auto-deploys staging, then pauses at a prod approval
+  gate — GitHub Actions `deploy.yml` (OIDC role); also runnable by
   workflow_dispatch, or locally with `cd infra && npx cdk deploy S2cWeb-{stage}
   S2cBackend-{stage}`. iOS ships separately via an `ios-v*` tag → Xcode Cloud →
   TestFlight. Full pipeline: `docs/ci-cd.md`.

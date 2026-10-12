@@ -8,12 +8,20 @@ name: Deploy
 # don't approve prod; "redeploy prod" = dispatch and approve. Prod can never
 # receive a commit that didn't just deploy to staging.
 #
-# Deliberate omissions: no paths filter (a docs-only merge redeploys staging —
-# idempotent, and keeps staging exactly at main); no auto-approval of prod.
+# Paths filter: only merges that change what is deployed start the pipeline.
+# iOS, evals, tools and docs merges are already checked by the PR's required
+# checks and deploy nothing — each used to open a prod gate that then expired.
+# Dispatch to redeploy anyway. Still deliberately no auto-approval of prod.
 
 on:
   push:
     branches: [main]
+    paths:
+      - backend/**
+      - infra/**
+      - .github/workflows/deploy.yml
+      - .github/workflows/deploy-stage.yml
+      - .github/workflows/ci.yml
   workflow_dispatch:
 
 permissions:
