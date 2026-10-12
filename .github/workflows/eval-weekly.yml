@@ -14,9 +14,11 @@ name: Weekly eval smoke
 # ~$0.13 for 10 cases, from the $/100 images in evals/reports/baseline),
 # so under $1 a month.
 #
-# Red runs: a separate PR makes the harness exit non-zero when a case hits an
-# API error. After that lands, a failed call turns this run red instead of
-# quietly lowering the score. The report is uploaded either way.
+# Red runs: the harness PR (feat/claude-calls-and-model-refresh) makes the
+# harness exit non-zero when a case hits an API error. After that lands, a
+# failed call turns this run red. Until then the run stays green and an
+# errored case only shows in the report's error count, left out of the
+# scores. The report is uploaded either way.
 on:
   schedule:
     - cron: "17 3 * * 1" # Mondays 03:17 UTC

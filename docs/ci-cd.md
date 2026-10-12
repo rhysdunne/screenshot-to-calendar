@@ -115,8 +115,10 @@ version pin, and build-number stamping live in
 `backend/src/lib/models.ts` at run time, so it always tests what production
 runs. The harness uses one model for both stages, so read classification
 accuracy from the classify model's row and extraction scores from the extract
-model's row. Expect the run to go red when a model call fails. A separate PR
-makes the harness exit non-zero on per-case API errors. The report is uploaded
+model's row. Once the harness PR (`feat/claude-calls-and-model-refresh`) lands,
+the harness exits non-zero on per-case API errors, so a failed model call turns
+the run red. Until then the run stays green: an errored case is left out of
+the scores and shows only in the report's error count. The report is uploaded
 as an artifact either way.
 
 **Prompt improvement** has no schedule
