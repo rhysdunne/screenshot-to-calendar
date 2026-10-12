@@ -58,7 +58,10 @@ Every `ios-v*` tag gets a matching GitHub Release
 Xcode Cloud archive; the Releases page is the public shipping history, with
 notes auto-generated from merged PRs. Two ways to ship:
 
-**From a dev machine** — unchanged; the release is created automatically:
+**From a dev machine** — run `just ship-ios`. It works out the next tag from
+`MARKETING_VERSION` and the existing tags, shows the last build's date, asks you
+to type the tag, then tags `origin/main` and pushes. The release is created
+automatically. By hand, the same thing is:
 
 ```bash
 git tag ios-v1.0.0-3   # convention: ios-v<MARKETING_VERSION>-<attempt>
@@ -74,6 +77,14 @@ refs not triggering other Actions workflows.
 
 Build numbers are automatic (`CI_BUILD_NUMBER`); bump `MARKETING_VERSION` in
 `ios/project.yml` when the user-facing version changes.
+
+**Ship at least every 80 days.** A TestFlight build expires 90 days after
+upload. After that, testers cannot open it. If no newer build exists, the app
+stops working for everyone, even when nothing has changed. Tag a fresh build at
+least every 80 days, which leaves 10 days to fix a failed archive. A long gap
+makes failures more likely: for example, Apple may retire the pinned Xcode in
+the meantime (see Environment above). `just ship-ios` prints when the last
+build was tagged.
 
 ## Costs
 
