@@ -7,6 +7,8 @@
 //   npm run eval -- --mock                      # plumbing check, no API calls
 //   npm run eval -- --prompt-version v4         # eval a candidate prompt (gate)
 //   npm run eval -- --no-classify               # extract only (skip classify stage)
+//   npm run eval -- --dataset all --cases real-031-poster-the-invite-film
+//                     # re-run named cases, e.g. a regression in a prompt diff
 //   npm run eval -- --thinking between_tools --effort medium [--max-tokens 2048]
 //                     # compare thinking settings: each flag replaces that field
 //                     # of the MODELS tuning for every stage the run calls
@@ -82,6 +84,18 @@ export function loadDataset(
     }
   }
   return limit ? cases.slice(0, limit) : cases;
+}
+
+/**
+ * Keep only the named cases, to re-run a regressed case and rule out noise
+ * (ADR 0008). Throws on an unknown id rather than quietly running nothing.
+ */
+export function selectCases(cases: DatasetCase[], ids: string[]): DatasetCase[] {
+  const unknown = ids.filter((id) => !cases.some((c) => c.id === id));
+  if (unknown.length > 0) {
+    throw new Error(`No eval case with id: ${unknown.join(', ')}`);
+  }
+  return cases.filter((c) => ids.includes(c.id));
 }
 
 interface CaseResult {
@@ -307,6 +321,8 @@ export async function runEval(options: {
   models: string[];
   dataset: 'synthetic' | 'real' | 'all';
   limit?: number;
+  /** Run only these case ids (after `limit`). */
+  cases?: string[];
   promptVersion?: string;
   mock?: boolean;
   label?: string;
@@ -327,7 +343,8 @@ export async function runEval(options: {
   if (!options.mock && !apiKey) {
     throw new Error('ANTHROPIC_API_KEY is required for a live eval (or pass --mock)');
   }
-  const cases = loadDataset(options.dataset, options.limit);
+  const loaded = loadDataset(options.dataset, options.limit);
+  const cases = options.cases ? selectCases(loaded, options.cases) : loaded;
   if (cases.length === 0) {
     throw new Error(`No dataset cases found — run \`npm run generate\` first`);
   }
@@ -407,6 +424,7 @@ if (isMain) {
     models: arg('models', 'claude-haiku-4-5').split(','),
     dataset: arg('dataset', 'synthetic') as 'synthetic' | 'real' | 'all',
     limit: process.argv.includes('--limit') ? Number(arg('limit', '0')) : undefined,
+    cases: process.argv.includes('--cases') ? arg('cases', '').split(',') : undefined,
     promptVersion: process.argv.includes('--prompt-version')
       ? arg('prompt-version', '')
       : undefined,

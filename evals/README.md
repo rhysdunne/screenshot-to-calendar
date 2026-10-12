@@ -33,6 +33,10 @@ ANTHROPIC_API_KEY=... npm run eval -- --models claude-sonnet-5-5 --dataset all \
 
 # Gate a candidate prompt version against the pinned one:
 ANTHROPIC_API_KEY=... npm run eval -- --models claude-sonnet-5 --prompt-version v3
+
+# Re-run named cases, e.g. to check whether a regression repeats:
+ANTHROPIC_API_KEY=... npm run eval -- --models claude-sonnet-5 --dataset all \
+  --no-classify --prompt-version v4 --cases real-031-poster-the-invite-film
 ```
 
 ## Reading the report

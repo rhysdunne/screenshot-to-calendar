@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resolveTunings, runEval, summarize } from '../src/harness.js';
+import { resolveTunings, runEval, selectCases, summarize } from '../src/harness.js';
 import { scoreCase } from '../src/score.js';
 import type { ExtractedEvent } from '../../backend/src/pipeline/types.js';
 
@@ -125,5 +125,20 @@ describe('model validation before a run', () => {
     expect(log).not.toHaveBeenCalled();
     const reportDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'reports', label);
     expect(existsSync(reportDir)).toBe(false);
+  });
+});
+
+describe('selectCases', () => {
+  const dataset = ['syn-000-gallery', 'real-031-poster-the-invite-film', 'syn-001-gig'].map(
+    (id) => ({ id, imagePath: '', imageBase64: '', gold, frozenToday: '2026-07-06' }),
+  );
+
+  it('keeps only the named cases, in dataset order', () => {
+    const picked = selectCases(dataset, ['syn-001-gig', 'real-031-poster-the-invite-film']);
+    expect(picked.map((c) => c.id)).toEqual(['real-031-poster-the-invite-film', 'syn-001-gig']);
+  });
+
+  it('throws on an unknown id instead of running nothing', () => {
+    expect(() => selectCases(dataset, ['syn-001-gig', 'real-999'])).toThrow(/real-999/);
   });
 });
