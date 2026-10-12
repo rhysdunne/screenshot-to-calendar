@@ -170,7 +170,10 @@ export class BackendStack extends Stack {
       copyPrompts: true,
     });
     imagesBucket.grantRead(processor);
-    processor.addEventSource(new SqsEventSource(queue, { batchSize: 1 }));
+    // At most two captures in flight: a burst of shares (or a redrive of the
+    // DLQ) queues up instead of fanning out into parallel Claude calls, which
+    // bounds the spend rate. 2 is the lowest value SQS event sources accept.
+    processor.addEventSource(new SqsEventSource(queue, { batchSize: 1, maxConcurrency: 2 }));
 
     const authFn = makeFn('AuthGoogle', 'auth-google.ts', 'handler');
     const capturesCreateFn = makeFn('CapturesCreate', 'captures-create.ts', 'handler', {

@@ -58,6 +58,13 @@ describe('BackendStack', () => {
     });
   });
 
+  it('caps the processor at two concurrent captures to bound Claude spend', () => {
+    backend.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
+      BatchSize: 1,
+      ScalingConfig: { MaximumConcurrency: 2 },
+    });
+  });
+
   it('exposes all 14 API routes', () => {
     const routes = backend.findResources('AWS::ApiGatewayV2::Route');
     const keys = Object.values(routes).map(
