@@ -3,9 +3,9 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// The core interaction: share an image from Photos/Instagram/anywhere →
-/// resize → upload → "Added, processing". The upload runs on a background
-/// URLSession scoped to the App Group so it survives the extension being
-/// torn down moments after completeRequest().
+/// resize → upload → "Sent". The upload runs on a background URLSession
+/// scoped to the App Group so it survives the extension being torn down
+/// moments after completeRequest().
 final class ShareViewController: UIViewController {
     private let model = ShareStatusModel()
 
@@ -61,7 +61,7 @@ final class ShareViewController: UIViewController {
         }
         do {
             try enqueueUpload(imageData: jpeg, token: token)
-            finish(.success("Added — processing.\nOpen the app to see the result."))
+            finish(.success("Sent.\nCheck the app if it needs review."))
         } catch {
             finish(.failure("Upload failed: \(error.localizedDescription)"), after: 2.5)
         }
