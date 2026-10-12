@@ -68,7 +68,6 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       imageBase64,
       mediaType,
       schema: CLASSIFY_IMAGE_SCHEMA,
-      maxTokens: 256,
       stage: 'classify',
     });
     totalCost += classifyCall.usage.costUsd;
@@ -96,7 +95,6 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       imageBase64,
       mediaType,
       schema: extractSchemaFor(),
-      maxTokens: 1024,
       stage: 'extract',
     });
     totalCost += extractCall.usage.costUsd;

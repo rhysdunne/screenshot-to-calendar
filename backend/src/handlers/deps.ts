@@ -67,8 +67,8 @@ export function realDeps(): Deps {
   const store = new DdbStore(env('TABLE_NAME'));
   const classifyModel = envOr('CLASSIFY_MODEL', DEFAULT_MODELS.classify);
   const extractModel = envOr('EXTRACT_MODEL', DEFAULT_MODELS.extract);
-  // Cold-start check: an override naming a model with no price fails here,
-  // before the first capture, instead of at the first Claude call.
+  // Cold-start check: an override naming a model with no price, or no tuning
+  // for its stage, fails here before the first capture.
   assertKnownModel(classifyModel, 'classify');
   assertKnownModel(extractModel, 'extract');
 

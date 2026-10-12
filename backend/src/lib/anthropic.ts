@@ -5,7 +5,7 @@
 // too, so eval results go through the exact production request path.
 import Anthropic from '@anthropic-ai/sdk';
 import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
-import { MODELS, assertKnownModel, costUsd } from './models.js';
+import { MODELS, costUsd, stageTuning, type PipelineStage, type StageTuning } from './models.js';
 import { logger } from './logger.js';
 
 // EMF metric backing the s2c-ai-spend alarm (infra/lib/backend-stack.ts).
@@ -33,8 +33,12 @@ export interface ClaudeCallOptions {
   mediaType: ImageMediaType;
   /** JSON Schema for structured outputs; applied only if the model supports it. */
   schema?: object;
-  maxTokens?: number;
-  stage: 'classify' | 'extract';
+  stage: PipelineStage;
+  /**
+   * Replaces the stage's thinking, effort and maxTokens from MODELS. Only the
+   * eval harness sets it, to compare settings before one goes into MODELS.
+   */
+  tuning?: StageTuning;
 }
 
 export interface ClaudeCallResult {
@@ -44,18 +48,28 @@ export interface ClaudeCallResult {
 }
 
 export async function callClaude(opts: ClaudeCallOptions): Promise<ClaudeCallResult> {
-  // Before the request, so an unlisted model costs nothing and is not logged at $0.
-  assertKnownModel(opts.model, opts.stage);
+  // stageTuning throws before the request for an unpriced or untuned model, so
+  // it costs nothing and is never logged at $0. It runs even when the harness
+  // passes its own tuning.
+  const stageDefault = stageTuning(opts.model, opts.stage);
+  const tuning = opts.tuning ?? stageDefault;
   const client = new Anthropic({ apiKey: opts.apiKey });
   const modelInfo = MODELS[opts.model];
   const schema =
     opts.schema && (modelInfo?.structuredOutputs ?? false)
       ? (opts.schema as Record<string, unknown>)
       : undefined;
+  const outputConfig: Anthropic.OutputConfig = {
+    ...(tuning.effort ? { effort: tuning.effort } : {}),
+    ...(schema ? { format: { type: 'json_schema' as const, schema } } : {}),
+  };
 
   const params: Anthropic.MessageCreateParamsNonStreaming = {
     model: opts.model,
-    max_tokens: opts.maxTokens ?? 1024,
+    max_tokens: tuning.maxTokens,
+    // The SDK's ThinkingConfigParam predates 'between_tools' (Sonnet 5.5's
+    // thinking-off setting), which the API accepts as a plain `type`.
+    thinking: { type: tuning.thinking } as Anthropic.ThinkingConfigParam,
     messages: [
       {
         role: 'user',
@@ -68,7 +82,7 @@ export async function callClaude(opts: ClaudeCallOptions): Promise<ClaudeCallRes
         ],
       },
     ],
-    ...(schema ? { output_config: { format: { type: 'json_schema' as const, schema } } } : {}),
+    ...(Object.keys(outputConfig).length > 0 ? { output_config: outputConfig } : {}),
   };
 
   const startedAt = Date.now();
@@ -86,7 +100,12 @@ export async function callClaude(opts: ClaudeCallOptions): Promise<ClaudeCallRes
     latencyMs,
   };
 
-  logger.info('claude_call', { ...usage, stopReason: response.stop_reason });
+  logger.info('claude_call', {
+    ...usage,
+    thinking: tuning.thinking,
+    effort: tuning.effort,
+    stopReason: response.stop_reason,
+  });
   emitCostMetric(usage.costUsd);
   return { response, usage };
 }

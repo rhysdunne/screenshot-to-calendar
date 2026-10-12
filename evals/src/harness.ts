@@ -104,7 +104,6 @@ async function runCase(
       imageBase64: c.imageBase64,
       mediaType,
       schema: CLASSIFY_IMAGE_SCHEMA,
-      maxTokens: 256,
       stage: 'classify',
     });
     latencyMs += call.usage.latencyMs;
@@ -141,7 +140,6 @@ async function runCase(
     imageBase64: c.imageBase64,
     mediaType,
     schema: extractSchemaFor(opts.promptVersion),
-    maxTokens: 1024,
     stage: 'extract',
   });
   latencyMs += call.usage.latencyMs;

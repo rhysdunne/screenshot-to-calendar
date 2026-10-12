@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { logger } from '../../src/lib/logger.js';
-import { DEFAULT_MODELS, MODELS, assertKnownModel, costUsd } from '../../src/lib/models.js';
+import {
+  DEFAULT_MODELS,
+  MODELS,
+  assertKnownModel,
+  costUsd,
+  stageTuning,
+} from '../../src/lib/models.js';
 import {
   ACTIVE_VERSIONS,
   extractSchemaFor,
@@ -14,9 +20,33 @@ import {
 } from '../../src/prompts/schemas.js';
 
 describe('models', () => {
-  it('default models exist in the price table', () => {
-    expect(MODELS[DEFAULT_MODELS.classify]).toBeDefined();
-    expect(MODELS[DEFAULT_MODELS.extract]).toBeDefined();
+  it('default models exist in the price table with tuning for their stage', () => {
+    expect(MODELS[DEFAULT_MODELS.classify]?.tuning?.classify).toBeDefined();
+    expect(MODELS[DEFAULT_MODELS.extract]?.tuning?.extract).toBeDefined();
+    expect(MODELS[DEFAULT_MODELS.proposePrompt]).toBeDefined();
+  });
+
+  it('every thinking setting is one its model accepts', () => {
+    for (const [model, info] of Object.entries(MODELS)) {
+      for (const tuning of Object.values(info.tuning ?? {})) {
+        // Only Sonnet 5.5 takes between_tools, and it rejects disabled.
+        if (model === 'claude-sonnet-5-5') expect(tuning.thinking).not.toBe('disabled');
+        else expect(tuning.thinking).not.toBe('between_tools');
+        // Thinking-off settings are rejected above high effort.
+        if (tuning.thinking !== 'adaptive') {
+          expect(['xhigh', 'max']).not.toContain(tuning.effort);
+        }
+      }
+    }
+  });
+
+  it('stageTuning returns the table entry and throws for a model without one', () => {
+    expect(stageTuning('claude-sonnet-5', 'extract')).toBe(
+      MODELS['claude-sonnet-5']?.tuning?.extract,
+    );
+    expect(() => stageTuning('claude-opus-4-8', 'extract')).toThrow(
+      /"claude-opus-4-8" has no extract tuning/,
+    );
   });
 
   it('computes cost from token counts', () => {
