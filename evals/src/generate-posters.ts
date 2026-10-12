@@ -9,7 +9,14 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-import { FROZEN_TODAY, makeEventCase, makeNonEventCase, rng, type EventCase } from './data.js';
+import {
+  FROZEN_TODAY,
+  makeEventCase,
+  makeJustPastCases,
+  makeNonEventCase,
+  rng,
+  type EventCase,
+} from './data.js';
 import { TEMPLATES } from './templates.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -31,6 +38,9 @@ async function main(): Promise<void> {
   for (let i = count; i < count + Math.max(2, Math.round(count * 0.1)); i++) {
     cases.push(makeNonEventCase(i));
   }
+  // Year-less dates just before today (#27). Drawn last, so the cases above
+  // stay byte-identical to a run without them.
+  cases.push(...makeJustPastCases(random, cases.length));
 
   rmSync(DATASET_DIR, { recursive: true, force: true });
   // If a pinned Chromium doesn't match the installed playwright-core version,

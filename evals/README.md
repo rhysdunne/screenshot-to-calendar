@@ -10,7 +10,7 @@ the images, and what does it cost?** — and gates every prompt change.
 | `src/generate-posters.ts` | Synthetic poster generator (Playwright/Chromium). 8 event templates + a non-event "menu" template for the classifier. Gold labels are emitted from the same data object that fills the template, so ground truth is exact by construction. |
 | `src/score.ts` | Field-level scoring: dates/times exact, title/venue fuzzy (reuses the production dedup similarity), addresses by postcode, URLs normalized. Nulls score three ways: match / hallucination / miss. |
 | `src/harness.ts` | Runs each case through the **real production request path** (`backend/src/lib/anthropic.ts` + pinned prompts + `pipeline/extract.ts`) per model, concurrency 4. |
-| `dataset/synthetic/` | Committed generated cases: `image.png` + `gold.json` + `meta.json`. `meta.frozenToday` pins `{{TODAY}}` so relative dates ("This Saturday") stay deterministic forever. |
+| `dataset/synthetic/` | Committed generated cases: `image.png` + `gold.json` + `meta.json`. `meta.frozenToday` pins `{{TODAY}}` so relative dates ("This Saturday") stay deterministic forever. 40 drawn event cases, 4 menus, and 6 fixed `just-past` cases: year-less dates shortly before `frozenToday` plus one months-past control (#27). |
 | `dataset/real/` | Hand-labeled real screenshots — see `docs/adding-eval-images.md`. Only add images you have consent to use; the loader refuses a case without `"consent": true` in its `meta.json`. |
 | `reports/` | Run outputs (gitignored except committed baselines). `model-refresh-2026-10/` holds the runs behind ADR 0007, force-added. |
 
@@ -18,6 +18,9 @@ the images, and what does it cost?** — and gates every prompt change.
 
 ```bash
 npm run generate -- --count 40 --seed 42          # regenerate synthetic dataset
+# Gold and meta files come out byte-identical; images can change with the
+# Chromium version. When adding cases, commit only the new cases' folders and
+# `git checkout` the rest, so a font change does not churn every image.
 npm test                                          # scoring + generator unit tests (no API key)
 npm run eval -- --mock                            # plumbing check, no API calls
 
