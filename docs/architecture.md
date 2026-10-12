@@ -69,9 +69,10 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 2. Backend exchanges the code (web client id + secret from AWS Systems Manager
    Parameter Store), validates the id_token claims, stores the refresh token
    encrypted (key in Parameter Store SecureString), and issues an HS256 JWT
-   (`{sub, ver}`, 30 days).
+   (`{sub, ver}`, 180 days).
 3. Per request: JWT verified + `ver` compared to the user's `tokenVersion`
-   (bump = revoke all sessions).
+   (bump = revoke all sessions). `scripts/sessions.sh revoke-user <stage>
+   <email>` bumps it for one user; `revoke-all <stage>` rotates `jwt-secret`.
 4. Calendar calls mint short-lived Google access tokens from the refresh
    token; `invalid_grant` flags `needsReauth` and the app re-runs sign-in.
    A Calendar 401, or a 403 for a missing calendar scope, also answers
