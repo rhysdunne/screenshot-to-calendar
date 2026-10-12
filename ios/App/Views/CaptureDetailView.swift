@@ -18,8 +18,14 @@ struct CaptureDetailView: View {
     /// visible to its closure, presenting an empty (black) cover. See #67.
     @State private var viewerImage: ViewerImage?
     @State private var form = ExtractedEvent()
+    /// Today's date, when it was put in `form` only because the extraction had
+    /// no start date. Opening a capture is not an edit, so `hasChanges` and
+    /// Save ignore it. Approve sends it, because approving accepts what's on
+    /// screen and a calendar event needs a date.
+    @State private var seededStartDate: String?
     @State private var isSaving = false
     @State private var showDeleteConfirm = false
+    @State private var showDiscardConfirm = false
     @State private var errorMessage: String?
 
     var body: some View {
@@ -47,8 +53,19 @@ struct CaptureDetailView: View {
                         .disabled(isSaving || !hasChanges)
                 }
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("Close") {
+                        if hasChanges { showDiscardConfirm = true } else { dismiss() }
+                    }
                 }
+            }
+            // A swipe down would drop unsaved edits without asking, so block it
+            // while there are any. Close asks first (SwiftUI has no hook to ask
+            // on the swipe itself).
+            .interactiveDismissDisabled(hasChanges)
+            .confirmationDialog("Discard changes?", isPresented: $showDiscardConfirm,
+                                titleVisibility: .visible) {
+                Button("Discard changes", role: .destructive) { dismiss() }
+                Button("Keep editing", role: .cancel) {}
             }
             .task { await load() }
             .alert("Error", isPresented: .constant(errorMessage != nil)) {
@@ -281,11 +298,7 @@ struct CaptureDetailView: View {
                 // primary action of the review flow reads as one.
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
-                .disabled(isSaving || hasChanges) // save edits first, then approve
-                if hasChanges {
-                    Text("Save your edits first, then add to calendar.")
-                        .font(.footnote).foregroundStyle(.secondary)
-                }
+                .disabled(isSaving)
             }
             if let link = capture.eventLink, let url = URL(string: link) {
                 Link(destination: url) { Label("Open in Google Calendar", systemImage: "calendar") }
@@ -301,13 +314,18 @@ struct CaptureDetailView: View {
         }
     }
 
+    /// One tap: saves any pending edits (and a seeded start date) first, so
+    /// the event is created from what's on screen, then approves.
     private func approve() async {
+        guard let original = capture?.effectiveEvent else { return }
         isSaving = true
         defer { isSaving = false }
         do {
-            let updated = try await appState.api.approveCapture(id: captureId)
-            capture = updated
-            form = updated.effectiveEvent ?? form
+            let edits = changedFields(from: original, includingSeededDate: true)
+            if !edits.isEmpty {
+                apply(try await appState.api.updateCapture(id: captureId, fields: edits))
+            }
+            apply(try await appState.api.approveCapture(id: captureId))
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             await appState.refreshCaptures()
         } catch {
@@ -323,16 +341,23 @@ struct CaptureDetailView: View {
         // waiting out the getCapture round-trip.
         Task { await loadImage() }
         do {
-            let loaded = try await appState.api.getCapture(id: captureId)
-            capture = loaded
-            form = loaded.effectiveEvent ?? ExtractedEvent()
-            // A calendar event needs a date; if the extraction had none, seed
-            // today so the always-visible Start date picker has a value to edit.
-            if loaded.event != nil, form.startDate == nil {
-                form.startDate = WireFormat.date.string(from: Date())
-            }
+            apply(try await appState.api.getCapture(id: captureId))
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Resets the form to a capture fresh from the server.
+    private func apply(_ loaded: Capture) {
+        capture = loaded
+        form = loaded.effectiveEvent ?? ExtractedEvent()
+        seededStartDate = nil
+        // A calendar event needs a date; if the extraction had none, seed
+        // today so the always-visible Start date picker has a value to edit.
+        if loaded.event != nil, form.startDate == nil {
+            let today = WireFormat.date.string(from: Date())
+            form.startDate = today
+            seededStartDate = today
         }
     }
 
@@ -350,7 +375,11 @@ struct CaptureDetailView: View {
         return changedFields(from: original).isEmpty == false
     }
 
-    private func changedFields(from original: ExtractedEvent) -> [String: String?] {
+    /// The fields to PATCH. An untouched seeded start date counts only when
+    /// `includingSeededDate` is set (approve), so Save never records today as
+    /// a correction the user didn't make.
+    private func changedFields(from original: ExtractedEvent,
+                               includingSeededDate: Bool = false) -> [String: String?] {
         var changes: [String: String?] = [:]
         func diff(_ key: String, _ old: String?, _ new: String?) {
             let normalizedNew = (new?.isEmpty == true) ? nil : new
@@ -359,7 +388,10 @@ struct CaptureDetailView: View {
         diff("title", original.title, form.title)
         diff("venue", original.venue, form.venue)
         diff("address", original.address, form.address)
-        diff("start_date", original.startDate, form.startDate)
+        let untouchedSeed = seededStartDate != nil && form.startDate == seededStartDate
+        if includingSeededDate || !untouchedSeed {
+            diff("start_date", original.startDate, form.startDate)
+        }
         diff("end_date", original.endDate, form.endDate)
         diff("start_time", original.startTime, form.startTime)
         diff("end_time", original.endTime, form.endTime)
@@ -372,10 +404,8 @@ struct CaptureDetailView: View {
         isSaving = true
         defer { isSaving = false }
         do {
-            let updated = try await appState.api.updateCapture(
-                id: captureId, fields: changedFields(from: original))
-            capture = updated
-            form = updated.effectiveEvent ?? form
+            apply(try await appState.api.updateCapture(
+                id: captureId, fields: changedFields(from: original)))
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             await appState.refreshCaptures()
         } catch {
