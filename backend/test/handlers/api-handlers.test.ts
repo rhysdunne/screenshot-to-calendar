@@ -1,11 +1,11 @@
 // API handler tests: auth enforcement, capture upload + exact dedup, the
 // corrections flow (records + rate limit + calendar patch), and capture delete.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 import { makeHandler as makeCreateHandler } from '../../src/handlers/captures-create.js';
 import { makeHandler as makeUpdateHandler } from '../../src/handlers/captures-update.js';
 import { makeHandler as makeDeleteCaptureHandler } from '../../src/handlers/captures-delete.js';
-import { makeGetHandler } from '../../src/handlers/captures-read.js';
+import { makeGetHandler, makeListHandler } from '../../src/handlers/captures-read.js';
 import { makeExportHandler, makeDeleteHandler } from '../../src/handlers/account.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
 import { signSession } from '../../src/lib/jwt.js';
@@ -486,6 +486,17 @@ describe('captures-read', () => {
     expect(res.body.calendarEventId).toBeNull();
     expect(res.body.matchedEventId).toBe('someone-elses-event');
     expect(res.body.eventLink).toBe('https://calendar.google.com/event?eid=existing');
+  });
+
+  it('lists up to 200 captures per page, since the app reads only the first', async () => {
+    const fake = makeFakeDeps();
+    await fake.store.putUser(testUser());
+    const list = vi.spyOn(fake.store, 'listCaptures');
+    const token = signSession('user-1', 1, JWT_SECRET);
+    const res = await invoke(makeListHandler(fake.deps), apiEvent({ token }));
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ captures: [], cursor: null });
+    expect(list).toHaveBeenCalledWith('user-1', 200, undefined);
   });
 });
 
