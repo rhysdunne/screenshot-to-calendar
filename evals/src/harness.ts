@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { callClaude } from '../../backend/src/lib/anthropic.js';
 import { extractSchemaFor, loadPrompt, renderPrompt } from '../../backend/src/prompts/prompts.js';
 import { CLASSIFY_IMAGE_SCHEMA } from '../../backend/src/prompts/schemas.js';
-import { extractEventData } from '../../backend/src/pipeline/extract.js';
+import { extractClassification, extractEventData } from '../../backend/src/pipeline/extract.js';
 import { detectMediaType } from '../../backend/src/pipeline/image.js';
 import type { Classification, ExtractedEvent } from '../../backend/src/pipeline/types.js';
 import { scoreCase, scoreClassification, SCORED_FIELDS, type CaseScore } from './score.js';
@@ -108,9 +108,7 @@ async function runCase(
     });
     latencyMs += call.usage.latencyMs;
     costUsd += call.usage.costUsd;
-    const predicted = JSON.parse(
-      (call.response.content[0] as { text?: string })?.text ?? '{}',
-    ) as Classification;
+    const predicted = extractClassification(call.response);
     const cls = scoreClassification(c.classification, predicted);
     classificationCorrect = cls.categoryCorrect && cls.isEventCorrect;
     isEvent = predicted.is_event;

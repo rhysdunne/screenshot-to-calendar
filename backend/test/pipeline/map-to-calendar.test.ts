@@ -1,7 +1,7 @@
 // Port of archive/n8n/nodes/parse-event-data.test.js (9 cases) onto the new
 // pipeline modules, plus timezone regression tests the v1 code would fail.
 import { describe, expect, it } from 'vitest';
-import { extractEventData } from '../../src/pipeline/extract.js';
+import { extractClassification, extractEventData } from '../../src/pipeline/extract.js';
 import { endsAfterStart, mapEventToCalendar } from '../../src/pipeline/map-to-calendar.js';
 import type { ExtractedEvent } from '../../src/pipeline/types.js';
 import {
@@ -327,6 +327,50 @@ describe('extractEventData (ported v1 cases)', () => {
     expect(result.start_date).toBeNull();
     expect(result.start_time).toBeNull();
     expect(result.confidence).toBe('low');
+  });
+});
+
+describe('extractClassification', () => {
+  const wrap = (text: string, stop_reason = 'end_turn') => ({
+    stop_reason,
+    content: [{ type: 'text', text }],
+  });
+
+  it('parses a structured-output classification', () => {
+    const result = extractClassification(
+      wrap(JSON.stringify({ category: 'ticket', is_event: true, confidence: 'medium' })),
+    );
+    expect(result).toEqual({ category: 'ticket', is_event: true, confidence: 'medium' });
+  });
+
+  it('strips fences and skips a leading thinking block', () => {
+    const result = extractClassification({
+      stop_reason: 'end_turn',
+      content: [
+        { type: 'thinking' },
+        { type: 'text', text: '```json\n{"category":"event_poster","is_event":true}\n```' },
+      ],
+    });
+    expect(result.category).toBe('event_poster');
+    expect(result.is_event).toBe(true);
+  });
+
+  it('degrades unknown values to the cautious ones', () => {
+    const result = extractClassification(
+      wrap(JSON.stringify({ category: 'meme', is_event: 'yes', confidence: 'certain' })),
+    );
+    expect(result).toEqual({ category: 'not_useful', is_event: false, confidence: 'low' });
+  });
+
+  it('throws on a non-JSON body without quoting it', () => {
+    expect(() => extractClassification(wrap('I cannot help'))).toThrow(
+      /^Failed to parse classification JSON$/,
+    );
+  });
+
+  it('throws ModelRefusalError on a refusal and MaxTokensError when cut off', () => {
+    expect(() => extractClassification(wrap('{}', 'refusal'))).toThrow(ModelRefusalError);
+    expect(() => extractClassification(wrap('{"cat', 'max_tokens'))).toThrow(MaxTokensError);
   });
 });
 

@@ -5,7 +5,7 @@ import type { SQSEvent } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
 import { extractSchemaFor, loadPrompt, renderPrompt } from '../prompts/prompts.js';
 import { CLASSIFY_IMAGE_SCHEMA } from '../prompts/schemas.js';
-import { assertModelFinished, extractEventData } from '../pipeline/extract.js';
+import { extractClassification, extractEventData } from '../pipeline/extract.js';
 import { endsAfterStart, mapEventToCalendar } from '../pipeline/map-to-calendar.js';
 import { addDays, todayInZone } from '../pipeline/dates.js';
 import { findDuplicate } from '../pipeline/dedup.js';
@@ -269,37 +269,6 @@ export async function createCalendarEntry(
     calendarId,
     eventLink: created.htmlLink,
     ...(verdict.kind === 'possible' ? { possibleDuplicateOf: verdict.event.id } : {}),
-  };
-}
-
-function extractClassification(response: {
-  stop_reason?: string | null;
-  content?: Array<{ type: string; text?: string }>;
-}): Classification {
-  assertModelFinished(response, 'classify');
-  const text = (response.content ?? [])
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text ?? '')
-    .join('')
-    .trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '');
-  const raw = JSON.parse(text) as Partial<Classification>;
-  const categories = [
-    'event_poster',
-    'event_screenshot',
-    'ticket',
-    'other_scrapbook',
-    'not_useful',
-  ] as const;
-  const category = categories.includes(raw.category as (typeof categories)[number])
-    ? (raw.category as Classification['category'])
-    : 'not_useful';
-  return {
-    category,
-    is_event: raw.is_event === true,
-    confidence:
-      raw.confidence === 'high' || raw.confidence === 'medium' ? raw.confidence : 'low',
   };
 }
 
