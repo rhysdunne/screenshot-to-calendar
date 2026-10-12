@@ -47,7 +47,8 @@ Pick the cheapest model whose aggregate and hallucination rate you can live
 with; set it as `EXTRACT_MODEL` in the Lambda env (or change the default in
 `backend/src/lib/models.ts`). A model needs an entry in `MODELS` with prices
 and per-stage tuning (thinking, effort, max tokens) before any stage can use
-it.
+it. The harness checks every model in `--models` against `MODELS` before the
+first case runs, so a typo stops the run at no cost.
 
 The CLI exits 1 when any case errors. Errors are caught per case so one bad
 call does not sink a run, but a revoked key or a retired model errors every
