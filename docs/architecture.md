@@ -72,8 +72,12 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
    (`{sub, ver}`, 180 days). Sign-up is invite-only: a new account needs a
    verified email on `/s2c/{stage}/signup-allowlist` (a String parameter,
    managed with `scripts/allowlist.sh`). A missing or empty list refuses all
-   new accounts, and a refused account's Google grant is revoked. Existing
-   users are never checked.
+   new accounts. Existing users are never checked. Sign-in never revokes a
+   Google grant: staging and prod share one OAuth client (`googleClientId` in
+   `infra/cdk.json`), so a revoke for a Google account removes the app's
+   access in both stages. Account deletion does revoke, so deleting an
+   account in one stage also cuts off that Google account's refresh token in
+   the other.
 3. Per request: JWT verified + `ver` compared to the user's `tokenVersion`
    (bump = revoke all sessions). `scripts/sessions.sh revoke-user <stage>
    <email>` bumps it for one user; `revoke-all <stage>` rotates `jwt-secret`.

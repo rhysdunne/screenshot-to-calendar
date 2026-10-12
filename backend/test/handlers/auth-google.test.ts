@@ -84,7 +84,7 @@ afterEach(() => {
 });
 
 describe('auth-google sign-up allowlist', () => {
-  it('refuses a new user who is not on the allowlist, revokes the grant, and logs no email', async () => {
+  it('refuses a new user who is not on the allowlist, leaves the Google grant alone, and logs no email', async () => {
     const logs = silenceLogs();
     const revoked = stubGoogle({ email: 'stranger@example.com' });
     const fake = makeFakeDeps({ signupAllowlist: 'owner@example.com' });
@@ -97,7 +97,9 @@ describe('auth-google sign-up allowlist', () => {
       code: 'signup_closed',
     });
     expect(fake.store.users.size).toBe(0);
-    expect(revoked).toEqual(['refresh-1']);
+    // Staging and prod share one OAuth client: a revoke would also sign this
+    // Google account out of Calendar in the other stage.
+    expect(revoked).toEqual([]);
     expect(logs.warn).toHaveBeenCalledWith('signup_refused', { reason: 'not_listed' });
     const logged = JSON.stringify([logs.info.mock.calls, logs.warn.mock.calls, logs.error.mock.calls]);
     expect(logged).not.toContain('stranger');
@@ -168,7 +170,7 @@ describe('auth-google sign-up allowlist', () => {
 });
 
 describe('auth-google without a refresh token', () => {
-  it('refuses a new user, revokes the existing grant so the next sign-in gets one, and says to sign in again', async () => {
+  it('refuses a new user without revoking the grant, and says how to get a refresh token', async () => {
     silenceLogs();
     const revoked = stubGoogle({ email: 'owner@example.com', refreshToken: null });
     const fake = makeFakeDeps({ signupAllowlist: 'owner@example.com' });
@@ -177,11 +179,12 @@ describe('auth-google without a refresh token', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({
-      error: 'Google did not return a refresh token. Sign in again.',
+      error:
+        'Google did not return a refresh token. Remove the access you gave this app in your Google Account settings, then sign in again.',
       code: 'no_refresh_token',
     });
     expect(fake.store.users.size).toBe(0);
-    expect(revoked).toEqual(['access-1']);
+    expect(revoked).toEqual([]);
   });
 
   it('signs an existing user in and keeps their stored refresh token', async () => {

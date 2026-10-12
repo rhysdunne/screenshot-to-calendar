@@ -9,7 +9,7 @@ import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { ulid } from 'ulid';
 import { realDeps, type Deps } from './deps.js';
 import { errorResponse, HttpError, json, parseBody, type ApiHandler } from '../lib/http.js';
-import { exchangeAuthCode, revokeToken, type GoogleTokens, type IdClaims } from '../lib/google-auth.js';
+import { exchangeAuthCode, type IdClaims } from '../lib/google-auth.js';
 import { encrypt } from '../lib/crypto.js';
 import { signSession } from '../lib/jwt.js';
 import type { UserRecord } from '../lib/ddb.js';
@@ -48,20 +48,6 @@ async function signupRefusal(
   return allowlist.has(claims.email.toLowerCase()) ? null : 'not_listed';
 }
 
-/**
- * Revoke the grant Google just issued to an account that gets no user record,
- * so the account is not left with calendar access to this app. Google then
- * asks for consent again on the next sign-in and returns a fresh refresh
- * token. Best-effort, like the revoke on account deletion.
- */
-async function revokeUnusedGrant(tokens: GoogleTokens): Promise<void> {
-  try {
-    await revokeToken(tokens.refreshToken ?? tokens.accessToken);
-  } catch (e) {
-    logger.warn('google_revoke_failed', { error: safeError(e) });
-  }
-}
-
 export function makeHandler(deps: Deps): ApiHandler {
   return async (event) => {
     try {
@@ -83,7 +69,6 @@ export function makeHandler(deps: Deps): ApiHandler {
         if (refusal) {
           // No email in the log: the reason is enough to act on.
           logger.warn('signup_refused', { reason: refusal });
-          await revokeUnusedGrant(tokens);
           throw new HttpError(
             403,
             'Sign-up is invite-only. Ask the owner to add your Google account.',
@@ -93,15 +78,17 @@ export function makeHandler(deps: Deps): ApiHandler {
         if (!tokens.refreshToken) {
           // A new user needs a refresh token, or the backend can never act on
           // the calendar. Google leaves it out when this Google account has
-          // already granted the app access, for example after an account
-          // deletion whose revoke failed. Nothing retries automatically: the
-          // app shows this message in its sign-in alert. Revoking the grant
-          // here makes Google ask for consent again on the next sign-in, and
-          // return a refresh token then.
-          await revokeUnusedGrant(tokens);
+          // already granted the app access, for example after a refused
+          // sign-up or an account deletion whose revoke failed. Nothing
+          // retries automatically: the app shows this message in its sign-in
+          // alert, and the user removes the app's access in their Google
+          // Account so the next sign-in asks for consent again. This handler
+          // never revokes the grant itself: staging and prod share one OAuth
+          // client, so a revoke here would also cut off the refresh token the
+          // other stage holds for the same Google account.
           throw new HttpError(
             400,
-            'Google did not return a refresh token. Sign in again.',
+            'Google did not return a refresh token. Remove the access you gave this app in your Google Account settings, then sign in again.',
             'no_refresh_token',
           );
         }
