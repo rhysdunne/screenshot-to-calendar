@@ -11,7 +11,7 @@ import {
   extensionFor,
   imageSha256,
 } from '../pipeline/image.js';
-import { logger } from '../lib/logger.js';
+import { logger, safeError } from '../lib/logger.js';
 
 interface CreateRequest {
   imageBase64: string;
@@ -44,18 +44,33 @@ export function makeHandler(deps: Deps): ApiHandler {
 
       const mediaType = detectMediaType(clean);
       const imageKey = deps.images.captureKey(user.userId, captureId, extensionFor(mediaType));
-      await deps.images.putImage(imageKey, bytes, mediaType);
-      await deps.store.createCapture(
-        {
-          userId: user.userId,
-          status: 'queued',
-          imageKey,
-          imageSha256: sha256,
-          mediaType,
-        },
-        captureId,
-      );
-      await deps.enqueueProcess(user.userId, captureId);
+      try {
+        await deps.images.putImage(imageKey, bytes, mediaType);
+        await deps.store.createCapture(
+          {
+            userId: user.userId,
+            status: 'queued',
+            imageKey,
+            imageSha256: sha256,
+            mediaType,
+          },
+          captureId,
+        );
+        await deps.enqueueProcess(user.userId, captureId);
+      } catch (e) {
+        // The hash is already claimed, so without this a retry of the same
+        // upload would come back as a duplicate of a capture that was never
+        // stored or queued. Release the claim and any partial capture, then
+        // fail as before. Best-effort: a cleanup error must not hide the cause.
+        await deps.store.deleteCapture(user.userId, captureId, sha256).catch((cleanupError: unknown) => {
+          logger.warn('capture_create_cleanup_failed', {
+            userId: user.userId,
+            captureId,
+            error: safeError(cleanupError),
+          });
+        });
+        throw e;
+      }
       logger.info('capture_queued', { userId: user.userId, captureId });
       return json(202, { captureId, status: 'queued' });
     } catch (e) {

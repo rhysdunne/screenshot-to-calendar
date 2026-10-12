@@ -95,6 +95,46 @@ describe('captures-create', () => {
     expect(second.body.status).toBe('duplicate');
     expect(second.body.duplicateOf).toBe(first.body.captureId);
   });
+
+  it('a failed queue send releases the hash claim and the capture, so a retry is not a duplicate', async () => {
+    const fake = makeFakeDeps();
+    await fake.store.putUser(testUser());
+    const token = signSession('user-1', 1, JWT_SECRET);
+    fake.deps.enqueueProcess = async () => {
+      throw new Error('SQS unavailable');
+    };
+    const failed = await invoke(
+      makeCreateHandler(fake.deps),
+      apiEvent({ body: { imageBase64: PNG_BASE64 }, token }),
+    );
+    expect(failed.statusCode).toBe(500);
+    expect(fake.store.imageHashes.size).toBe(0);
+    expect(fake.store.captures.size).toBe(0);
+
+    fake.deps.enqueueProcess = async () => {};
+    const retry = await invoke(
+      makeCreateHandler(fake.deps),
+      apiEvent({ body: { imageBase64: PNG_BASE64 }, token }),
+    );
+    expect(retry.statusCode).toBe(202);
+    expect(retry.body.status).toBe('queued');
+  });
+
+  it('a failed image upload releases the hash claim', async () => {
+    const fake = makeFakeDeps();
+    await fake.store.putUser(testUser());
+    const token = signSession('user-1', 1, JWT_SECRET);
+    fake.images.putImage = async () => {
+      throw new Error('S3 unavailable');
+    };
+    const res = await invoke(
+      makeCreateHandler(fake.deps),
+      apiEvent({ body: { imageBase64: PNG_BASE64 }, token }),
+    );
+    expect(res.statusCode).toBe(500);
+    expect(fake.store.imageHashes.size).toBe(0);
+    expect(fake.store.captures.size).toBe(0);
+  });
 });
 
 describe('captures-update (corrections)', () => {
