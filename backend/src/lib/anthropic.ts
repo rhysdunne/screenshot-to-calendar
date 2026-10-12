@@ -10,6 +10,9 @@ import { logger } from './logger.js';
 
 // EMF metric backing the s2c-ai-spend alarm (infra/lib/backend-stack.ts).
 // Only emitted when STAGE is set — i.e. in Lambda, not in the eval harness.
+// The alarm queries both dimensions: 'service' (powertools copies serviceName
+// below into single metrics) and 'stage'. Change either here and the alarm
+// reads an empty series unless backend-stack.ts changes with it.
 const metrics = new Metrics({ namespace: 's2c', serviceName: 's2c' });
 
 function emitCostMetric(cost: number): void {
