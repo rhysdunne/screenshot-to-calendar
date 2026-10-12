@@ -26,11 +26,6 @@ export function addDays(ymd: string, n: number): string {
   return t.toISOString().slice(0, 10);
 }
 
-/** Compare two YYYY-MM-DD strings. Negative if a < b. */
-export function compareYmd(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
-}
-
 export function isValidYmd(s: unknown): s is string {
   if (typeof s !== 'string' || !YMD.test(s)) return false;
   const [y, m, d] = s.split('-').map(Number) as [number, number, number];

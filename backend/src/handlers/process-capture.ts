@@ -5,7 +5,7 @@ import type { SQSEvent } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
 import { extractSchemaFor, loadPrompt, renderPrompt } from '../prompts/prompts.js';
 import { CLASSIFY_IMAGE_SCHEMA } from '../prompts/schemas.js';
-import { extractEventData } from '../pipeline/extract.js';
+import { extractClassification, extractEventData } from '../pipeline/extract.js';
 import { endsAfterStart, mapEventToCalendar } from '../pipeline/map-to-calendar.js';
 import { addDays, todayInZone } from '../pipeline/dates.js';
 import { findDuplicate } from '../pipeline/dedup.js';
@@ -68,7 +68,6 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       imageBase64,
       mediaType,
       schema: CLASSIFY_IMAGE_SCHEMA,
-      maxTokens: 256,
       stage: 'classify',
     });
     totalCost += classifyCall.usage.costUsd;
@@ -96,7 +95,6 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       imageBase64,
       mediaType,
       schema: extractSchemaFor(),
-      maxTokens: 1024,
       stage: 'extract',
     });
     totalCost += extractCall.usage.costUsd;
@@ -143,11 +141,11 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       ...updates,
     });
   } catch (e) {
-    // Terminal failures (no date, an end before the start, a Google grant that
-    // needs a fresh sign-in) would fail the same way on every retry. They keep
-    // the extraction so the app's review screen can fix and approve the
-    // capture. Anything else rethrows so SQS retries (×3) and then parks the
-    // message on the DLQ.
+    // Terminal failures (no date, an end before the start, a model refusal, a
+    // Google grant that needs a fresh sign-in) would fail the same way on every
+    // retry. They keep whatever was extracted, so when there is an event the
+    // app's review screen can fix and approve the capture. Anything else
+    // rethrows so SQS retries (×3) and then parks the message on the DLQ.
     const needsReauth = e instanceof HttpError && e.code === 'needs_reauth';
     const terminal = e instanceof TerminalProcessingError || needsReauth;
     const message =
@@ -271,35 +269,6 @@ export async function createCalendarEntry(
     calendarId,
     eventLink: created.htmlLink,
     ...(verdict.kind === 'possible' ? { possibleDuplicateOf: verdict.event.id } : {}),
-  };
-}
-
-function extractClassification(response: {
-  content?: Array<{ type: string; text?: string }>;
-}): Classification {
-  const text = (response.content ?? [])
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text ?? '')
-    .join('')
-    .trim()
-    .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '');
-  const raw = JSON.parse(text) as Partial<Classification>;
-  const categories = [
-    'event_poster',
-    'event_screenshot',
-    'ticket',
-    'other_scrapbook',
-    'not_useful',
-  ] as const;
-  const category = categories.includes(raw.category as (typeof categories)[number])
-    ? (raw.category as Classification['category'])
-    : 'not_useful';
-  return {
-    category,
-    is_event: raw.is_event === true,
-    confidence:
-      raw.confidence === 'high' || raw.confidence === 'medium' ? raw.confidence : 'low',
   };
 }
 

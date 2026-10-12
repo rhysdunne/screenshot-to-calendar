@@ -7,13 +7,21 @@
 //   npm run eval -- --mock                      # plumbing check, no API calls
 //   npm run eval -- --prompt-version v4         # eval a candidate prompt (gate)
 //   npm run eval -- --no-classify               # extract only (skip classify stage)
+//   npm run eval -- --thinking between_tools --effort medium [--max-tokens 2048]
+//                     # compare thinking settings: each flag replaces that field
+//                     # of the MODELS tuning for every stage the run calls
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { callClaude } from '../../backend/src/lib/anthropic.js';
+import {
+  stageTuning,
+  type PipelineStage,
+  type StageTuning,
+} from '../../backend/src/lib/models.js';
 import { extractSchemaFor, loadPrompt, renderPrompt } from '../../backend/src/prompts/prompts.js';
 import { CLASSIFY_IMAGE_SCHEMA } from '../../backend/src/prompts/schemas.js';
-import { extractEventData } from '../../backend/src/pipeline/extract.js';
+import { extractClassification, extractEventData } from '../../backend/src/pipeline/extract.js';
 import { detectMediaType } from '../../backend/src/pipeline/image.js';
 import type { Classification, ExtractedEvent } from '../../backend/src/pipeline/types.js';
 import { scoreCase, scoreClassification, SCORED_FIELDS, type CaseScore } from './score.js';
@@ -32,11 +40,15 @@ export interface DatasetCase {
   classification?: Classification;
 }
 
-export function loadDataset(which: 'synthetic' | 'real' | 'all', limit?: number): DatasetCase[] {
+export function loadDataset(
+  which: 'synthetic' | 'real' | 'all',
+  limit?: number,
+  datasetRoot: string = DATASET_ROOT,
+): DatasetCase[] {
   const dirs = which === 'all' ? ['synthetic', 'real'] : [which];
   const cases: DatasetCase[] = [];
   for (const d of dirs) {
-    const root = join(DATASET_ROOT, d);
+    const root = join(datasetRoot, d);
     if (!existsSync(root)) continue;
     for (const id of readdirSync(root).sort()) {
       const caseDir = join(root, id);
@@ -48,7 +60,17 @@ export function loadDataset(which: 'synthetic' | 'real' | 'all', limit?: number)
       const meta = JSON.parse(readFileSync(join(caseDir, 'meta.json'), 'utf8')) as {
         frozenToday: string;
         classification?: Classification;
+        consent?: unknown;
       };
+      // Real cases are people's screenshots. A case without recorded consent
+      // stops the run, so consent is checked here rather than trusted to
+      // whoever added the files (#88).
+      if (d === 'real' && meta.consent !== true) {
+        throw new Error(
+          `Eval case real/${id} has no "consent": true in its meta.json. Only add ` +
+            'images you have consent to use (docs/adding-eval-images.md).',
+        );
+      }
       cases.push({
         id,
         imagePath,
@@ -66,15 +88,55 @@ interface CaseResult {
   id: string;
   score: CaseScore | null; // null for non-event cases
   classificationCorrect: boolean | null;
+  /** is_event alone: the bit that decides whether a capture is processed. */
+  isEventCorrect?: boolean | null;
   latencyMs: number;
   costUsd: number;
   error?: string;
 }
 
+/** The stage's MODELS tuning with any harness override laid over it. */
+function tuningFor(
+  model: string,
+  stage: PipelineStage,
+  override: Partial<StageTuning> | undefined,
+): StageTuning {
+  return { ...stageTuning(model, stage), ...override };
+}
+
+/**
+ * Each model's tuning for every stage the run calls, worked out before any
+ * case runs. tuningFor throws for a model that is not in MODELS or has no
+ * tuning for a stage, so a typo in --models fails here at no cost. Checked
+ * per case instead, it would error every case of that model and then lose
+ * the report of every model that ran before it.
+ */
+export function resolveTunings(
+  models: string[],
+  classify: boolean,
+  override: Partial<StageTuning> | undefined,
+): Map<string, NonNullable<ModelReport['tuning']>> {
+  return new Map(
+    models.map((model) => [
+      model,
+      {
+        ...(classify ? { classify: tuningFor(model, 'classify', override) } : {}),
+        extract: tuningFor(model, 'extract', override),
+      },
+    ]),
+  );
+}
+
 async function runCase(
   model: string,
   c: DatasetCase,
-  opts: { apiKey: string; promptVersion?: string; mock: boolean; classify: boolean },
+  opts: {
+    apiKey: string;
+    promptVersion?: string;
+    mock: boolean;
+    classify: boolean;
+    tuning?: Partial<StageTuning>;
+  },
 ): Promise<CaseResult> {
   if (opts.mock) {
     return {
@@ -95,6 +157,7 @@ async function runCase(
   // the extract prompt is under test, re-running an unchanged classify prompt adds
   // cost and variance but no signal.
   let classificationCorrect: boolean | null = null;
+  let isEventCorrect: boolean | null = null;
   let isEvent = c.classification?.is_event ?? true;
   if (c.classification && opts.classify) {
     const call = await callClaude({
@@ -104,22 +167,21 @@ async function runCase(
       imageBase64: c.imageBase64,
       mediaType,
       schema: CLASSIFY_IMAGE_SCHEMA,
-      maxTokens: 256,
       stage: 'classify',
+      tuning: tuningFor(model, 'classify', opts.tuning),
     });
     latencyMs += call.usage.latencyMs;
     costUsd += call.usage.costUsd;
-    const predicted = JSON.parse(
-      (call.response.content[0] as { text?: string })?.text ?? '{}',
-    ) as Classification;
+    const predicted = extractClassification(call.response);
     const cls = scoreClassification(c.classification, predicted);
     classificationCorrect = cls.categoryCorrect && cls.isEventCorrect;
+    isEventCorrect = cls.isEventCorrect;
     isEvent = predicted.is_event;
   }
 
   if (c.classification?.is_event === false) {
     // Non-event case: extraction is not scored, by design and on both arms.
-    return { id: c.id, score: null, classificationCorrect, latencyMs, costUsd };
+    return { id: c.id, score: null, classificationCorrect, isEventCorrect, latencyMs, costUsd };
   }
 
   if (!isEvent) {
@@ -128,7 +190,7 @@ async function runCase(
       title: null, venue: null, address: null, start_date: null, end_date: null,
       start_time: null, end_time: null, description: null, url: null, confidence: 'low',
     });
-    return { id: c.id, score: zero, classificationCorrect, latencyMs, costUsd };
+    return { id: c.id, score: zero, classificationCorrect, isEventCorrect, latencyMs, costUsd };
   }
 
   const call = await callClaude({
@@ -141,8 +203,8 @@ async function runCase(
     imageBase64: c.imageBase64,
     mediaType,
     schema: extractSchemaFor(opts.promptVersion),
-    maxTokens: 1024,
     stage: 'extract',
+    tuning: tuningFor(model, 'extract', opts.tuning),
   });
   latencyMs += call.usage.latencyMs;
   costUsd += call.usage.costUsd;
@@ -151,6 +213,7 @@ async function runCase(
     id: c.id,
     score: scoreCase(c.gold, predicted),
     classificationCorrect,
+    isEventCorrect,
     latencyMs,
     costUsd,
   };
@@ -176,7 +239,11 @@ function percentile(values: number[], p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)] ?? 0;
 }
 
-export function summarize(model: string, results: CaseResult[]): ModelReport {
+export function summarize(
+  model: string,
+  results: CaseResult[],
+  tuning?: ModelReport['tuning'],
+): ModelReport {
   const scored = results.filter((r): r is CaseResult & { score: CaseScore } => r.score !== null);
   const fieldAccuracy: Record<string, number> = {};
   for (const field of SCORED_FIELDS) {
@@ -188,6 +255,9 @@ export function summarize(model: string, results: CaseResult[]): ModelReport {
       : 0;
   }
   const classified = results.filter((r) => r.classificationCorrect !== null);
+  const isEventScored = results.filter(
+    (r) => r.isEventCorrect !== null && r.isEventCorrect !== undefined,
+  );
   const latencies = results.map((r) => r.latencyMs);
   return {
     model,
@@ -205,6 +275,9 @@ export function summarize(model: string, results: CaseResult[]): ModelReport {
     classificationAccuracy: classified.length
       ? classified.filter((r) => r.classificationCorrect).length / classified.length
       : null,
+    isEventAccuracy: isEventScored.length
+      ? isEventScored.filter((r) => r.isEventCorrect).length / isEventScored.length
+      : null,
     meanLatencyMs: latencies.length
       ? latencies.reduce((a, b) => a + b, 0) / latencies.length
       : 0,
@@ -213,6 +286,7 @@ export function summarize(model: string, results: CaseResult[]): ModelReport {
       ? (results.reduce((a, r) => a + r.costUsd, 0) / results.length) * 100
       : 0,
     errors: results.filter((r) => r.error).length,
+    ...(tuning ? { tuning } : {}),
     perCase: results.map((r) => ({
       id: r.id,
       aggregate: r.score ? r.score.aggregate : null,
@@ -241,7 +315,14 @@ export async function runEval(options: {
    * prompt is under test — see the note in `runCase`.
    */
   classify?: boolean;
+  /**
+   * Fields laid over each stage's MODELS tuning, to compare thinking settings
+   * before one goes into MODELS. Omit to measure what production sends.
+   */
+  tuning?: Partial<StageTuning>;
 }): Promise<EvalRunResult> {
+  const classify = options.classify ?? true;
+  const tunings = resolveTunings(options.models, classify, options.tuning);
   const apiKey = process.env.ANTHROPIC_API_KEY ?? '';
   if (!options.mock && !apiKey) {
     throw new Error('ANTHROPIC_API_KEY is required for a live eval (or pass --mock)');
@@ -260,7 +341,8 @@ export async function runEval(options: {
           apiKey,
           promptVersion: options.promptVersion,
           mock: options.mock ?? false,
-          classify: options.classify ?? true,
+          classify,
+          tuning: options.tuning,
         });
         console.log(
           `  ${c.id}: ${r.score ? r.score.aggregate.toFixed(2) : 'n/a'} ($${r.costUsd.toFixed(4)})`,
@@ -278,7 +360,7 @@ export async function runEval(options: {
         } satisfies CaseResult;
       }
     });
-    reports.push(summarize(model, results));
+    reports.push(summarize(model, results, tunings.get(model)));
   }
 
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -292,7 +374,8 @@ export async function runEval(options: {
         dataset: options.dataset,
         promptVersion: options.promptVersion ?? 'pinned',
         mock: options.mock ?? false,
-        classify: options.classify ?? true,
+        classify,
+        tuningOverride: options.tuning ?? null,
         reports,
       },
       null,
@@ -311,6 +394,15 @@ if (isMain) {
     const i = process.argv.indexOf(`--${name}`);
     return i >= 0 && process.argv[i + 1] ? (process.argv[i + 1] as string) : fallback;
   };
+  const tuningOverride = (): Partial<StageTuning> | undefined => {
+    const has = (name: string) => process.argv.includes(`--${name}`);
+    if (!has('thinking') && !has('effort') && !has('max-tokens')) return undefined;
+    return {
+      ...(has('thinking') ? { thinking: arg('thinking', '') as StageTuning['thinking'] } : {}),
+      ...(has('effort') ? { effort: arg('effort', '') as StageTuning['effort'] } : {}),
+      ...(has('max-tokens') ? { maxTokens: Number(arg('max-tokens', '0')) } : {}),
+    };
+  };
   runEval({
     models: arg('models', 'claude-haiku-4-5').split(','),
     dataset: arg('dataset', 'synthetic') as 'synthetic' | 'real' | 'all',
@@ -321,8 +413,21 @@ if (isMain) {
     mock: process.argv.includes('--mock'),
     label: process.argv.includes('--label') ? arg('label', '') : undefined,
     classify: !process.argv.includes('--no-classify'),
-  }).catch((e) => {
-    console.error(e);
-    process.exit(1);
-  });
+    tuning: tuningOverride(),
+  })
+    .then(({ reports }) => {
+      // runCase errors are caught per case so one bad call does not sink a run,
+      // but a revoked key or a retired model errors every case and the run
+      // would still exit 0. Any errored case fails the process instead, so a
+      // scheduled eval goes red.
+      const errored = reports.filter((r) => r.errors > 0);
+      for (const r of errored) {
+        console.error(`${r.model}: ${r.errors} of ${r.cases} cases errored`);
+      }
+      if (errored.length > 0) process.exit(1);
+    })
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    });
 }

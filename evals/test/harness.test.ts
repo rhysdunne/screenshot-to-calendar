@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { summarize } from '../src/harness.js';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { resolveTunings, runEval, summarize } from '../src/harness.js';
 import { scoreCase } from '../src/score.js';
 import type { ExtractedEvent } from '../../backend/src/pipeline/types.js';
 
@@ -54,5 +57,73 @@ describe('summarize per-case scores', () => {
     // The scalar aggregate still averages only the cases that scored.
     expect(report.cases).toBe(3);
     expect(report.errors).toBe(1);
+  });
+});
+
+describe('summarize classification and tuning', () => {
+  it('scores is_event on its own, apart from the category', () => {
+    const report = summarize('claude-haiku-5-5', [
+      // Category wrong, is_event right: the bit that gates processing held.
+      result('a', { classificationCorrect: false, isEventCorrect: true }),
+      result('b', { classificationCorrect: true, isEventCorrect: true }),
+      result('c', { classificationCorrect: false, isEventCorrect: false }),
+      // Classify skipped: counts towards neither.
+      result('d', { classificationCorrect: null, isEventCorrect: null }),
+    ]);
+    expect(report.classificationAccuracy).toBeCloseTo(1 / 3);
+    expect(report.isEventAccuracy).toBeCloseTo(2 / 3);
+  });
+
+  it('records the tuning each stage sent when given it', () => {
+    const tuning = {
+      extract: { thinking: 'disabled' as const, effort: 'low' as const, maxTokens: 1024 },
+    };
+    expect(summarize('claude-sonnet-5', [result('a')], tuning).tuning).toEqual(tuning);
+    expect(summarize('claude-sonnet-5', [result('a')])).not.toHaveProperty('tuning');
+  });
+});
+
+describe('model validation before a run', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('resolves each model\'s tuning, leaving out classify when it is skipped', () => {
+    const both = resolveTunings(['claude-sonnet-5'], true, undefined).get('claude-sonnet-5');
+    expect(both?.classify).toBeDefined();
+    expect(both?.extract).toBeDefined();
+    const extractOnly = resolveTunings(['claude-sonnet-5'], false, { effort: 'low' });
+    expect(extractOnly.get('claude-sonnet-5')).not.toHaveProperty('classify');
+    expect(extractOnly.get('claude-sonnet-5')?.extract?.effort).toBe('low');
+  });
+
+  it('throws for a model not in MODELS or without tuning for a stage it runs', () => {
+    expect(() => resolveTunings(['claude-nonexistent'], true, undefined)).toThrow(
+      /claude-nonexistent/,
+    );
+    // In MODELS with prices, but no pipeline tuning.
+    expect(() => resolveTunings(['claude-opus-4-8'], false, undefined)).toThrow(
+      /no extract tuning/,
+    );
+  });
+
+  it('fails a run with a typo in --models before any case runs or report is written', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const label = 'test-model-validation-should-not-exist';
+
+    await expect(
+      runEval({
+        models: ['claude-sonnet-5', 'claude-nonexistent'],
+        dataset: 'synthetic',
+        mock: true,
+        label,
+      }),
+    ).rejects.toThrow(/claude-nonexistent/);
+
+    // Not even the valid model before the typo started.
+    expect(log).not.toHaveBeenCalled();
+    const reportDir = join(dirname(fileURLToPath(import.meta.url)), '..', 'reports', label);
+    expect(existsSync(reportDir)).toBe(false);
   });
 });

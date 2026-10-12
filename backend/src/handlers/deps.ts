@@ -11,7 +11,7 @@ import { HttpError } from '../lib/http.js';
 import { callClaude } from '../lib/anthropic.js';
 import * as gcal from '../lib/google-calendar.js';
 import { resolveVenue } from '../lib/google-places.js';
-import { DEFAULT_MODELS } from '../lib/models.js';
+import { DEFAULT_MODELS, assertKnownModel } from '../lib/models.js';
 
 // Structural types (public methods only) so tests can inject in-memory fakes.
 export type Store = Pick<
@@ -65,6 +65,12 @@ export function realDeps(): Deps {
   const sqs = new SQSClient({});
   const queueUrl = env('QUEUE_URL');
   const store = new DdbStore(env('TABLE_NAME'));
+  const classifyModel = envOr('CLASSIFY_MODEL', DEFAULT_MODELS.classify);
+  const extractModel = envOr('EXTRACT_MODEL', DEFAULT_MODELS.extract);
+  // Cold-start check: an override naming a model with no price, or no tuning
+  // for its stage, fails here before the first capture.
+  assertKnownModel(classifyModel, 'classify');
+  assertKnownModel(extractModel, 'extract');
 
   real = {
     store,
@@ -102,8 +108,8 @@ export function realDeps(): Deps {
     getSecret,
     config: {
       deepLinkBase: env('DEEPLINK_BASE_URL'),
-      classifyModel: envOr('CLASSIFY_MODEL', DEFAULT_MODELS.classify),
-      extractModel: envOr('EXTRACT_MODEL', DEFAULT_MODELS.extract),
+      classifyModel,
+      extractModel,
       googleClientId: env('GOOGLE_CLIENT_ID'),
     },
   };
