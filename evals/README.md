@@ -34,8 +34,8 @@ ANTHROPIC_API_KEY=... npm run eval -- \
 ANTHROPIC_API_KEY=... npm run eval -- --models claude-sonnet-5-5 --dataset all \
   --no-classify --thinking between_tools --effort medium
 
-# Gate a candidate prompt version against the pinned one:
-ANTHROPIC_API_KEY=... npm run eval -- --models claude-sonnet-5 --prompt-version v3
+# Eval a candidate prompt version (the pinned one is the default):
+ANTHROPIC_API_KEY=... npm run eval -- --models claude-sonnet-5 --prompt-version v4
 
 # Re-run named cases, e.g. to check whether a regression repeats:
 ANTHROPIC_API_KEY=... npm run eval -- --models claude-sonnet-5 --dataset all \
