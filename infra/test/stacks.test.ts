@@ -115,6 +115,18 @@ describe('BackendStack', () => {
       Period: 86400,
       Threshold: 2,
     });
+    // CloudWatch matches the full dimension set, so the alarm must carry the
+    // 'service' dimension powertools adds as well as 'stage'. arrayWith is
+    // order-sensitive, so check each one on its own.
+    for (const dimension of [
+      { Name: 'service', Value: 's2c' },
+      { Name: 'stage', Value: 'staging' },
+    ]) {
+      backend.hasResourceProperties('AWS::CloudWatch::Alarm', {
+        AlarmName: 's2c-ai-spend-staging',
+        Dimensions: Match.arrayWith([Match.objectLike(dimension)]),
+      });
+    }
   });
 
   it('expires exports after 7 days', () => {

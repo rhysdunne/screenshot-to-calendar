@@ -301,7 +301,11 @@ export class BackendStack extends Stack {
       metric: new cloudwatch.Metric({
         namespace: 's2c',
         metricName: 'AiCostUsd',
-        dimensionsMap: { stage },
+        // Must match the emitted dimension set exactly. 'service' is the
+        // explicit serviceName in backend/src/lib/anthropic.ts, which
+        // overrides POWERTOOLS_SERVICE_NAME (`s2c-${stage}`, commonEnv above),
+        // so keep the literal 's2c' here — don't align it to the env var.
+        dimensionsMap: { service: 's2c', stage },
         statistic: 'Sum',
         period: Duration.hours(24),
       }),
