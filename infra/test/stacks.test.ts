@@ -49,6 +49,13 @@ describe('BackendStack', () => {
     });
   });
 
+  it('leaves the staging table deletable', () => {
+    backend.hasResourceProperties('AWS::DynamoDB::Table', {
+      TableName: 's2c-main-staging',
+      DeletionProtectionEnabled: false,
+    });
+  });
+
   it('wires the processing queue to a DLQ with 3 retries', () => {
     backend.hasResourceProperties('AWS::SQS::Queue', {
       QueueName: 's2c-process-staging',
@@ -163,6 +170,30 @@ describe('BackendStack', () => {
         ],
       },
     });
+  });
+});
+
+describe('BackendStack (prod)', () => {
+  let prod: Template;
+
+  beforeAll(() => {
+    // Skips Lambda bundling for this app: these checks are about the table.
+    const app = new App({ context: { 'aws:cdk:bundling-stacks': [] } });
+    const prodStack = new BackendStack(app, 'S2cBackend-prod-test', {
+      stage: 'prod',
+      env: { account: '111111111111', region: 'eu-west-2' },
+      googleClientId: 'test-client-id.apps.googleusercontent.com',
+      deepLinkBaseUrl: 'https://d123.cloudfront.net',
+    });
+    prod = Template.fromStack(prodStack);
+  });
+
+  it('protects the prod table from deletion as well as retaining it', () => {
+    prod.hasResourceProperties('AWS::DynamoDB::Table', {
+      TableName: 's2c-main-prod',
+      DeletionProtectionEnabled: true,
+    });
+    prod.hasResource('AWS::DynamoDB::Table', { DeletionPolicy: 'Retain' });
   });
 });
 

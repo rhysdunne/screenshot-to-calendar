@@ -55,6 +55,9 @@ export class BackendStack extends Stack {
       // 90 days). Captures/corrections omit the attribute and are never expired.
       timeToLiveAttribute: 'expiresAt',
       removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+      // RETAIN only covers CloudFormation. Deletion protection also refuses a
+      // console or CLI delete of the prod table; staging stays disposable.
+      deletionProtection: isProd,
     });
     table.addGlobalSecondaryIndex({
       indexName: 'GSI1',
