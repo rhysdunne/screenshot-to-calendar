@@ -69,6 +69,10 @@ struct OnboardingView: View {
         isWorking = true
         defer { isWorking = false }
         settings.calendarId = calendarId
+        // New accounts start on Europe/London. Take the device's zone at the
+        // same time, so a user elsewhere gets the right "today" and event
+        // times from the first capture. Settings can change it later.
+        settings.timezone = TimeZone.current.identifier
         do {
             // Assign only on success — never overwrite good settings with nil,
             // which would bounce the user back to this picker.

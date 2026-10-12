@@ -18,6 +18,18 @@ struct SettingsView: View {
             }
 
             Section {
+                LabeledContent("Timezone", value: appState.settings?.timezone ?? "Not set")
+                Button("Use this device's timezone") {
+                    guard var settings = appState.settings else { return }
+                    settings.timezone = TimeZone.current.identifier
+                    Task { await save(settings) }
+                }
+                .disabled(appState.settings == nil || appState.settings?.timezone == TimeZone.current.identifier)
+            } footer: {
+                Text("Event times, and dates like “this Saturday”, are read in this timezone. This device is set to \(TimeZone.current.identifier).")
+            }
+
+            Section {
                 Toggle("Help improve extraction", isOn: consentBinding)
             } footer: {
                 Text("Off by default. When on, corrections you make (and the images they belong to) may be used to improve the extraction prompt. See the privacy policy for details.")
