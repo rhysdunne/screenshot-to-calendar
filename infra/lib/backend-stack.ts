@@ -110,6 +110,8 @@ export class BackendStack extends Stack {
       NODE_OPTIONS: '--enable-source-maps',
     };
 
+    // Every parameter under /s2c/{stage}/: the five secrets and the sign-up
+    // allowlist. A narrower grant would silently close sign-up.
     const ssmParamsPolicy = new iam.PolicyStatement({
       actions: ['ssm:GetParameter'],
       resources: [

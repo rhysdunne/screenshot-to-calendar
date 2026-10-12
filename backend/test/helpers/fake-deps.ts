@@ -176,6 +176,8 @@ export interface FakeDepsOptions {
   extractStopReason?: string;
   existingEvents?: ExistingCalendarEvent[];
   placesAddress?: string | null;
+  /** Raw /s2c/{stage}/signup-allowlist value; unset means the parameter is missing. */
+  signupAllowlist?: string;
 }
 
 export function makeFakeDeps(opts: FakeDepsOptions = {}) {
@@ -250,6 +252,12 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
     getSecret: async (name) => {
       if (name === 'token-enc-key') return 'a'.repeat(64);
       return `secret-${name}`;
+    },
+    getParameter: async (name) => {
+      if (name === 'signup-allowlist' && opts.signupAllowlist !== undefined) {
+        return opts.signupAllowlist;
+      }
+      throw new Error(`Parameter Store parameter /s2c/test/${name} is empty or missing`);
     },
     config: {
       deepLinkBase: 'https://app.example.com',

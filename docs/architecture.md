@@ -30,7 +30,7 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 
 | Route | Body → Response |
 |---|---|
-| `POST /v1/auth/google` | `{serverAuthCode}` → `{token, user:{id,email,settings}}` |
+| `POST /v1/auth/google` | `{serverAuthCode}` → `{token, user:{id,email,settings}}`. A Google account with no user yet gets one only if its verified email is on the sign-up allowlist, else 403 `signup_closed` |
 | `POST /v1/captures` | `{imageBase64}` → 202 `{captureId, status:"queued"}` or 200 `{captureId, status:"duplicate", duplicateOf}` |
 | `GET /v1/captures` | → `{captures:[CaptureView], cursor}`, newest first, up to 200 per page (the app reads only the first page) |
 | `GET /v1/captures/{id}` | → CaptureView (the app's poll target) |
@@ -69,7 +69,11 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 2. Backend exchanges the code (web client id + secret from AWS Systems Manager
    Parameter Store), validates the id_token claims, stores the refresh token
    encrypted (key in Parameter Store SecureString), and issues an HS256 JWT
-   (`{sub, ver}`, 180 days).
+   (`{sub, ver}`, 180 days). Sign-up is invite-only: a new account needs a
+   verified email on `/s2c/{stage}/signup-allowlist` (a String parameter,
+   managed with `scripts/allowlist.sh`). A missing or empty list refuses all
+   new accounts, and a refused account's Google grant is revoked. Existing
+   users are never checked.
 3. Per request: JWT verified + `ver` compared to the user's `tokenVersion`
    (bump = revoke all sessions). `scripts/sessions.sh revoke-user <stage>
    <email>` bumps it for one user; `revoke-all <stage>` rotates `jwt-secret`.
