@@ -108,7 +108,7 @@ version pin, and build-number stamping live in
 | Workflow | Trigger | Purpose |
 |---|---|---|
 | [`eval-weekly.yml`](../.github/workflows/eval-weekly.yml) | Mondays 03:17 UTC + dispatch | Live eval of 10 synthetic cases on production's classify and extract models (about $0.17 a run), so extraction-quality drift shows up week to week. |
-| [`prompt-improvement.yml`](../.github/workflows/prompt-improvement.yml) | Manual dispatch only | Clusters consented corrections, proposes a prompt revision, runs the eval gate, opens a PR. Never auto-merges. |
+| [`prompt-improvement.yml`](../.github/workflows/prompt-improvement.yml) | Manual dispatch only | Clusters the owner's consented corrections, proposes a prompt revision, runs the eval gate, opens a PR. Never auto-merges. |
 | [`dependabot.yml`](../.github/dependabot.yml) | Monthly | npm updates across the four packages, plus GitHub Actions bumps. |
 
 **Weekly eval.** The workflow reads the models from `DEFAULT_MODELS` in
@@ -126,9 +126,16 @@ as an artifact either way.
 corrections from at least 3 independent captures per failure pattern, and prod
 had none on any of the three monthly runs. Put a schedule back only after #46
 and #47 are fixed and real corrections exist. To run it, open Actions, choose
-**Prompt improvement**, then **Run workflow**. An inline session policy limits
-the AWS credentials its configure step creates to a Scan of the prod table.
-That narrows the normal path only: while the job holds `id-token: write`, any
+**Prompt improvement**, then **Run workflow**. The aggregate step reads only
+the owner's account: a Query of the `OWNER_USER_ID` partition, never a Scan of
+the table. Other users' corrections stay out even with consent, because the
+job sends the values to Claude and pushes the candidate prompt to a public
+branch. The workflow passes `OWNER_USER_ID` from a repository secret of that
+name, so add the secret before the first run. It is a secret and not a
+variable, so GitHub masks the value in the public logs. Without it, the step
+stops with `Set OWNER_USER_ID`. An inline session policy limits the AWS
+credentials the configure step creates to a Query of the prod table. That
+narrows the normal path only: while the job holds `id-token: write`, any
 step, an npm install script included, can request its own OIDC token and
 assume the deploy role without the policy. A dedicated least-privilege role
 is the real fix (#33). Stages and commands:

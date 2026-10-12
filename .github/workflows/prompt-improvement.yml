@@ -1,10 +1,15 @@
 name: Prompt improvement
 
 # Manual runs only (Actions tab → Prompt improvement → Run workflow): cluster
-# consented corrections into failure patterns, have Claude propose a minimal
-# prompt revision, run the eval gate, and open a PR if it passes. NEVER
-# auto-merges — a human reviews the diff, the gate report, and the source
-# correction clusters.
+# the owner's consented corrections into failure patterns, have Claude propose
+# a minimal prompt revision, run the eval gate, and open a PR if it passes.
+# NEVER auto-merges — a human reviews the diff, the gate report, and the
+# source correction clusters.
+#
+# Owner only: the aggregate step reads nothing but the OWNER_USER_ID account's
+# partition (tools/prompt-improvement/src/owner.ts). Other users' corrections
+# stay out even with consent, because propose sends the values to Claude and
+# this job pushes the candidate prompt to a public branch.
 #
 # There is no schedule (ADR 0006). A pattern needs corrections from at least 3
 # independent captures, and prod had zero consented corrections on each of the
@@ -12,11 +17,12 @@ name: Prompt improvement
 # user numbers. Put a schedule back only after #46 and #47 are fixed and real
 # corrections exist.
 #
-# `npm run materialize` is deliberately NOT run here. It pulls consented
-# corrections (with their images) out of prod into evals/dataset/real/, and
-# CLAUDE.md requires in-image third-party PII to be redacted before commit —
-# "check the pixels, not just the label", which no CI step can do. It is a
-# maintainer command, run locally. See tools/prompt-improvement/README.md.
+# `npm run materialize` is deliberately NOT run here. It pulls the owner's
+# consented corrections (with their images) out of prod into
+# evals/dataset/real/, and CLAUDE.md requires in-image third-party PII to be
+# redacted before commit — "check the pixels, not just the label", which no
+# CI step can do. It is a maintainer command, run locally. See
+# tools/prompt-improvement/README.md.
 on:
   workflow_dispatch:
 
@@ -54,19 +60,25 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: eu-west-2
           # Session policy: the credentials this step creates can do only what
-          # the job needs, a Scan of the prod table (aggregate-corrections.ts),
-          # not everything the deploy role can do. It does not bind a step that
-          # mints its own token (see the id-token note above). The account id
-          # comes from the AWS_ACCOUNT_ID repo variable, so this public repo
-          # never contains it. A wrong or missing value fails loudly with
-          # AccessDenied.
+          # the job needs, a Query of the owner's partition of the prod table
+          # (aggregate-corrections.ts), not everything the deploy role can do.
+          # The Query uses no IndexName, so the table ARN alone covers it. It
+          # does not bind a step that mints its own token (see the id-token
+          # note above). The account id comes from the AWS_ACCOUNT_ID repo
+          # variable, so this public repo never contains it. A wrong or missing
+          # value fails loudly with AccessDenied.
           inline-session-policy: >-
-            {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"dynamodb:Scan","Resource":"arn:aws:dynamodb:eu-west-2:${{ vars.AWS_ACCOUNT_ID }}:table/s2c-main-prod"}]}
+            {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"dynamodb:Query","Resource":"arn:aws:dynamodb:eu-west-2:${{ vars.AWS_ACCOUNT_ID }}:table/s2c-main-prod"}]}
 
       - name: Aggregate corrections
         working-directory: tools/prompt-improvement
         env:
           TABLE_NAME: s2c-main-prod
+          # The aggregator reads only this account's partition and stops with
+          # "Set OWNER_USER_ID" when it is empty (src/owner.ts). It comes from
+          # a repository SECRET, not a variable, so GitHub masks the value in
+          # this public repo's logs. Setup: docs/ci-cd.md.
+          OWNER_USER_ID: ${{ secrets.OWNER_USER_ID }}
         run: npm run aggregate
 
       # propose is the ONLY thing that knows whether it wrote a candidate file,
@@ -162,7 +174,7 @@ jobs:
           body: |
             Automated prompt-improvement run.
 
-            - Source: clustered consented corrections (see workflow logs)
+            - Source: the owner's clustered consented corrections (see workflow logs)
             - Eval gate: PASSED — ${{ steps.gate.outputs.better }} cases improved,
               ${{ steps.gate.outputs.worse }} regressed of ${{ steps.gate.outputs.paired }}
               paired (sign test p=${{ steps.gate.outputs.pvalue }}). The classify stage
