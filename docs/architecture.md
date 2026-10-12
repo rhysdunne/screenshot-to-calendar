@@ -48,7 +48,7 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 
 - `event` is the original extraction (never mutated). `corrected` is the user's overlay, keyed by field name: a key with a string value replaces the extracted value, a key with `null` means the user cleared that field, and an absent key means not corrected.
 - `needs_review`: the extraction came back with `confidence: "low"`, so no calendar event was created. The app shows the fields for checking and calls `approve`.
-- `failed`: `error` says why. A failure that a retry cannot fix (no date, an event that does not end after it starts, a Google grant that needs a new sign-in) keeps `classification` and `event`, so the app can show the fields for fixing and call `approve`. Other failures are retried by SQS and keep no `event`.
+- `failed`: `error` says why. A failure that a retry cannot fix (no date, an event that does not end after it starts, a Google grant that needs a new sign-in) keeps `classification` and `event`, so the app can show the fields for fixing and call `approve`. A model refusal is also final, but it leaves no `event`, so `error` tells the user to add the event to their calendar themselves. Other failures, including a reply cut off at max_tokens, are retried by SQS and keep no `event`.
 - `calendarEventId` is only ever an event this capture created. It is null for a duplicate.
 - `duplicate`: the dedup step matched an existing event, so nothing was created. `matchedEventId` is that event, and `eventLink` opens it. The capture never edits or deletes it. `matchedEventId` is null for every other status.
 - `possibleDuplicateOf`: the event was created, but a similar existing event (by title) was found.
