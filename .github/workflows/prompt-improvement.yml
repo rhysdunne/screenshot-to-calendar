@@ -77,7 +77,7 @@ jobs:
           # The aggregator reads only this account's partition and stops with
           # "Set OWNER_USER_ID" when it is empty (src/owner.ts). It comes from
           # a repository SECRET, not a variable, so GitHub masks the value in
-          # this public repo's logs. Setup: docs/ci-cd.md.
+          # this public repo's logs. Setup: docs/setup-aws.md, section 6.
           OWNER_USER_ID: ${{ secrets.OWNER_USER_ID }}
         run: npm run aggregate
 

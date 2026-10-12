@@ -47,6 +47,11 @@ patterns, or when an unmerged candidate above the active pin already exists
 (`--force` overrides the second check). It refuses a proposal that drops the
 `{{TODAY}}` placeholder.
 
+At the time of writing, `extract-event.v4.md` is such a candidate. It is
+committed but not pinned, because its ADR 0008 review found a regression
+(issue #27). Until v4 is pinned or a later version supersedes it, every run
+with patterns stops at `pending-candidate`.
+
 **gate** decides whether the candidate is better. It runs the full eval dataset
 (synthetic and real) twice on the production extract model: once with the
 active prompt and once with the candidate. The classify stage is skipped,
