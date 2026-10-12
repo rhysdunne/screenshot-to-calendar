@@ -111,9 +111,16 @@ with too many errors to trust.
   only. Reports, `work/` and dataset images are never committed.
 - **Refuses un-reviewed real images.** If anything has changed under
   `evals/dataset/real/`, the workflow fails before it opens a PR.
-- **Narrow CI credentials.** Dependencies install before AWS credentials
-  exist. An inline session policy limits those credentials to a Scan of the
-  prod table. The PR action is pinned to a commit SHA.
+- **Narrowed AWS session, normal path only.** Dependencies install before the
+  AWS step, so no AWS credentials are in their environment. An inline session
+  policy limits the credentials that step creates to a Scan of the prod table.
+  This is not a boundary. The job holds `id-token: write`, so any step, an npm
+  install script included, can still request its own OIDC token and assume
+  the deploy role without the session policy. The real fix is a dedicated
+  least-privilege role for this workflow, tracked in
+  [#33](https://github.com/rhysdunne/screenshot-to-calendar/issues/33).
+- **Pinned PR action.** `peter-evans/create-pull-request` is pinned to a
+  commit SHA, because it holds a write token and a tag can be moved.
 
 ## Why there is no schedule
 

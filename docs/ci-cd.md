@@ -124,8 +124,12 @@ as an artifact either way.
 corrections from at least 3 independent captures per failure pattern, and prod
 had none on any of the three monthly runs. Put a schedule back only after #46
 and #47 are fixed and real corrections exist. To run it, open Actions, choose
-**Prompt improvement**, then **Run workflow**. Its AWS session is limited to a
-Scan of the prod table. Stages and commands:
+**Prompt improvement**, then **Run workflow**. An inline session policy limits
+the AWS credentials its configure step creates to a Scan of the prod table.
+That narrows the normal path only: while the job holds `id-token: write`, any
+step, an npm install script included, can request its own OIDC token and
+assume the deploy role without the policy. A dedicated least-privilege role
+is the real fix (#33). Stages and commands:
 [`tools/prompt-improvement/README.md`](../tools/prompt-improvement/README.md).
 
 **Dependabot** opens at most three grouped npm PRs a month: `cdk`,
