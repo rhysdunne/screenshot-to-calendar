@@ -5,7 +5,7 @@
 // too, so eval results go through the exact production request path.
 import Anthropic from '@anthropic-ai/sdk';
 import { Metrics, MetricUnit } from '@aws-lambda-powertools/metrics';
-import { MODELS, costUsd } from './models.js';
+import { MODELS, assertKnownModel, costUsd } from './models.js';
 import { logger } from './logger.js';
 
 // EMF metric backing the s2c-ai-spend alarm (infra/lib/backend-stack.ts).
@@ -44,6 +44,8 @@ export interface ClaudeCallResult {
 }
 
 export async function callClaude(opts: ClaudeCallOptions): Promise<ClaudeCallResult> {
+  // Before the request, so an unlisted model costs nothing and is not logged at $0.
+  assertKnownModel(opts.model, opts.stage);
   const client = new Anthropic({ apiKey: opts.apiKey });
   const modelInfo = MODELS[opts.model];
   const schema =

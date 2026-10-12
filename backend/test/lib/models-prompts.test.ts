@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { DEFAULT_MODELS, MODELS, costUsd } from '../../src/lib/models.js';
+import { describe, expect, it, vi } from 'vitest';
+import { logger } from '../../src/lib/logger.js';
+import { DEFAULT_MODELS, MODELS, assertKnownModel, costUsd } from '../../src/lib/models.js';
 import {
   ACTIVE_VERSIONS,
   extractSchemaFor,
@@ -22,10 +23,25 @@ describe('models', () => {
     // haiku: $1/MTok in, $5/MTok out
     expect(costUsd('claude-haiku-4-5', 1_000_000, 1_000_000)).toBeCloseTo(6.0);
     expect(costUsd('claude-haiku-4-5', 2000, 300)).toBeCloseTo(0.0035);
+    // sonnet 5: $2/MTok in, $10/MTok out
+    expect(costUsd('claude-sonnet-5', 1_000_000, 1_000_000)).toBeCloseTo(12.0);
   });
 
-  it('unknown model costs zero rather than throwing', () => {
-    expect(costUsd('claude-nonexistent', 1000, 1000)).toBe(0);
+  it('logs an error for a model with no price instead of passing silently', () => {
+    const error = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    try {
+      expect(costUsd('claude-nonexistent', 1000, 1000)).toBe(0);
+      expect(error).toHaveBeenCalledWith('model_price_missing', { model: 'claude-nonexistent' });
+    } finally {
+      error.mockRestore();
+    }
+  });
+
+  it('assertKnownModel throws, naming the model and its use, when it is not in MODELS', () => {
+    expect(() => assertKnownModel('claude-nonexistent', 'extract')).toThrow(
+      /"claude-nonexistent" \(extract\) is not in MODELS/,
+    );
+    expect(() => assertKnownModel(DEFAULT_MODELS.extract, 'extract')).not.toThrow();
   });
 });
 
