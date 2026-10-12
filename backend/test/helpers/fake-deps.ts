@@ -179,7 +179,11 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
   const store = new FakeStore();
   const images = new FakeImages();
   const insertedEvents: Array<{ calendarId: string; event: CalendarEventInput }> = [];
-  const patchedEvents: Array<{ calendarId: string; eventId: string }> = [];
+  const patchedEvents: Array<{
+    calendarId: string;
+    eventId: string;
+    event: Partial<CalendarEventInput>;
+  }> = [];
   const deletedEvents: Array<{ calendarId: string; eventId: string }> = [];
   const claudeCalls: ClaudeCallOptions[] = [];
 
@@ -224,8 +228,8 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
         insertedEvents.push({ calendarId, event });
         return { id: 'created-event-1', htmlLink: 'https://calendar.google.com/event?eid=1' };
       },
-      patchEvent: async (_t, calendarId, eventId) => {
-        patchedEvents.push({ calendarId, eventId });
+      patchEvent: async (_t, calendarId, eventId, event) => {
+        patchedEvents.push({ calendarId, eventId, event });
         return { id: eventId, htmlLink: 'https://calendar.google.com/event?eid=1' };
       },
       deleteEvent: async (_t, calendarId, eventId) => {

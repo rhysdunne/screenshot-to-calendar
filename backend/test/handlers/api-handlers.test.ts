@@ -159,7 +159,7 @@ describe('captures-update (corrections)', () => {
     expect(capture?.corrected?.start_date).toBe('2026-10-15');
 
     // Google Calendar patched:
-    expect(fake.patchedEvents).toEqual([{ calendarId: 'cal-events', eventId: 'gcal-1' }]);
+    expect(fake.patchedEvents).toMatchObject([{ calendarId: 'cal-events', eventId: 'gcal-1' }]);
   });
 
   it('no-op updates make no correction records', async () => {
@@ -172,6 +172,44 @@ describe('captures-update (corrections)', () => {
     expect(res.statusCode).toBe(200);
     expect(fake.store.corrections).toHaveLength(0);
     expect(fake.patchedEvents).toHaveLength(0);
+  });
+
+  it('clearing a field stores null, so the clear sticks and is not re-recorded', async () => {
+    const fake = makeFakeDeps();
+    const token = await seed(fake, {
+      event: { ...extracted, start_date: '2026-10-14', start_time: '19:30', end_time: '22:00' },
+    });
+    const clearEndTime = () =>
+      invoke(
+        makeUpdateHandler(fake.deps),
+        apiEvent({ token, pathParameters: { id: 'cap-1' }, body: { end_time: '' } }),
+      );
+
+    const res = await clearEndTime();
+    expect(res.statusCode).toBe(200);
+    // null, not absent: the app reads a present null as "cleared".
+    expect(res.body.corrected).toEqual({ end_time: null });
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.corrected).toHaveProperty('end_time', null);
+    expect(capture?.event?.end_time).toBe('22:00');
+    expect(fake.store.corrections).toHaveLength(1);
+    expect(fake.store.corrections[0]).toMatchObject({
+      field: 'end_time',
+      oldValue: '22:00',
+      newValue: null,
+    });
+    // With no end time the calendar falls back to the start + 2 h default.
+    expect(fake.patchedEvents).toHaveLength(1);
+    expect(fake.patchedEvents[0]!.event.end).toEqual({
+      dateTime: '2026-10-14T21:30:00',
+      timeZone: 'Europe/London',
+    });
+
+    // Sending the same clear again is a no-op: no new correction, no patch.
+    const again = await clearEndTime();
+    expect(again.statusCode).toBe(200);
+    expect(fake.store.corrections).toHaveLength(1);
+    expect(fake.patchedEvents).toHaveLength(1);
   });
 
   it('a legacy duplicate records the correction but patches nothing', async () => {
