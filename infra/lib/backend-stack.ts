@@ -317,6 +317,20 @@ export class BackendStack extends Stack {
     });
     aiSpendAlarm.addAlarmAction(notify);
 
+    // Any 5xx from the API: an unhandled error in a route (now logged as
+    // unhandled_error), a Lambda crash or timeout. The Lambda alarms above
+    // cover only the processor and auth, so this is what notices the rest.
+    const api5xxAlarm = new cloudwatch.Alarm(this, 'Api5xxAlarm', {
+      alarmName: `s2c-api-5xx-${stage}`,
+      metric: api.metricServerError({ period: Duration.minutes(5) }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      alarmDescription: 'The HTTP API returned a 5xx — check unhandled_error in the Lambda logs.',
+    });
+    api5xxAlarm.addAlarmAction(notify);
+
     this.apiUrl = new CfnOutput(this, 'ApiUrl', { value: api.apiEndpoint });
   }
 }

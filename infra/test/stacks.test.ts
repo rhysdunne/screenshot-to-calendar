@@ -129,6 +129,19 @@ describe('BackendStack', () => {
     }
   });
 
+  it('alarms on any HTTP API 5xx and notifies the alerts topic', () => {
+    backend.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 's2c-api-5xx-staging',
+      Namespace: 'AWS/ApiGateway',
+      MetricName: '5xx',
+      Statistic: 'Sum',
+      Period: 300,
+      Threshold: 1,
+      ComparisonOperator: 'GreaterThanOrEqualToThreshold',
+      AlarmActions: [{ Ref: Match.stringLikeRegexp('AlertsTopic') }],
+    });
+  });
+
   it('expires exports after 7 days', () => {
     backend.hasResourceProperties('AWS::S3::Bucket', {
       BucketName: 's2c-images-111111111111-staging',
