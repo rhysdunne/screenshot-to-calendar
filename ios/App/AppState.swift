@@ -20,8 +20,9 @@ final class AppState: ObservableObject {
     @Published var settings: UserSettings?
     @Published var captures: [Capture] = []
     @Published var pendingDeepLinkCaptureId: String?
-    /// Why the last `signIn` failed. Set only there. SignInView shows it, and so
-    /// does the library when a reconnect attempt fails.
+    /// Why the last `signIn` failed. Set only there, and never for a user
+    /// cancel. SignInView shows it, and so does the library when a reconnect
+    /// attempt fails.
     @Published var signInError: String?
     /// Why the last captures fetch failed (offline, 5xx, timeout). The library
     /// shows it as a retry screen when empty, or a small row above the grid.
@@ -84,6 +85,10 @@ final class AppState: ObservableObject {
             // Also the reconnect path: a fresh sign-in stores a new Google grant.
             needsReauth = false
             await refreshCaptures()
+        } catch GIDSignInError.canceled {
+            // Closing Google's sheet or declining its consent screen is the
+            // user's choice, not a failure, so no alert. On the reconnect
+            // path `needsReauth` stays set, so Reconnect is still offered.
         } catch {
             signInError = error.localizedDescription
         }
