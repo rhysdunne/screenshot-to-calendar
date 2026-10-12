@@ -1,5 +1,11 @@
 # Shipping checklist
 
+> **Completed in July 2026.** This checklist took the app from an empty AWS
+> account to TestFlight. It stays here so that the setup can be reproduced, for
+> example in a fork or a new account. Some steps are already done in this repo:
+> `infra/cdk.json`, `ios/project.yml` and `ios/Shared/AppConfig.swift` hold real
+> values, and prompt v3 is pinned. For day-to-day work, run `just --list`.
+
 Everything below is one-time setup, in dependency order. Detailed
 walkthroughs live in `docs/` — this page is the sequence. Tick as you go.
 
@@ -47,6 +53,9 @@ now completes end to end.
   ```
   > Tip: `scripts/secrets.sh push <stage>` stores these in your macOS Keychain
   > and pushes all five at once — see [docs/secrets.md](docs/secrets.md).
+- [ ] Put your own Google email on the sign-up allowlist of each stage. Without
+      it, sign-up is closed to everyone, you included:
+      `scripts/allowlist.sh add staging you@gmail.com`, then the same for `prod`
 - [ ] Fill `infra/cdk.json` context: `googleClientId` (web id, step 2),
       `appleTeamId` (step 1). `iosBundleId` is already `digital.callaeas.s2c`.
 - [ ] Set the ops alarm address out of source: `export ALERT_EMAIL=you@example.com`
@@ -55,8 +64,10 @@ now completes end to end.
 
 ## 4. Deploy (≈15 min) — [docs/deploy.md](docs/deploy.md)
 
-- [ ] `cd infra && ALERT_EMAIL=you@example.com npx cdk deploy S2cWeb-staging S2cBackend-staging`
-- [ ] Same for prod: `ALERT_EMAIL=you@example.com npx cdk deploy S2cWeb-prod S2cBackend-prod`
+- [ ] `export ALERT_EMAIL=you@example.com`, then `just deploy staging`. It shows
+      a `cdk diff` and asks you to type the stage name. It refuses to run with
+      an empty `ALERT_EMAIL`
+- [ ] Same for prod: `just deploy prod`
 - [ ] **Confirm the SNS subscription email** AWS sends to `ALERT_EMAIL` —
       until you click it, alarms notify no one
 - [ ] Record outputs: `ApiUrl` (both stages) and `WebDomain`
@@ -68,31 +79,40 @@ now completes end to end.
 - [ ] Back to step 2: add `https://<WebDomain>/privacy.html` and `/terms.html`
       to the Google consent screen now that the domain exists
 
-## 5. First live eval baseline (≈10 min, ~$0.50)
+## 5. First live eval baseline (≈10 min, under $1)
 
 The datum every future model/prompt decision compares against.
 
-- [ ] `cd evals && ANTHROPIC_API_KEY=... npm run eval -- --models claude-haiku-4-5,claude-sonnet-5 --dataset all --label baseline`
-- [ ] Read `evals/reports/baseline/report.md` — decide whether Haiku is good
-      enough (see [evals/README.md](evals/README.md) for how to read it);
-      commit the report
-- [ ] GitHub repo settings: secret `ANTHROPIC_API_KEY`; variables
-      `AWS_DEPLOY_ROLE_ARN` (docs/setup-aws.md §6) and `AWS_ACCOUNT_ID` —
-      enables the deploy, nightly-eval, and prompt-improvement workflows
+The committed `evals/reports/baseline/` is the July 2026 run (prompt v2, Haiku
+4.5 classify, the old Sonnet price). Production now classifies with Haiku 5.5
+([ADR 0007](docs/decisions/0007-model-refresh-2026-10.md)), so a new baseline
+uses the current pair.
 
-## 6. Optional now: adopt prompt v3 (price + category)
+- [ ] `cd evals && ANTHROPIC_API_KEY=... npm run eval -- --models claude-haiku-5-5,claude-sonnet-5 --dataset all --label baseline`
+- [ ] Read `evals/reports/baseline/report.md` (see
+      [evals/README.md](evals/README.md) for how to read it), then commit the
+      report
+- [ ] GitHub repo settings, as listed in docs/setup-aws.md §6: variables
+      `AWS_DEPLOY_ROLE_ARN`, `ALERT_EMAIL` and `AWS_ACCOUNT_ID`, and secrets
+      `ANTHROPIC_API_KEY` and `OWNER_USER_ID`. The deploy needs the first two
+      variables. The weekly eval (`eval-weekly.yml`) needs `ANTHROPIC_API_KEY`.
+      Only prompt improvement reads `AWS_ACCOUNT_ID` and `OWNER_USER_ID`
 
-- [ ] `cd tools/prompt-improvement && ANTHROPIC_API_KEY=... npm run gate -- --candidate v3`
-- [ ] Green → bump `ACTIVE_VERSIONS['extract-event']` to `'v3'` in
-      `backend/src/prompts/prompts.ts`, commit with the gate report, redeploy
+## 6. Prompt v3 (price + category): done
+
+v3 has been the pinned `extract-event` version since July 2026. Skip this step.
+To change the prompt now, follow "Changing the extraction prompt" in
+[docs/deploy.md](docs/deploy.md).
 
 ## 7. Apple / TestFlight (≈1–2 h first time) — [docs/setup-apple.md](docs/setup-apple.md)
 
 Every value now exists: Team ID (step 1), both OAuth client ids (step 2),
 `WebDomain` + API URLs (step 4).
 
-- [ ] Replace every placeholder (table in [ios/README.md](ios/README.md)):
-      team id, both OAuth client ids, CloudFront domain, both API URLs
+- [ ] Check the committed values against your own (table in
+      [ios/README.md](ios/README.md)): team id, both OAuth client ids,
+      CloudFront domain, both API URLs. This repo already holds its own. A fork
+      replaces them
 - [ ] `brew install xcodegen && cd ios && xcodegen generate`
 - [ ] Open in Xcode, team selected, capabilities provision cleanly
 - [ ] Run on your iPhone; sign in (expect the "unverified app" warning)
@@ -101,6 +121,9 @@ Every value now exists: Team ID (step 1), both OAuth client ids (step 2),
       first build to the TestFlight **internal** group by pushing an `ios-v*`
       tag (no App Review for internal). A manual Xcode Archive → upload still
       works as a fallback, but the tag lane is the intended path.
+      `just ship-ios` works out the next tag, asks you to confirm it, then
+      tags and pushes. TestFlight builds expire after 90 days, so ship at least
+      every 80 days
 
 ## 8. End-to-end smoke on the phone
 
@@ -115,14 +138,16 @@ Every value now exists: Team ID (step 1), both OAuth client ids (step 2),
 
 ## 9. Then: use it for two weeks
 
-- Every wrong extraction: correct it in-app; consented corrections become
-  eval cases via `npm run materialize` — see
+- Every wrong extraction: correct it in-app. With eval consent on, your own
+  corrections become eval cases via
+  `OWNER_USER_ID=<your userId> npm run materialize`. It reads only your
+  account, never another user's, even with their consent. See
   [docs/adding-eval-images.md](docs/adding-eval-images.md) for hand-adding
   interesting failures too
-- Watch for alarm emails (DLQ, Lambda errors, AI spend > $2/day)
-- What you wish it did after two weeks is the roadmap — the semantic-search
+- Watch for alarm emails (DLQ, Lambda errors, API 5xx, AI spend > $2/day)
+- What you wish it did after two weeks is the roadmap. The semantic-search
   design ([docs/design-semantic-search.md](docs/design-semantic-search.md))
-  is waiting to be validated against that.
+  is parked: designed, not built and not planned.
 
 ---
 

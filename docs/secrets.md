@@ -27,7 +27,7 @@ All are SecureStrings at `/s2c/{stage}/<name>`, per stage (`staging`, `prod`):
 | `anthropic-api-key` | [console.anthropic.com](https://console.anthropic.com/) | Yes |
 | `google-oauth-client-secret` | Google Cloud → web OAuth client | Yes |
 | `places-api-key` | Google Cloud → API key (restrict to Places API New) | Yes |
-| `jwt-secret` | `openssl rand -hex 32` | Yes (rotating logs everyone out) |
+| `jwt-secret` | `openssl rand -hex 32` | Yes. Rotating it signs everyone out: `scripts/sessions.sh revoke-all <stage>` |
 | `token-enc-key` | `openssl rand -hex 32` | **No** — losing it forces all users to re-auth |
 
 ## What is and isn't a secret
@@ -38,6 +38,10 @@ All are SecureStrings at `/s2c/{stage}/<name>`, per stage (`staging`, `prod`):
   the web `googleClientId`, iOS `GIDClientID`/`GIDServerClientID`, and the reversed
   client id. They ship inside the iOS app binary, so they're public by design and
   live in `infra/cdk.json` / `ios/project.yml`.
+- **Personal, but not secret**: the sign-up allowlist at
+  `/s2c/{stage}/signup-allowlist`. It is a plain String parameter beside the five
+  secrets, because it holds email addresses, not keys. Manage it with
+  `scripts/allowlist.sh add|remove|list <stage>`, never by hand in git.
 
 ## Workflow with the Keychain helper
 
@@ -62,6 +66,12 @@ eval "$(scripts/secrets.sh env staging)"           # exports ANTHROPIC_API_KEY
 
 The first `get`/`push` after storing may pop a keychain access prompt — click
 **Always Allow** so later reads are non-interactive.
+
+`push` overwrites all five parameters with the Keychain copies. Before you push
+to a stage that is already live, make sure that the Keychain `token-enc-key`
+matches Parameter Store. A different key makes every stored Google refresh token
+unreadable. To rotate only `jwt-secret`, run `scripts/sessions.sh revoke-all
+<stage>`, which pushes that one parameter.
 
 Prefer to skip the Keychain? Do it by hand — the raw commands are in
 [setup-aws.md](setup-aws.md) §3 (`aws ssm put-parameter …`), and put
