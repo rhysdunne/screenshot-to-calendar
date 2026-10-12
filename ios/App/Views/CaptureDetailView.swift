@@ -69,7 +69,17 @@ struct CaptureDetailView: View {
             }
             .task { await load() }
             .alert("Error", isPresented: .constant(errorMessage != nil)) {
-                Button("OK") { errorMessage = nil }
+                if appState.needsReauth {
+                    // Reconnecting here keeps the form, so Save or Approve
+                    // can be tapped again. Close would discard the edits.
+                    Button("Reconnect") {
+                        errorMessage = nil
+                        Task { await reconnect() }
+                    }
+                    Button("Not now", role: .cancel) { errorMessage = nil }
+                } else {
+                    Button("OK") { errorMessage = nil }
+                }
             } message: { Text(errorMessage ?? "") }
             .confirmationDialog("Delete this capture?", isPresented: $showDeleteConfirm,
                                 titleVisibility: isDuplicate ? .visible : .automatic) {
@@ -420,6 +430,19 @@ struct CaptureDetailView: View {
             dismiss()
         } catch {
             errorMessage = appState.message(for: error)
+        }
+    }
+
+    /// Runs Google sign-in over this sheet rather than the library, so the
+    /// form and any unsaved edits stay. A success clears `needsReauth`. A
+    /// failure shows here, because the library's "Couldn't reconnect" alert
+    /// can't present while the sheet is up. A cancel shows nothing.
+    private func reconnect() async {
+        guard let top = UIApplication.shared.topViewController else { return }
+        await appState.signIn(presenting: top)
+        if let failure = appState.signInError {
+            appState.signInError = nil
+            errorMessage = "Couldn't reconnect. \(failure)"
         }
     }
 

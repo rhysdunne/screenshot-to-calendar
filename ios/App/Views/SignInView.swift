@@ -51,4 +51,16 @@ extension UIApplication {
             .compactMap { ($0 as? UIWindowScene)?.keyWindow }
             .first?.rootViewController
     }
+
+    /// The view controller at the top of the presentation stack: the open
+    /// sheet if there is one, else the root. Presenting Google sign-in from
+    /// here keeps the sheet, and its unsaved edits, in place. A controller
+    /// that is on its way out (a just-tapped alert) is skipped.
+    var topViewController: UIViewController? {
+        var top = rootViewController
+        while let presented = top?.presentedViewController, !presented.isBeingDismissed {
+            top = presented
+        }
+        return top
+    }
 }

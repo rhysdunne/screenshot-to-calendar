@@ -22,14 +22,16 @@ final class AppState: ObservableObject {
     @Published var pendingDeepLinkCaptureId: String?
     /// Why the last `signIn` failed. Set only there, and never for a user
     /// cancel. SignInView shows it, and so does the library when a reconnect
-    /// attempt fails.
+    /// attempt fails. The capture detail view takes it over when its own
+    /// Reconnect fails, because the library's alert can't show over the sheet.
     @Published var signInError: String?
     /// Why the last captures fetch failed (offline, 5xx, timeout). The library
     /// shows it as a retry screen when empty, or a small row above the grid.
     @Published var capturesError: String?
     /// The backend can no longer use the user's Google grant (revoked, or the
     /// refresh token expired). Signing out would lose unsaved edits, so the
-    /// library offers "Reconnect" instead, which re-runs `signIn`.
+    /// library banner and the capture detail's error alert offer "Reconnect"
+    /// instead, which re-runs `signIn`.
     @Published var needsReauth = false
 
     let api = APIClient()
@@ -165,12 +167,13 @@ final class AppState: ObservableObject {
 
     /// The message for a failed capture action (save, approve, delete). These
     /// reach Google and the library fetch does not, so a revoked grant usually
-    /// shows up here first: flag it, so the library's reconnect banner is
-    /// waiting when the sheet closes.
+    /// shows up here first: flag it, so the detail view's alert offers
+    /// Reconnect in place (Close would discard unsaved edits) and the
+    /// library's banner is waiting when the sheet closes.
     func message(for error: Error) -> String {
         if case let APIError.unauthorized(code) = error, code == "needs_reauth" {
             needsReauth = true
-            return "Google needs you to reconnect your account. Close this capture, then tap Reconnect."
+            return "Google needs you to reconnect your account. Tap Reconnect, then try again. Your edits here are kept."
         }
         return error.localizedDescription
     }
