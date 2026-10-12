@@ -11,6 +11,9 @@ export interface MapOptions {
   captureLink?: string;
 }
 
+// Zero-padded HH:MM, so plain string comparison orders times correctly.
+const HHMM = /^\d{2}:\d{2}$/;
+
 /**
  * Map an extracted event to a Google Calendar API v3 event body.
  * Port of the v1 mapEventToCalendar with the same rules:
@@ -18,6 +21,8 @@ export interface MapOptions {
  *  - no dates at all → NoDateError
  *  - timed event with no end_time → start + 2h, clamped to 23:59
  *  - all-day end date is exclusive → +1 day
+ * Added since v1:
+ *  - same-day end_time earlier than start_time (22:00–04:00) → ends the next day
  */
 export function mapEventToCalendar(
   eventData: ExtractedEvent,
@@ -52,7 +57,15 @@ export function mapEventToCalendar(
   if (hasTime) {
     start = { dateTime: `${startDate}T${eventData.start_time}:00`, timeZone: opts.timeZone };
     if (eventData.end_time) {
-      end = { dateTime: `${endDate}T${eventData.end_time}:00`, timeZone: opts.timeZone };
+      // An earlier end time on the same day means after midnight (a club night),
+      // otherwise the end lands before the start and Google rejects the insert.
+      const overnight =
+        (!eventData.end_date || eventData.end_date === startDate) &&
+        HHMM.test(eventData.start_time as string) &&
+        HHMM.test(eventData.end_time) &&
+        eventData.end_time < (eventData.start_time as string);
+      const endDay = overnight ? addDays(startDate as string, 1) : endDate;
+      end = { dateTime: `${endDay}T${eventData.end_time}:00`, timeZone: opts.timeZone };
     } else {
       // Default to 2 hours after start, clamped within the same day.
       const [sh, sm] = (eventData.start_time as string).split(':').map(Number) as [

@@ -107,6 +107,89 @@ describe('mapEventToCalendar (ported v1 cases)', () => {
   });
 });
 
+describe('mapEventToCalendar (overnight events)', () => {
+  // A 22:00–04:00 club night used to end before it started; Google rejects that.
+  it('end time earlier than start with no end_date rolls to the next day', () => {
+    const result = mapEventToCalendar(
+      event({ start_date: '2026-07-11', start_time: '22:00', end_time: '04:00' }),
+      OPTS,
+    );
+    expect(result.start).toEqual({
+      dateTime: '2026-07-11T22:00:00',
+      timeZone: 'Europe/London',
+    });
+    expect(result.end).toEqual({
+      dateTime: '2026-07-12T04:00:00',
+      timeZone: 'Europe/London',
+    });
+  });
+
+  it('end_date equal to start_date still rolls to the next day', () => {
+    const result = mapEventToCalendar(
+      event({
+        start_date: '2026-07-11',
+        end_date: '2026-07-11',
+        start_time: '22:00',
+        end_time: '04:00',
+      }),
+      OPTS,
+    );
+    expect(result.end).toEqual({
+      dateTime: '2026-07-12T04:00:00',
+      timeZone: 'Europe/London',
+    });
+  });
+
+  it('explicit later end_date is kept as given', () => {
+    const result = mapEventToCalendar(
+      event({
+        start_date: '2026-07-11',
+        end_date: '2026-07-13',
+        start_time: '22:00',
+        end_time: '04:00',
+      }),
+      OPTS,
+    );
+    expect(result.end).toEqual({
+      dateTime: '2026-07-13T04:00:00',
+      timeZone: 'Europe/London',
+    });
+  });
+
+  it('equal start and end times stay on the same day', () => {
+    const result = mapEventToCalendar(
+      event({ start_date: '2026-07-11', start_time: '19:00', end_time: '19:00' }),
+      OPTS,
+    );
+    expect(result.end).toEqual({
+      dateTime: '2026-07-11T19:00:00',
+      timeZone: 'Europe/London',
+    });
+  });
+
+  it('rolls across a month end', () => {
+    const result = mapEventToCalendar(
+      event({ start_date: '2026-10-31', start_time: '23:00', end_time: '02:00' }),
+      OPTS,
+    );
+    expect(result.end).toEqual({
+      dateTime: '2026-11-01T02:00:00',
+      timeZone: 'Europe/London',
+    });
+  });
+
+  it('rolls across the autumn DST change (2026-10-25)', () => {
+    const result = mapEventToCalendar(
+      event({ start_date: '2026-10-24', start_time: '22:00', end_time: '04:00' }),
+      OPTS,
+    );
+    expect(result.end).toEqual({
+      dateTime: '2026-10-25T04:00:00',
+      timeZone: 'Europe/London',
+    });
+  });
+});
+
 describe('extractEventData (ported v1 cases)', () => {
   const wrap = (text: string) => ({ content: [{ type: 'text', text }] });
   const valid = JSON.stringify({
