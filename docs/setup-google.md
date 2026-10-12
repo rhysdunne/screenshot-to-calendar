@@ -51,7 +51,8 @@ The iOS app uses both: the **iOS client id** (`GIDClientID`) identifies the
 app to Google, and the **web client id** (`GIDServerClientID`) is what makes
 Google return a `serverAuthCode` that the backend can exchange for a refresh
 token. Both keys live in `ios/project.yml` under the app target's Info
-properties — replace the two placeholders there.
+properties. This repo commits its own client ids there, because they are not
+secret. A fork replaces them with its own.
 
 ## 4. Places API key
 
@@ -76,4 +77,6 @@ aws logs tail /aws/lambda/s2c-authgoogle-staging --since 10m --region eu-west-2
 
 A successful sign-in logs `user_created`. `invalid_grant` at sign-in usually
 means the consent screen is still in Testing status or the wrong client
-id/secret pairing.
+id/secret pairing. `signup_refused` means that the email is not on the sign-up
+allowlist, and the app gets a 403 `signup_closed`. Add the email with
+`scripts/allowlist.sh add <stage> <email>` (see setup-aws.md §3).

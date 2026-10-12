@@ -1,25 +1,20 @@
 # Apple / Xcode / TestFlight setup
 
-Prereqs: a Mac with Xcode 16+, an Apple Developer Program membership
-($99/year), and the AWS + Google setup done (you need the CloudFront domain,
-API URLs, and OAuth client ids).
+Prereqs: a Mac with Xcode (CI and Xcode Cloud build with Xcode 26.6), an
+Apple Developer Program membership ($99/year), and the AWS + Google setup done
+(you need the CloudFront domain, API URLs, and OAuth client ids).
 
 ## 1. Generate the project
+
+`ios/project.yml` and `ios/Shared/AppConfig.swift` already hold this app's real
+values: team id, OAuth client ids, CloudFront domain and API URLs. They are not
+secret, because they ship inside the app. A fresh checkout builds without
+changes. A fork with its own backend replaces them. The table in
+[`ios/README.md`](../ios/README.md) lists each value and where it comes from.
 
 ```bash
 brew install xcodegen
 cd ios
-```
-
-Replace the placeholders first (see the table in `ios/README.md`):
-
-- `project.yml`: `DEVELOPMENT_TEAM`, `GIDClientID`, `GIDServerClientID`,
-  reversed client id URL scheme, `applinks:` domain.
-- `Shared/AppConfig.swift`: API URLs and `webDomain`.
-
-Then:
-
-```bash
 xcodegen generate
 open Screenshot2Cal.xcodeproj
 ```
@@ -74,6 +69,9 @@ it, but the tag-driven lane is the intended path.
 
 Ship a build by pushing an `ios-v*` tag (or dispatching the **Release**
 workflow) — Xcode Cloud archives and uploads, and TestFlight picks it up
-automatically for internal testers. Build numbers are stamped automatically from
+automatically for internal testers. From the repo root, `just ship-ios` works
+out the next tag, asks you to type it, then tags and pushes. TestFlight builds
+expire after 90 days. Ship a build at least every 80 days, even with no app
+changes, so testers keep a working app. Build numbers are stamped automatically from
 `CI_BUILD_NUMBER`; only bump `MARKETING_VERSION` in `project.yml` when the
 user-facing x.y.z changes. Details: [setup-xcode-cloud.md](setup-xcode-cloud.md).
