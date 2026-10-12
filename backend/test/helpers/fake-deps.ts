@@ -180,6 +180,7 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
   const images = new FakeImages();
   const insertedEvents: Array<{ calendarId: string; event: CalendarEventInput }> = [];
   const patchedEvents: Array<{ calendarId: string; eventId: string }> = [];
+  const deletedEvents: Array<{ calendarId: string; eventId: string }> = [];
   const claudeCalls: ClaudeCallOptions[] = [];
 
   const deps: Deps = {
@@ -227,7 +228,9 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
         patchedEvents.push({ calendarId, eventId });
         return { id: eventId, htmlLink: 'https://calendar.google.com/event?eid=1' };
       },
-      deleteEvent: async () => {},
+      deleteEvent: async (_t, calendarId, eventId) => {
+        deletedEvents.push({ calendarId, eventId });
+      },
     },
     resolveVenue: async () =>
       opts.placesAddress === null || opts.placesAddress === undefined
@@ -247,7 +250,7 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
     },
   };
 
-  return { deps, store, images, insertedEvents, patchedEvents, claudeCalls };
+  return { deps, store, images, insertedEvents, patchedEvents, deletedEvents, claudeCalls };
 }
 
 export function testUser(overrides: Partial<UserRecord> = {}): UserRecord {

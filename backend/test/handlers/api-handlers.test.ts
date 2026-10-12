@@ -1,14 +1,16 @@
-// API handler tests: auth enforcement, capture upload + exact dedup, and the
-// corrections flow (records + rate limit + calendar patch).
+// API handler tests: auth enforcement, capture upload + exact dedup, the
+// corrections flow (records + rate limit + calendar patch), and capture delete.
 import { describe, expect, it } from 'vitest';
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 import { makeHandler as makeCreateHandler } from '../../src/handlers/captures-create.js';
 import { makeHandler as makeUpdateHandler } from '../../src/handlers/captures-update.js';
+import { makeHandler as makeDeleteCaptureHandler } from '../../src/handlers/captures-delete.js';
 import { makeGetHandler } from '../../src/handlers/captures-read.js';
 import { makeExportHandler, makeDeleteHandler } from '../../src/handlers/account.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
 import { signSession } from '../../src/lib/jwt.js';
 import type { ExtractedEvent } from '../../src/pipeline/types.js';
+import type { CaptureRecord } from '../../src/lib/ddb.js';
 
 const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==';
 
@@ -109,7 +111,10 @@ describe('captures-update (corrections)', () => {
     confidence: 'high',
   };
 
-  async function seed(fake: ReturnType<typeof makeFakeDeps>) {
+  async function seed(
+    fake: ReturnType<typeof makeFakeDeps>,
+    overrides: Partial<CaptureRecord> = {},
+  ) {
     await fake.store.putUser(testUser());
     await fake.store.createCapture(
       {
@@ -121,6 +126,7 @@ describe('captures-update (corrections)', () => {
         event: extracted,
         calendarEventId: 'gcal-1',
         calendarId: 'cal-events',
+        ...overrides,
       } as never,
       'cap-1',
     );
@@ -168,6 +174,22 @@ describe('captures-update (corrections)', () => {
     expect(fake.patchedEvents).toHaveLength(0);
   });
 
+  it('a legacy duplicate records the correction but patches nothing', async () => {
+    const fake = makeFakeDeps();
+    // Written before matchedEventId existed: calendarEventId names the
+    // matched event, which belongs to another capture.
+    const token = await seed(fake, { status: 'duplicate', calendarEventId: 'someone-elses-event' });
+    const res = await invoke(
+      makeUpdateHandler(fake.deps),
+      apiEvent({ token, pathParameters: { id: 'cap-1' }, body: { title: 'Frieze 2026' } }),
+    );
+    expect(res.statusCode).toBe(200);
+    expect(fake.store.corrections).toHaveLength(1);
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.corrected?.title).toBe('Frieze 2026');
+    expect(fake.patchedEvents).toHaveLength(0);
+  });
+
   it('enforces the daily correction rate limit (poisoning defense)', async () => {
     const fake = makeFakeDeps();
     const token = await seed(fake);
@@ -188,6 +210,64 @@ describe('captures-update (corrections)', () => {
     );
     expect(res.statusCode).toBe(429);
     expect(res.body.code).toBe('correction_limit');
+  });
+});
+
+describe('captures-delete', () => {
+  async function seed(fake: ReturnType<typeof makeFakeDeps>, overrides: Partial<CaptureRecord>) {
+    await fake.store.putUser(testUser());
+    await fake.store.createCapture(
+      {
+        userId: 'user-1',
+        status: 'completed',
+        imageKey: 'users/user-1/captures/cap-1.png',
+        imageSha256: 'sha-1',
+        mediaType: 'image/png',
+        ...overrides,
+      },
+      'cap-1',
+    );
+    fake.images.objects.set('users/user-1/captures/cap-1.png', Buffer.from('img'));
+    return signSession('user-1', 1, JWT_SECRET);
+  }
+
+  it('deleteEvent=true on a completed capture deletes the event it created', async () => {
+    const fake = makeFakeDeps();
+    const token = await seed(fake, { calendarEventId: 'gcal-1', calendarId: 'cal-events' });
+    const res = await invoke(
+      makeDeleteCaptureHandler(fake.deps),
+      apiEvent({
+        token,
+        pathParameters: { id: 'cap-1' },
+        queryStringParameters: { deleteEvent: 'true' },
+      }),
+    );
+    expect(res.statusCode).toBe(200);
+    expect(fake.deletedEvents).toEqual([{ calendarId: 'cal-events', eventId: 'gcal-1' }]);
+    expect(await fake.store.getCapture('user-1', 'cap-1')).toBeNull();
+    expect(fake.images.objects.has('users/user-1/captures/cap-1.png')).toBe(false);
+  });
+
+  it('deleteEvent=true on a legacy duplicate deletes the capture but no event', async () => {
+    const fake = makeFakeDeps();
+    // Written before matchedEventId existed: calendarEventId names the
+    // matched event, which belongs to another capture.
+    const token = await seed(fake, {
+      status: 'duplicate',
+      calendarEventId: 'someone-elses-event',
+      calendarId: 'cal-events',
+    });
+    const res = await invoke(
+      makeDeleteCaptureHandler(fake.deps),
+      apiEvent({
+        token,
+        pathParameters: { id: 'cap-1' },
+        queryStringParameters: { deleteEvent: 'true' },
+      }),
+    );
+    expect(res.statusCode).toBe(200);
+    expect(fake.deletedEvents).toHaveLength(0);
+    expect(await fake.store.getCapture('user-1', 'cap-1')).toBeNull();
   });
 });
 
