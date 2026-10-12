@@ -17,6 +17,7 @@ import {
 } from '../pipeline/types.js';
 import type { ImageMediaType } from '../pipeline/image.js';
 import type { CaptureRecord, UserRecord } from '../lib/ddb.js';
+import { HttpError } from '../lib/http.js';
 import { logger, safeError } from '../lib/logger.js';
 
 export interface ProcessMessage {
@@ -141,18 +142,30 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       ...updates,
     });
   } catch (e) {
-    // Terminal failures (no date, an end before the start) would fail the same
-    // way on every retry. They keep the extraction so the app's review screen
-    // can fix and approve the capture. Anything else rethrows so SQS retries
-    // (×3) and then parks the message on the DLQ.
-    const terminal = e instanceof TerminalProcessingError;
+    // Terminal failures (no date, an end before the start, a Google grant that
+    // needs a fresh sign-in) would fail the same way on every retry. They keep
+    // the extraction so the app's review screen can fix and approve the
+    // capture. Anything else rethrows so SQS retries (×3) and then parks the
+    // message on the DLQ.
+    const needsReauth = e instanceof HttpError && e.code === 'needs_reauth';
+    const terminal = e instanceof TerminalProcessingError || needsReauth;
     const message =
       e instanceof NoDateError
         ? 'No date could be read from this image. Add the date, then add it to your calendar.'
-        : terminal
+        : e instanceof TerminalProcessingError
           ? e.message
-          : `Processing failed: ${(e as Error).message}`;
+          : needsReauth
+            ? 'Google Calendar needs you to sign in again. Sign out in Settings, ' +
+              'sign back in, then add this to your calendar.'
+            : `Processing failed: ${(e as Error).message}`;
     logger.error('process_capture_failed', { ...msg, terminal, error: safeError(e) });
+    if (needsReauth) {
+      // The same flag the token refresh sets on invalid_grant; sign-in clears
+      // it. Best-effort: losing the flag must not cost the capture its error.
+      await store.updateUser(msg.userId, { needsReauth: true }).catch((flagError: unknown) => {
+        logger.warn('needs_reauth_flag_failed', { ...msg, error: safeError(flagError) });
+      });
+    }
     await store.updateCapture(msg.userId, msg.captureId, {
       status: 'failed',
       error: message,

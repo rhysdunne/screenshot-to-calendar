@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { processCapture } from '../../src/handlers/process-capture.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
 import { todayInZone } from '../../src/pipeline/dates.js';
+import { HttpError } from '../../src/lib/http.js';
 
 const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==';
 
@@ -248,6 +249,23 @@ describe('processCapture', () => {
     expect(capture?.error).toContain('must end after it starts');
     expect(capture?.event?.end_date).toBe('2026-10-12');
     expect(fake.insertedEvents).toHaveLength(0);
+  });
+
+  it('a Google grant that needs a fresh sign-in fails terminally and flags the user', async () => {
+    const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
+    await seedCapture(fake);
+    // What lib/google-calendar.ts throws for a 401 or a missing calendar scope:
+    fake.deps.calendar.listEventsInWindow = async () => {
+      throw new HttpError(401, 'Reconnect your Google account', 'needs_reauth');
+    };
+    // Must NOT throw: retrying cannot fix the grant.
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('failed');
+    expect(capture?.error).toContain('sign in again');
+    // Kept so the user can approve it once they have signed in again:
+    expect(capture?.event?.title).toBe('Frieze London');
+    expect((await fake.store.getUser('user-1'))?.needsReauth).toBe(true);
   });
 
   it('transient failures mark the capture failed and rethrow for SQS retry', async () => {
