@@ -6,6 +6,12 @@ import { realDeps, type Deps } from './deps.js';
 import { authenticate, errorResponse, HttpError, json, type ApiHandler } from '../lib/http.js';
 import type { CaptureRecord } from '../lib/ddb.js';
 
+// The app does not follow the cursor yet, so the first page is the whole
+// library it shows. 200 keeps a personal library on one page. At 1-2 KB a
+// capture that is inside DynamoDB's 1 MB read per Query (past which the page
+// comes back short, with a cursor) and well inside the 6 MB Lambda response.
+const LIBRARY_PAGE_SIZE = 200;
+
 export function captureView(c: CaptureRecord) {
   // A duplicate created no event, so it never reports a calendarEventId.
   // Records written before matchedEventId existed kept the matched event's id
@@ -31,7 +37,11 @@ export function makeListHandler(deps: Deps): ApiHandler {
     try {
       const user = await authenticate(event, deps.store, deps.getSecret);
       const cursor = event.queryStringParameters?.cursor;
-      const { items, cursor: next } = await deps.store.listCaptures(user.userId, 50, cursor);
+      const { items, cursor: next } = await deps.store.listCaptures(
+        user.userId,
+        LIBRARY_PAGE_SIZE,
+        cursor,
+      );
       return json(200, { captures: items.map(captureView), cursor: next ?? null });
     } catch (e) {
       return errorResponse(e);

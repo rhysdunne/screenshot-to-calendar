@@ -2,7 +2,7 @@
 // pipeline modules, plus timezone regression tests the v1 code would fail.
 import { describe, expect, it } from 'vitest';
 import { extractEventData } from '../../src/pipeline/extract.js';
-import { mapEventToCalendar } from '../../src/pipeline/map-to-calendar.js';
+import { endsAfterStart, mapEventToCalendar } from '../../src/pipeline/map-to-calendar.js';
 import type { ExtractedEvent } from '../../src/pipeline/types.js';
 import { NoDateError } from '../../src/pipeline/types.js';
 import { addDays, todayInZone } from '../../src/pipeline/dates.js';
@@ -187,6 +187,50 @@ describe('mapEventToCalendar (overnight events)', () => {
       dateTime: '2026-10-25T04:00:00',
       timeZone: 'Europe/London',
     });
+  });
+});
+
+describe('endsAfterStart', () => {
+  const ends = (overrides: Partial<ExtractedEvent>) => {
+    const e = event(overrides);
+    return endsAfterStart(mapEventToCalendar(e, OPTS), e);
+  };
+
+  it('accepts a normal timed event, an overnight one and an all-day one', () => {
+    expect(ends({ start_date: '2026-07-11', start_time: '19:00', end_time: '22:00' })).toBe(true);
+    expect(ends({ start_date: '2026-07-11', start_time: '22:00', end_time: '04:00' })).toBe(true);
+    expect(ends({ start_date: '2026-07-11', end_date: '2026-07-11' })).toBe(true);
+  });
+
+  it('accepts a 23:59 start with no end time, whose default end clamps to 23:59', () => {
+    const e = event({ start_date: '2026-07-11', start_time: '23:59' });
+    const body = mapEventToCalendar(e, OPTS);
+    expect(body.end).toEqual({ dateTime: '2026-07-11T23:59:00', timeZone: 'Europe/London' });
+    expect(body.end).toEqual(body.start);
+    expect(endsAfterStart(body, e)).toBe(true);
+  });
+
+  it('rejects an end time given equal to the start time', () => {
+    expect(ends({ start_date: '2026-07-11', start_time: '19:00', end_time: '19:00' })).toBe(false);
+    expect(ends({ start_date: '2026-07-11', start_time: '23:59', end_time: '23:59' })).toBe(false);
+  });
+
+  it('rejects a timed end date before the start date', () => {
+    expect(
+      ends({
+        start_date: '2026-07-11',
+        end_date: '2026-07-10',
+        start_time: '19:00',
+        end_time: '22:00',
+      }),
+    ).toBe(false);
+  });
+
+  it('rejects an all-day end date before the start date', () => {
+    expect(ends({ start_date: '2026-07-11', end_date: '2026-07-09' })).toBe(false);
+    // One day before: the exclusive end lands on the start date. No end time,
+    // but only a timed default end may be zero-length.
+    expect(ends({ start_date: '2026-07-11', end_date: '2026-07-10' })).toBe(false);
   });
 });
 

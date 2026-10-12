@@ -6,6 +6,7 @@ import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda
 import type { getSecret } from './config.js';
 import { TokenError, verifySession } from './jwt.js';
 import type { UserRecord } from './ddb.js';
+import { logger, safeError } from './logger.js';
 
 interface UserLookup {
   getUser(userId: string): Promise<UserRecord | null>;
@@ -44,6 +45,20 @@ export function errorResponse(e: unknown): APIGatewayProxyResultV2 {
   if (e instanceof TokenError) {
     return json(401, { error: e.message, code: 'unauthorized' });
   }
+  // Anything else is a bug or an upstream failure, and was invisible until
+  // logged here. safeError keeps the class name and code but drops the
+  // message, so the upstream HTTP status (Google's, on a GoogleCalendarError)
+  // and Google's machine reason are logged on their own: they tell a 403 from
+  // a 503. Read structurally, so this file does not import the Google client.
+  const upstream = (typeof e === 'object' && e !== null ? e : {}) as {
+    status?: unknown;
+    reason?: unknown;
+  };
+  logger.error('unhandled_error', {
+    error: safeError(e),
+    ...(typeof upstream.status === 'number' ? { status: upstream.status } : {}),
+    ...(typeof upstream.reason === 'string' ? { reason: upstream.reason } : {}),
+  });
   return json(500, { error: 'Internal error' });
 }
 

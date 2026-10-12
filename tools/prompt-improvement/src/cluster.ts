@@ -15,6 +15,19 @@ export interface FailurePattern {
   distinctCaptures: number;
 }
 
+/**
+ * Keep only corrections whose capture still exists. Deleting a capture
+ * removes the capture and its image but leaves its CORRECTION items, and a
+ * capture the user deleted must not steer a prompt change. `liveCaptures`
+ * holds `${userId}/${captureId}` for every capture in the table.
+ */
+export function dropOrphanedCorrections(
+  corrections: CorrectionRecord[],
+  liveCaptures: ReadonlySet<string>,
+): CorrectionRecord[] {
+  return corrections.filter((c) => liveCaptures.has(`${c.userId}/${c.captureId}`));
+}
+
 function kindOf(c: CorrectionRecord): FailurePattern['kind'] {
   if (c.oldValue === null && c.newValue !== null) return 'miss';
   if (c.oldValue !== null && c.newValue === null) return 'hallucination';

@@ -55,6 +55,9 @@ export class BackendStack extends Stack {
       // 90 days). Captures/corrections omit the attribute and are never expired.
       timeToLiveAttribute: 'expiresAt',
       removalPolicy: isProd ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY,
+      // RETAIN only covers CloudFormation. Deletion protection also refuses a
+      // console or CLI delete of the prod table; staging stays disposable.
+      deletionProtection: isProd,
     });
     table.addGlobalSecondaryIndex({
       indexName: 'GSI1',
@@ -170,7 +173,10 @@ export class BackendStack extends Stack {
       copyPrompts: true,
     });
     imagesBucket.grantRead(processor);
-    processor.addEventSource(new SqsEventSource(queue, { batchSize: 1 }));
+    // At most two captures in flight: a burst of shares (or a redrive of the
+    // DLQ) queues up instead of fanning out into parallel Claude calls, which
+    // bounds the spend rate. 2 is the lowest value SQS event sources accept.
+    processor.addEventSource(new SqsEventSource(queue, { batchSize: 1, maxConcurrency: 2 }));
 
     const authFn = makeFn('AuthGoogle', 'auth-google.ts', 'handler');
     const capturesCreateFn = makeFn('CapturesCreate', 'captures-create.ts', 'handler', {
@@ -178,6 +184,8 @@ export class BackendStack extends Stack {
       timeout: 30,
     });
     imagesBucket.grantPut(capturesCreateFn);
+    // Deletes its own upload when a later step fails, so no image is orphaned.
+    imagesBucket.grantDelete(capturesCreateFn);
     queue.grantSendMessages(capturesCreateFn);
 
     const capturesListFn = makeFn('CapturesList', 'captures-read.ts', 'listHandler');
@@ -316,6 +324,20 @@ export class BackendStack extends Stack {
       alarmDescription: 'Anthropic spend exceeded $2 in 24h — check for a processing loop.',
     });
     aiSpendAlarm.addAlarmAction(notify);
+
+    // Any 5xx from the API: an unhandled error in a route (now logged as
+    // unhandled_error), a Lambda crash or timeout. The Lambda alarms above
+    // cover only the processor and auth, so this is what notices the rest.
+    const api5xxAlarm = new cloudwatch.Alarm(this, 'Api5xxAlarm', {
+      alarmName: `s2c-api-5xx-${stage}`,
+      metric: api.metricServerError({ period: Duration.minutes(5) }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+      alarmDescription: 'The HTTP API returned a 5xx — check unhandled_error in the Lambda logs.',
+    });
+    api5xxAlarm.addAlarmAction(notify);
 
     this.apiUrl = new CfnOutput(this, 'ApiUrl', { value: api.apiEndpoint });
   }

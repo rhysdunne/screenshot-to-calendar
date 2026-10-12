@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { clusterCorrections, MIN_INDEPENDENT_CAPTURES } from '../src/cluster.js';
+import {
+  clusterCorrections,
+  dropOrphanedCorrections,
+  MIN_INDEPENDENT_CAPTURES,
+} from '../src/cluster.js';
 import {
   compareReports,
   signTestP,
@@ -25,6 +29,18 @@ function correction(overrides: Partial<CorrectionRecord>): CorrectionRecord {
     ...overrides,
   };
 }
+
+describe('dropOrphanedCorrections', () => {
+  it('drops corrections whose capture was deleted, matching on user and capture', () => {
+    const live = correction({ correctionId: 'c1', userId: 'u1', captureId: 'cap-1' });
+    const deleted = correction({ correctionId: 'c2', userId: 'u1', captureId: 'cap-gone' });
+    // Same capture id under another user is a different capture.
+    const otherUser = correction({ correctionId: 'c3', userId: 'u2', captureId: 'cap-1' });
+    expect(dropOrphanedCorrections([live, deleted, otherUser], new Set(['u1/cap-1']))).toEqual([
+      live,
+    ]);
+  });
+});
 
 describe('clusterCorrections (poisoning defenses)', () => {
   it('requires corrections from ≥3 distinct captures', () => {

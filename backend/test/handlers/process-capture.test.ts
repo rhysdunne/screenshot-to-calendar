@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { processCapture } from '../../src/handlers/process-capture.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
 import { todayInZone } from '../../src/pipeline/dates.js';
+import { HttpError } from '../../src/lib/http.js';
 
 const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==';
 
@@ -225,6 +226,60 @@ describe('processCapture', () => {
     const capture = await fake.store.getCapture('user-1', 'cap-1');
     expect(capture?.status).toBe('failed');
     expect(capture?.error).toContain('No date');
+    // Kept so the app can show the fields for the user to add a date and approve:
+    expect(capture?.event?.title).toBe('Frieze London');
+    expect(capture?.classification?.category).toBe('event_poster');
+  });
+
+  it('an event that ends before it starts fails terminally and keeps the extraction', async () => {
+    const fake = makeFakeDeps({
+      extractResult: {
+        ...GOOD_EXTRACTION,
+        start_date: '2026-10-14',
+        end_date: '2026-10-12',
+        start_time: '19:00',
+        end_time: '22:00',
+      },
+    });
+    await seedCapture(fake);
+    // Must NOT throw: Google would reject the same body on every retry.
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('failed');
+    expect(capture?.error).toContain('must end after it starts');
+    expect(capture?.event?.end_date).toBe('2026-10-12');
+    expect(fake.insertedEvents).toHaveLength(0);
+  });
+
+  it('a 23:59 start with no end time is created, though its default end clamps to the start', async () => {
+    const fake = makeFakeDeps({
+      extractResult: { ...GOOD_EXTRACTION, end_date: null, start_time: '23:59', end_time: null },
+    });
+    await seedCapture(fake);
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('completed');
+    expect(fake.insertedEvents[0]!.event.end).toEqual({
+      dateTime: '2026-10-14T23:59:00',
+      timeZone: 'Europe/London',
+    });
+  });
+
+  it('a Google grant that needs a fresh sign-in fails terminally and flags the user', async () => {
+    const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
+    await seedCapture(fake);
+    // What lib/google-calendar.ts throws for a 401 or a missing calendar scope:
+    fake.deps.calendar.listEventsInWindow = async () => {
+      throw new HttpError(401, 'Reconnect your Google account', 'needs_reauth');
+    };
+    // Must NOT throw: retrying cannot fix the grant.
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('failed');
+    expect(capture?.error).toContain('sign in again');
+    // Kept so the user can approve it once they have signed in again:
+    expect(capture?.event?.title).toBe('Frieze London');
+    expect((await fake.store.getUser('user-1'))?.needsReauth).toBe(true);
   });
 
   it('transient failures mark the capture failed and rethrow for SQS retry', async () => {
@@ -238,6 +293,27 @@ describe('processCapture', () => {
     ).rejects.toThrow('Google 503');
     const capture = await fake.store.getCapture('user-1', 'cap-1');
     expect(capture?.status).toBe('failed');
+    // The retry re-extracts, so nothing half-done is kept for review.
+    expect(capture?.event).toBeUndefined();
+  });
+
+  it('a retry that succeeds clears the earlier attempt’s error', async () => {
+    const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
+    await seedCapture(fake);
+    const insertEvent = fake.deps.calendar.insertEvent;
+    fake.deps.calendar.insertEvent = async () => {
+      throw new Error('Google 503');
+    };
+    await expect(
+      processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' }),
+    ).rejects.toThrow('Google 503');
+    expect((await fake.store.getCapture('user-1', 'cap-1'))?.error).toContain('Google 503');
+
+    fake.deps.calendar.insertEvent = insertEvent;
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('completed');
+    expect(capture?.error).toBeUndefined();
   });
 
   it('no target calendar selected fails with guidance', async () => {

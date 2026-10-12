@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import type { CorrectionRecord } from '../../../backend/src/lib/ddb.js';
-import { clusterCorrections, describePattern } from './cluster.js';
+import { clusterCorrections, describePattern, dropOrphanedCorrections } from './cluster.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const WORK_DIR = join(__dirname, '..', 'work');
@@ -21,24 +21,48 @@ async function main(): Promise<void> {
   if (!tableName) throw new Error('Set TABLE_NAME (e.g. s2c-main-prod)');
 
   const doc = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-  const corrections: CorrectionRecord[] = [];
+  const scanned: CorrectionRecord[] = [];
+  const liveCaptures = new Set<string>();
   let lastKey: Record<string, unknown> | undefined;
   do {
     // Corrections are a tiny fraction of the table; a filtered scan is fine
-    // at this scale and avoids another GSI.
+    // at this scale and avoids another GSI. A scan reads every item whatever
+    // the filter, so also returning capture keys costs no extra read and
+    // saves a GetItem per correction to check its capture still exists. The
+    // projection keeps capture content (the extracted event) out of this
+    // tool: a capture item brings back only its keys and ids. It lists every
+    // CorrectionRecord field, so keep it in step with that type.
     const r = await doc.send(
       new ScanCommand({
         TableName: tableName,
-        FilterExpression: 'begins_with(SK, :sk) AND consentEvalUse = :consent',
-        ExpressionAttributeValues: { ':sk': 'CORRECTION#', ':consent': true },
+        FilterExpression:
+          '(begins_with(SK, :correction) AND consentEvalUse = :consent) OR begins_with(SK, :capture)',
+        ProjectionExpression:
+          'SK, userId, captureId, correctionId, #field, oldValue, newValue, imageKey, consentEvalUse, createdAt',
+        ExpressionAttributeNames: { '#field': 'field' },
+        ExpressionAttributeValues: {
+          ':correction': 'CORRECTION#',
+          ':capture': 'CAPTURE#',
+          ':consent': true,
+        },
         ExclusiveStartKey: lastKey,
       }),
     );
-    corrections.push(...((r.Items ?? []) as CorrectionRecord[]));
+    for (const item of r.Items ?? []) {
+      if (String(item.SK).startsWith('CAPTURE#')) {
+        liveCaptures.add(`${item.userId}/${item.captureId}`);
+      } else {
+        scanned.push(item as CorrectionRecord);
+      }
+    }
     lastKey = r.LastEvaluatedKey as Record<string, unknown> | undefined;
   } while (lastKey);
 
-  console.log(`${corrections.length} consented corrections`);
+  const corrections = dropOrphanedCorrections(scanned, liveCaptures);
+  console.log(
+    `${corrections.length} consented corrections ` +
+      `(${scanned.length - corrections.length} dropped: their capture was deleted)`,
+  );
   const patterns = clusterCorrections(corrections);
   if (patterns.length === 0) {
     console.log('No eligible failure patterns (need ≥3 independent captures per pattern).');

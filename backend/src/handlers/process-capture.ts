@@ -6,12 +6,18 @@ import { realDeps, type Deps } from './deps.js';
 import { extractSchemaFor, loadPrompt, renderPrompt } from '../prompts/prompts.js';
 import { CLASSIFY_IMAGE_SCHEMA } from '../prompts/schemas.js';
 import { extractEventData } from '../pipeline/extract.js';
-import { mapEventToCalendar } from '../pipeline/map-to-calendar.js';
+import { endsAfterStart, mapEventToCalendar } from '../pipeline/map-to-calendar.js';
 import { addDays, todayInZone } from '../pipeline/dates.js';
 import { findDuplicate } from '../pipeline/dedup.js';
-import { NoDateError, type Classification, type ExtractedEvent } from '../pipeline/types.js';
+import {
+  NoDateError,
+  TerminalProcessingError,
+  type Classification,
+  type ExtractedEvent,
+} from '../pipeline/types.js';
 import type { ImageMediaType } from '../pipeline/image.js';
 import type { CaptureRecord, UserRecord } from '../lib/ddb.js';
+import { HttpError } from '../lib/http.js';
 import { logger, safeError } from '../lib/logger.js';
 
 export interface ProcessMessage {
@@ -32,11 +38,17 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
     return;
   }
 
-  await store.updateCapture(msg.userId, msg.captureId, { status: 'processing' });
+  // Clears the error an earlier failed attempt left, so a retry that succeeds
+  // does not show it on a completed capture.
+  await store.updateCapture(msg.userId, msg.captureId, { status: 'processing', error: null });
 
   // Kept in scope so a failure can persist what the model actually said —
   // otherwise debugging a bad extraction means reproducing the call.
   let rawExtractOutput: string | undefined;
+  // Kept in scope so a terminal failure can store them for the app's review
+  // screen, where the user fixes the event and approves it.
+  let classification: Classification | undefined;
+  let event: ExtractedEvent | undefined;
 
   try {
     const imageBase64 = (await images.getImage(capture.imageKey)).toString('base64');
@@ -46,8 +58,9 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
     const today = todayInZone(timeZone);
     let totalCost = 0;
 
-    // 1. Classify (cheap model). Non-events stay in the library for the
-    // scrapbook direction but skip calendar creation.
+    // 1. Classify (cheap model). Non-events skip calendar creation but stay in
+    // the library so the user can review them. The scrapbook search design
+    // they were kept for is parked.
     const classifyCall = await deps.callClaude({
       apiKey: anthropicApiKey,
       model: config.classifyModel,
@@ -64,7 +77,7 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       userId: msg.userId,
       captureId: msg.captureId,
     });
-    const classification = extractClassification(classifyCall.response);
+    classification = extractClassification(classifyCall.response);
 
     if (!classification.is_event) {
       await store.updateCapture(msg.userId, msg.captureId, {
@@ -96,7 +109,7 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       .filter((b) => b.type === 'text')
       .map((b) => (b as { text?: string }).text ?? '')
       .join('');
-    let event = extractEventData(extractCall.response);
+    event = extractEventData(extractCall.response);
 
     // 3. Resolve venue → address via Places when missing (non-fatal).
     if (event.venue && !event.address) {
@@ -130,28 +143,47 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       ...updates,
     });
   } catch (e) {
+    // Terminal failures (no date, an end before the start, a Google grant that
+    // needs a fresh sign-in) would fail the same way on every retry. They keep
+    // the extraction so the app's review screen can fix and approve the
+    // capture. Anything else rethrows so SQS retries (×3) and then parks the
+    // message on the DLQ.
+    const needsReauth = e instanceof HttpError && e.code === 'needs_reauth';
+    const terminal = e instanceof TerminalProcessingError || needsReauth;
     const message =
       e instanceof NoDateError
-        ? 'No date could be read from this image.'
-        : `Processing failed: ${(e as Error).message}`;
-    logger.error('process_capture_failed', { ...msg, error: safeError(e) });
+        ? 'No date could be read from this image. Add the date, then add it to your calendar.'
+        : e instanceof TerminalProcessingError
+          ? e.message
+          : needsReauth
+            ? 'Google Calendar needs you to sign in again. Sign out in Settings, ' +
+              'sign back in, then add this to your calendar.'
+            : `Processing failed: ${(e as Error).message}`;
+    logger.error('process_capture_failed', { ...msg, terminal, error: safeError(e) });
+    if (needsReauth) {
+      // The same flag the token refresh sets on invalid_grant; sign-in clears
+      // it. Best-effort: losing the flag must not cost the capture its error.
+      await store.updateUser(msg.userId, { needsReauth: true }).catch((flagError: unknown) => {
+        logger.warn('needs_reauth_flag_failed', { ...msg, error: safeError(flagError) });
+      });
+    }
     await store.updateCapture(msg.userId, msg.captureId, {
       status: 'failed',
       error: message,
+      ...(terminal ? { classification, event } : {}),
       // Debugging aid, never shown in the app (excluded from captureView) and
       // removed by account erasure. Kept short to minimise event content at rest.
       ...(rawExtractOutput ? { rawModelOutput: rawExtractOutput.slice(0, 1000) } : {}),
     });
-    // NoDateError is terminal — retrying won't conjure a date. Anything else
-    // rethrows so SQS retries (×3) and then parks the message on the DLQ.
-    if (!(e instanceof NoDateError)) throw e;
+    if (!terminal) throw e;
   }
 }
 
 /**
  * Map → dedup → insert, returning the capture updates to store. Shared by the
- * processor (auto path) and the approve endpoint (needs_review path). Throws
- * NoDateError when the event has no dates; the caller decides terminality.
+ * processor (auto path) and the approve endpoint (needs_review path). Throws a
+ * TerminalProcessingError (NoDateError when the event has no dates) when the
+ * event cannot become a calendar entry as it stands; each caller maps that.
  */
 export async function createCalendarEntry(
   deps: Deps,
@@ -163,6 +195,16 @@ export async function createCalendarEntry(
   const today = todayInZone(timeZone);
   const captureLink = `${deps.config.deepLinkBase}/c/${captureId}`;
   const calendarBody = mapEventToCalendar(event, { today, timeZone, captureLink });
+  // Google rejects an event that ends before it starts, and a zero-length one
+  // is no use either. Mapping already moves a same-day earlier end time to the
+  // next day, so what is left here (an end date before the start, an end time
+  // given equal to the start time) is a misread that a retry would read the
+  // same way.
+  if (!endsAfterStart(calendarBody, event)) {
+    throw new TerminalProcessingError(
+      'The event must end after it starts. Fix the dates or times, then add it to your calendar.',
+    );
+  }
 
   const calendarId = user.settings.calendarId;
   if (!calendarId) {

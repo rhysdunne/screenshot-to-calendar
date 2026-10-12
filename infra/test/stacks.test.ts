@@ -49,12 +49,26 @@ describe('BackendStack', () => {
     });
   });
 
+  it('leaves the staging table deletable', () => {
+    backend.hasResourceProperties('AWS::DynamoDB::Table', {
+      TableName: 's2c-main-staging',
+      DeletionProtectionEnabled: false,
+    });
+  });
+
   it('wires the processing queue to a DLQ with 3 retries', () => {
     backend.hasResourceProperties('AWS::SQS::Queue', {
       QueueName: 's2c-process-staging',
       RedrivePolicy: {
         maxReceiveCount: 3,
       },
+    });
+  });
+
+  it('caps the processor at two concurrent captures to bound Claude spend', () => {
+    backend.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
+      BatchSize: 1,
+      ScalingConfig: { MaximumConcurrency: 2 },
     });
   });
 
@@ -129,6 +143,30 @@ describe('BackendStack', () => {
     }
   });
 
+  it('alarms on any HTTP API 5xx and notifies the alerts topic', () => {
+    backend.hasResourceProperties('AWS::CloudWatch::Alarm', {
+      AlarmName: 's2c-api-5xx-staging',
+      Namespace: 'AWS/ApiGateway',
+      MetricName: '5xx',
+      Statistic: 'Sum',
+      Period: 300,
+      Threshold: 1,
+      ComparisonOperator: 'GreaterThanOrEqualToThreshold',
+      AlarmActions: [{ Ref: Match.stringLikeRegexp('AlertsTopic') }],
+    });
+  });
+
+  it('lets the capture upload delete its image when a later step fails', () => {
+    backend.hasResourceProperties('AWS::IAM::Policy', {
+      Roles: [{ Ref: Match.stringLikeRegexp('^CapturesCreateServiceRole') }],
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({ Action: 's3:DeleteObject*', Effect: 'Allow' }),
+        ]),
+      },
+    });
+  });
+
   it('expires exports after 7 days', () => {
     backend.hasResourceProperties('AWS::S3::Bucket', {
       BucketName: 's2c-images-111111111111-staging',
@@ -143,6 +181,30 @@ describe('BackendStack', () => {
         ],
       },
     });
+  });
+});
+
+describe('BackendStack (prod)', () => {
+  let prod: Template;
+
+  beforeAll(() => {
+    // Skips Lambda bundling for this app: these checks are about the table.
+    const app = new App({ context: { 'aws:cdk:bundling-stacks': [] } });
+    const prodStack = new BackendStack(app, 'S2cBackend-prod-test', {
+      stage: 'prod',
+      env: { account: '111111111111', region: 'eu-west-2' },
+      googleClientId: 'test-client-id.apps.googleusercontent.com',
+      deepLinkBaseUrl: 'https://d123.cloudfront.net',
+    });
+    prod = Template.fromStack(prodStack);
+  });
+
+  it('protects the prod table from deletion as well as retaining it', () => {
+    prod.hasResourceProperties('AWS::DynamoDB::Table', {
+      TableName: 's2c-main-prod',
+      DeletionProtectionEnabled: true,
+    });
+    prod.hasResource('AWS::DynamoDB::Table', { DeletionPolicy: 'Retain' });
   });
 });
 

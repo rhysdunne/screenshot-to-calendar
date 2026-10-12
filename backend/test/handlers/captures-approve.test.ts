@@ -101,6 +101,50 @@ describe('confidence gating', () => {
     expect(fake.insertedEvents).toHaveLength(0);
   });
 
+  it('a capture that failed for want of a date is approved once the user adds one', async () => {
+    const fake = makeFakeDeps({
+      extractResult: { ...LOW_CONFIDENCE_EXTRACTION, start_date: null, confidence: 'high' },
+    });
+    await seedProcessedLowConfidence(fake);
+    expect((await fake.store.getCapture('user-1', 'cap-1'))?.status).toBe('failed');
+    await fake.store.updateCapture('user-1', 'cap-1', {
+      corrected: { start_date: '2026-08-02' } as Partial<ExtractedEvent>,
+    });
+
+    const res = await invokeApprove(fake);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.status).toBe('completed');
+    expect(res.body.error).toBeNull();
+    expect(fake.insertedEvents[0]!.event.start).toEqual({ date: '2026-08-02' });
+  });
+
+  it('approve refuses an event that ends before it starts (409, no insert)', async () => {
+    const fake = makeFakeDeps({ extractResult: LOW_CONFIDENCE_EXTRACTION });
+    await seedProcessedLowConfidence(fake);
+    await fake.store.updateCapture('user-1', 'cap-1', {
+      corrected: { start_time: '20:00', end_date: '2026-07-31', end_time: '22:00' } as Partial<ExtractedEvent>,
+    });
+
+    const res = await invokeApprove(fake);
+    expect(res.statusCode).toBe(409);
+    expect(res.body.error).toContain('must end after it starts');
+    expect(fake.insertedEvents).toHaveLength(0);
+  });
+
+  it('approve with no target calendar keeps the guidance instead of clearing it', async () => {
+    const fake = makeFakeDeps({ extractResult: LOW_CONFIDENCE_EXTRACTION });
+    await seedProcessedLowConfidence(fake);
+    await fake.store.updateUser('user-1', {
+      settings: { calendarId: null, timezone: 'Europe/London', consentEvalUse: false },
+    });
+
+    const res = await invokeApprove(fake);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.status).toBe('failed');
+    expect(res.body.error).toContain('pick a calendar');
+    expect(fake.insertedEvents).toHaveLength(0);
+  });
+
   it('rejects approval of captures not awaiting review', async () => {
     const fake = makeFakeDeps({
       extractResult: { ...LOW_CONFIDENCE_EXTRACTION, confidence: 'high' },
