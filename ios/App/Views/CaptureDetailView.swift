@@ -10,7 +10,7 @@ struct CaptureDetailView: View {
     @State private var capture: Capture?
     /// Decoded via the app-wide CaptureImageStore, so a tile that already
     /// loaded this capture makes the detail image instant (and vice versa).
-    @State private var image: UIImage?
+    @State private var imageState: ImageState = .loading
     /// Drives the full-screen viewer. Item-based (not a bool) so the image is
     /// passed into the cover atomically at tap time — presenting via
     /// `isPresented` + reading the image state inside the cover raced: on a
@@ -72,22 +72,44 @@ struct CaptureDetailView: View {
         }
     }
 
+    /// Loading, failed or loaded, each visibly different. Only a loaded image
+    /// is tappable (and announced as a button), so a tap never silently
+    /// does nothing while the image is still on its way (#68).
     private var imageSection: some View {
         Section {
             Group {
-                if let image {
-                    Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
-                } else {
+                switch imageState {
+                case .loading:
                     Rectangle().fill(.quaternary).frame(height: 200)
+                        .overlay { ProgressView() }
+                        .accessibilityElement()
+                        .accessibilityLabel("Loading image")
+                case .failed:
+                    Rectangle().fill(.quaternary).frame(height: 200)
+                        .overlay {
+                            VStack(spacing: 8) {
+                                Image(systemName: "photo.badge.exclamationmark")
+                                    .font(.title2)
+                                    .foregroundStyle(.secondary)
+                                Text("Image unavailable")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                // Failures are never cached, so a retry refetches.
+                                Button("Try again") { Task { await loadImage() } }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                            }
+                        }
+                case let .loaded(image):
+                    Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
+                        .contentShape(Rectangle())
+                        .onTapGesture { viewerImage = ViewerImage(image: Image(uiImage: image)) }
+                        .accessibilityLabel("Capture image")
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityHint("Opens the image full screen")
                 }
             }
             .listRowInsets(EdgeInsets())
-            .contentShape(Rectangle())
-            .onTapGesture {
-                if let image { viewerImage = ViewerImage(image: Image(uiImage: image)) }
-            }
-            .accessibilityAddTraits(.isButton)
-            .accessibilityHint("Opens the image full screen")
         }
     }
 
@@ -279,7 +301,7 @@ struct CaptureDetailView: View {
         // Image and capture load in parallel — the image is usually already
         // cached by the grid tile, so it paints immediately instead of
         // waiting out the getCapture round-trip.
-        Task { image = await appState.images.image(for: captureId) }
+        Task { await loadImage() }
         do {
             let loaded = try await appState.api.getCapture(id: captureId)
             capture = loaded
@@ -291,6 +313,15 @@ struct CaptureDetailView: View {
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func loadImage() async {
+        imageState = .loading
+        if let image = await appState.images.image(for: captureId) {
+            imageState = .loaded(image)
+        } else {
+            imageState = .failed
         }
     }
 
@@ -349,6 +380,13 @@ struct CaptureDetailView: View {
             set: { form[keyPath: keyPath] = $0 }
         )
     }
+}
+
+private enum ImageState {
+    case loading
+    /// The store returns nil for any failure (network, expired URL, bad data).
+    case failed
+    case loaded(UIImage)
 }
 
 /// Identifiable wrapper so the full-screen image viewer can be presented with
