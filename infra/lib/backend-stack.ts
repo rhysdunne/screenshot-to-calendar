@@ -184,6 +184,8 @@ export class BackendStack extends Stack {
       timeout: 30,
     });
     imagesBucket.grantPut(capturesCreateFn);
+    // Deletes its own upload when a later step fails, so no image is orphaned.
+    imagesBucket.grantDelete(capturesCreateFn);
     queue.grantSendMessages(capturesCreateFn);
 
     const capturesListFn = makeFn('CapturesList', 'captures-read.ts', 'listHandler');

@@ -60,12 +60,23 @@ export function makeHandler(deps: Deps): ApiHandler {
       } catch (e) {
         // The hash is already claimed, so without this a retry of the same
         // upload would come back as a duplicate of a capture that was never
-        // stored or queued. Release the claim and any partial capture, then
-        // fail as before. Best-effort: a cleanup error must not hide the cause.
+        // stored or queued. Release the claim and any partial capture, delete
+        // the image (a retry uploads it under a new id, so this copy would be
+        // orphaned), then fail as before. Best-effort: a cleanup error must not
+        // hide the cause. Deleting an image that never landed is a no-op.
         await deps.store.deleteCapture(user.userId, captureId, sha256).catch((cleanupError: unknown) => {
           logger.warn('capture_create_cleanup_failed', {
             userId: user.userId,
             captureId,
+            step: 'record',
+            error: safeError(cleanupError),
+          });
+        });
+        await deps.images.deleteObject(imageKey).catch((cleanupError: unknown) => {
+          logger.warn('capture_create_cleanup_failed', {
+            userId: user.userId,
+            captureId,
+            step: 'image',
             error: safeError(cleanupError),
           });
         });

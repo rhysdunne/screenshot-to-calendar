@@ -9,6 +9,7 @@ import { makeGetHandler, makeListHandler } from '../../src/handlers/captures-rea
 import { makeExportHandler, makeDeleteHandler } from '../../src/handlers/account.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
 import { signSession } from '../../src/lib/jwt.js';
+import { logger } from '../../src/lib/logger.js';
 import type { ExtractedEvent } from '../../src/pipeline/types.js';
 import type { CaptureRecord } from '../../src/lib/ddb.js';
 
@@ -96,7 +97,7 @@ describe('captures-create', () => {
     expect(second.body.duplicateOf).toBe(first.body.captureId);
   });
 
-  it('a failed queue send releases the hash claim and the capture, so a retry is not a duplicate', async () => {
+  it('a failed queue send releases the hash claim, the capture and the image, so a retry is not a duplicate', async () => {
     const fake = makeFakeDeps();
     await fake.store.putUser(testUser());
     const token = signSession('user-1', 1, JWT_SECRET);
@@ -110,6 +111,9 @@ describe('captures-create', () => {
     expect(failed.statusCode).toBe(500);
     expect(fake.store.imageHashes.size).toBe(0);
     expect(fake.store.captures.size).toBe(0);
+    // The image was uploaded before the send failed. A retry stores it under
+    // a new capture id, so this copy would otherwise be orphaned.
+    expect(fake.images.objects.size).toBe(0);
 
     fake.deps.enqueueProcess = async () => {};
     const retry = await invoke(
@@ -134,6 +138,31 @@ describe('captures-create', () => {
     expect(res.statusCode).toBe(500);
     expect(fake.store.imageHashes.size).toBe(0);
     expect(fake.store.captures.size).toBe(0);
+  });
+
+  it('a failed image cleanup is logged and the original error still returns 500', async () => {
+    const fake = makeFakeDeps();
+    await fake.store.putUser(testUser());
+    const token = signSession('user-1', 1, JWT_SECRET);
+    fake.deps.enqueueProcess = async () => {
+      throw new Error('SQS unavailable');
+    };
+    fake.images.deleteObject = async () => {
+      throw new Error('S3 unavailable');
+    };
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    const res = await invoke(
+      makeCreateHandler(fake.deps),
+      apiEvent({ body: { imageBase64: PNG_BASE64 }, token }),
+    );
+    expect(res.statusCode).toBe(500);
+    expect(warn).toHaveBeenCalledWith(
+      'capture_create_cleanup_failed',
+      expect.objectContaining({ step: 'image' }),
+    );
+    // The hash claim is still released, so a retry is not a duplicate.
+    expect(fake.store.imageHashes.size).toBe(0);
+    warn.mockRestore();
   });
 });
 

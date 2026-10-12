@@ -156,6 +156,17 @@ describe('BackendStack', () => {
     });
   });
 
+  it('lets the capture upload delete its image when a later step fails', () => {
+    backend.hasResourceProperties('AWS::IAM::Policy', {
+      Roles: [{ Ref: Match.stringLikeRegexp('^CapturesCreateServiceRole') }],
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({ Action: 's3:DeleteObject*', Effect: 'Allow' }),
+        ]),
+      },
+    });
+  });
+
   it('expires exports after 7 days', () => {
     backend.hasResourceProperties('AWS::S3::Bucket', {
       BucketName: 's2c-images-111111111111-staging',
