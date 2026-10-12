@@ -1,6 +1,7 @@
 // Sign-in and the invite-only sign-up gate: a new Google account gets a user
 // record only when its verified email is on the allowlist, existing users are
 // never checked, and every refusal fails closed without logging the email.
+// Also the new-user sign-in where Google returns no refresh token.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 import { makeHandler, parseAllowlist } from '../../src/handlers/auth-google.js';
@@ -163,6 +164,38 @@ describe('auth-google sign-up allowlist', () => {
     expect(res.statusCode).toBe(403);
     expect(fake.store.users.size).toBe(0);
     expect(logs.warn).toHaveBeenCalledWith('signup_refused', { reason: 'email_unverified' });
+  });
+});
+
+describe('auth-google without a refresh token', () => {
+  it('refuses a new user, revokes the existing grant so the next sign-in gets one, and says to sign in again', async () => {
+    silenceLogs();
+    const revoked = stubGoogle({ email: 'owner@example.com', refreshToken: null });
+    const fake = makeFakeDeps({ signupAllowlist: 'owner@example.com' });
+
+    const res = await signIn(fake);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      error: 'Google did not return a refresh token. Sign in again.',
+      code: 'no_refresh_token',
+    });
+    expect(fake.store.users.size).toBe(0);
+    expect(revoked).toEqual(['access-1']);
+  });
+
+  it('signs an existing user in and keeps their stored refresh token', async () => {
+    silenceLogs();
+    const revoked = stubGoogle({ sub: 'gsub-1', email: 'test@example.com', refreshToken: null });
+    const fake = makeFakeDeps();
+    const stored = testUser();
+    await fake.store.putUser(stored);
+
+    const res = await signIn(fake);
+
+    expect(res.statusCode).toBe(200);
+    expect(fake.store.users.get('user-1')?.encRefreshToken).toEqual(stored.encRefreshToken);
+    expect(revoked).toEqual([]);
   });
 });
 

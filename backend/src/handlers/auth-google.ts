@@ -91,9 +91,19 @@ export function makeHandler(deps: Deps): ApiHandler {
           );
         }
         if (!tokens.refreshToken) {
-          // First sign-in must yield a refresh token; without it the backend
-          // can never act on the calendar. The app retries with consent.
-          throw new HttpError(400, 'Google did not return a refresh token', 'no_refresh_token');
+          // A new user needs a refresh token, or the backend can never act on
+          // the calendar. Google leaves it out when this Google account has
+          // already granted the app access, for example after an account
+          // deletion whose revoke failed. Nothing retries automatically: the
+          // app shows this message in its sign-in alert. Revoking the grant
+          // here makes Google ask for consent again on the next sign-in, and
+          // return a refresh token then.
+          await revokeUnusedGrant(tokens);
+          throw new HttpError(
+            400,
+            'Google did not return a refresh token. Sign in again.',
+            'no_refresh_token',
+          );
         }
         user = {
           userId: ulid(),
