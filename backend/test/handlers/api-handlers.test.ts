@@ -331,6 +331,57 @@ describe('captures-read', () => {
     );
     expect(res.statusCode).toBe(404);
   });
+
+  async function getCapture(overrides: Partial<CaptureRecord>) {
+    const fake = makeFakeDeps();
+    await fake.store.putUser(testUser());
+    await fake.store.createCapture(
+      {
+        userId: 'user-1',
+        status: 'completed',
+        imageKey: 'k',
+        imageSha256: 's',
+        mediaType: 'image/png',
+        ...overrides,
+      },
+      'cap-1',
+    );
+    const token = signSession('user-1', 1, JWT_SECRET);
+    return invoke(makeGetHandler(fake.deps), apiEvent({ token, pathParameters: { id: 'cap-1' } }));
+  }
+
+  it('a completed capture reports the event it created and no match', async () => {
+    const res = await getCapture({ calendarEventId: 'gcal-1', calendarId: 'cal-events' });
+    expect(res.statusCode).toBe(200);
+    expect(res.body.calendarEventId).toBe('gcal-1');
+    expect(res.body.matchedEventId).toBeNull();
+  });
+
+  it('a duplicate reports its match in matchedEventId, never calendarEventId', async () => {
+    const res = await getCapture({
+      status: 'duplicate',
+      matchedEventId: 'existing-1',
+      matchedCalendarId: 'cal-events',
+      eventLink: 'https://calendar.google.com/event?eid=existing',
+    });
+    expect(res.body.calendarEventId).toBeNull();
+    expect(res.body.matchedEventId).toBe('existing-1');
+    expect(res.body.eventLink).toBe('https://calendar.google.com/event?eid=existing');
+  });
+
+  it('a legacy duplicate reports the stored calendarEventId as its match', async () => {
+    // Written before matchedEventId existed: calendarEventId names the
+    // matched event, which belongs to another capture.
+    const res = await getCapture({
+      status: 'duplicate',
+      calendarEventId: 'someone-elses-event',
+      calendarId: 'cal-events',
+      eventLink: 'https://calendar.google.com/event?eid=existing',
+    });
+    expect(res.body.calendarEventId).toBeNull();
+    expect(res.body.matchedEventId).toBe('someone-elses-event');
+    expect(res.body.eventLink).toBe('https://calendar.google.com/event?eid=existing');
+  });
 });
 
 describe('account export/delete (GDPR)', () => {

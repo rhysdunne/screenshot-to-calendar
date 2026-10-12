@@ -49,7 +49,7 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 - `event` is the original extraction (never mutated). `corrected` is the user's overlay, keyed by field name: a key with a string value replaces the extracted value, a key with `null` means the user cleared that field, and an absent key means not corrected.
 - `needs_review`: the extraction came back with `confidence: "low"`, so no calendar event was created. The app shows the fields for checking and calls `approve`.
 - `calendarEventId` is only ever an event this capture created. It is null for a duplicate.
-- `duplicate`: the dedup step matched an existing event, so nothing was created. `matchedEventId` is that event, and `eventLink` opens it. The capture never edits or deletes it.
+- `duplicate`: the dedup step matched an existing event, so nothing was created. `matchedEventId` is that event, and `eventLink` opens it. The capture never edits or deletes it. `matchedEventId` is null for every other status.
 - `possibleDuplicateOf`: the event was created, but a similar existing event (by title) was found.
 
 ## DynamoDB single table (`s2c-main-{stage}`)

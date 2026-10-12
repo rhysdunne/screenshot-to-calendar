@@ -7,6 +7,10 @@ import { authenticate, errorResponse, HttpError, json, type ApiHandler } from '.
 import type { CaptureRecord } from '../lib/ddb.js';
 
 export function captureView(c: CaptureRecord) {
+  // A duplicate created no event, so it never reports a calendarEventId.
+  // Records written before matchedEventId existed kept the matched event's id
+  // in calendarEventId, so for those that id is reported as the match.
+  const duplicate = c.status === 'duplicate';
   return {
     captureId: c.captureId,
     status: c.status,
@@ -14,9 +18,9 @@ export function captureView(c: CaptureRecord) {
     classification: c.classification ?? null,
     event: c.event ?? null,
     corrected: c.corrected ?? null,
-    calendarEventId: c.calendarEventId ?? null,
+    calendarEventId: duplicate ? null : (c.calendarEventId ?? null),
     eventLink: c.eventLink ?? null,
-    matchedEventId: c.matchedEventId ?? null,
+    matchedEventId: duplicate ? (c.matchedEventId ?? c.calendarEventId ?? null) : null,
     possibleDuplicateOf: c.possibleDuplicateOf ?? null,
     error: c.error ?? null,
   };
