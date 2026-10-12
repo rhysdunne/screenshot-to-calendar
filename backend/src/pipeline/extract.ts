@@ -1,9 +1,29 @@
-import { EVENT_CATEGORIES, type EventCategory, type ExtractedEvent } from './types.js';
+import {
+  EVENT_CATEGORIES,
+  MaxTokensError,
+  ModelRefusalError,
+  type EventCategory,
+  type ExtractedEvent,
+} from './types.js';
 import { isValidHm, isValidYmd } from './dates.js';
 
 // Minimal shape of an Anthropic Messages API response we parse from.
 interface AnthropicResponseLike {
+  stop_reason?: string | null;
   content?: Array<{ type: string; text?: string }>;
+}
+
+/**
+ * Throws when the model did not finish its answer. Checked before reading the
+ * content: neither a refusal nor a cut-off reply holds usable JSON, and
+ * parsing one only produces a misleading parse error.
+ */
+export function assertModelFinished(
+  response: AnthropicResponseLike,
+  stage: 'classify' | 'extract',
+): void {
+  if (response.stop_reason === 'refusal') throw new ModelRefusalError(stage);
+  if (response.stop_reason === 'max_tokens') throw new MaxTokensError(stage);
 }
 
 /**
@@ -13,6 +33,7 @@ interface AnthropicResponseLike {
  * support still parse (port of the v1 extractEventData).
  */
 export function extractEventData(response: AnthropicResponseLike): ExtractedEvent {
+  assertModelFinished(response, 'extract');
   if (!response.content || !Array.isArray(response.content)) {
     throw new Error('Unexpected API response structure');
   }
@@ -30,10 +51,10 @@ export function extractEventData(response: AnthropicResponseLike): ExtractedEven
   try {
     parsed = JSON.parse(cleaned);
   } catch (e) {
-    throw new Error(
-      `Failed to parse event JSON: ${(e as Error).message}\nRaw response: ${rawText}`,
-      { cause: e },
-    );
+    // No model text in the message, which the processor shows to the user.
+    // That includes the SyntaxError's own message, which quotes the input.
+    // The processor keeps the raw output in rawModelOutput for debugging.
+    throw new Error('Failed to parse event JSON', { cause: e });
   }
   return normalizeEventData(parsed);
 }

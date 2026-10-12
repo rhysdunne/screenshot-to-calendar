@@ -155,14 +155,14 @@ export class FakeImages implements Images {
   }
 }
 
-function textResponse(json: unknown): ClaudeCallResult['response'] {
+function textResponse(json: unknown, stopReason = 'end_turn'): ClaudeCallResult['response'] {
   return {
     id: 'msg_test',
     type: 'message',
     role: 'assistant',
     model: 'test',
     content: [{ type: 'text', text: JSON.stringify(json), citations: null }],
-    stop_reason: 'end_turn',
+    stop_reason: stopReason,
     stop_sequence: null,
     usage: { input_tokens: 1500, output_tokens: 150 },
   } as unknown as ClaudeCallResult['response'];
@@ -171,6 +171,9 @@ function textResponse(json: unknown): ClaudeCallResult['response'] {
 export interface FakeDepsOptions {
   classifyResult?: unknown;
   extractResult?: unknown;
+  /** stop_reason on each stage's response; 'end_turn' unless set. */
+  classifyStopReason?: string;
+  extractStopReason?: string;
   existingEvents?: ExistingCalendarEvent[];
   placesAddress?: string | null;
 }
@@ -202,8 +205,10 @@ export function makeFakeDeps(opts: FakeDepsOptions = {}) {
               confidence: 'high',
             })
           : (opts.extractResult ?? {});
+      const stopReason =
+        options.stage === 'classify' ? opts.classifyStopReason : opts.extractStopReason;
       return {
-        response: textResponse(result),
+        response: textResponse(result, stopReason),
         usage: {
           stage: options.stage,
           model: options.model,

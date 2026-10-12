@@ -105,6 +105,8 @@ export async function callClaude(opts: ClaudeCallOptions): Promise<ClaudeCallRes
     thinking: tuning.thinking,
     effort: tuning.effort,
     stopReason: response.stop_reason,
+    // Set only on a refusal: the policy category, never the request content.
+    refusalCategory: response.stop_details?.category,
   });
   emitCostMetric(usage.costUsd);
   return { response, usage };

@@ -110,3 +110,34 @@ export class NoDateError extends TerminalProcessingError {
     this.name = 'NoDateError';
   }
 }
+
+/**
+ * The model declined the request (stop_reason "refusal"). The same image gets
+ * the same answer on a retry, so this is terminal. No event was extracted, so
+ * the capture cannot be corrected or approved; the message says so.
+ */
+export class ModelRefusalError extends TerminalProcessingError {
+  readonly stage: 'classify' | 'extract';
+  constructor(stage: 'classify' | 'extract') {
+    super(
+      'This image could not be read automatically, so no event was made from it. ' +
+        'Add it to your calendar yourself.',
+    );
+    this.name = 'ModelRefusalError';
+    this.stage = stage;
+  }
+}
+
+/**
+ * The reply hit max_tokens before the JSON was complete (stop_reason
+ * "max_tokens"). Thinking spends the same budget and varies between calls, so
+ * a retry can finish; the processor rethrows it for SQS to retry.
+ */
+export class MaxTokensError extends Error {
+  readonly stage: 'classify' | 'extract';
+  constructor(stage: 'classify' | 'extract') {
+    super(`The ${stage} reply was cut off at max_tokens`);
+    this.name = 'MaxTokensError';
+    this.stage = stage;
+  }
+}

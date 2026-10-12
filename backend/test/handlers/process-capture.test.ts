@@ -282,6 +282,62 @@ describe('processCapture', () => {
     expect((await fake.store.getUser('user-1'))?.needsReauth).toBe(true);
   });
 
+  it('a refusal at extraction fails terminally and keeps the classification', async () => {
+    const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION, extractStopReason: 'refusal' });
+    await seedCapture(fake);
+    // Must NOT throw: the same image gets the same refusal on a retry.
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('failed');
+    expect(capture?.error).toContain('could not be read automatically');
+    expect(capture?.classification?.category).toBe('event_poster');
+    expect(capture?.event).toBeUndefined();
+    expect(fake.insertedEvents).toHaveLength(0);
+  });
+
+  it('a refusal at classification fails terminally before extraction runs', async () => {
+    const fake = makeFakeDeps({ classifyStopReason: 'refusal' });
+    await seedCapture(fake);
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('failed');
+    expect(capture?.error).toContain('could not be read automatically');
+    expect(fake.claudeCalls.map((c) => c.stage)).toEqual(['classify']);
+    // The refused call was still billed, so it is still in the ledger.
+    expect(fake.store.aiCalls).toHaveLength(1);
+  });
+
+  it('a reply cut off at max_tokens rethrows for SQS retry', async () => {
+    const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION, extractStopReason: 'max_tokens' });
+    await seedCapture(fake);
+    await expect(
+      processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' }),
+    ).rejects.toThrow(/cut off at max_tokens/);
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe('failed');
+    expect(capture?.event).toBeUndefined();
+  });
+
+  it('a parse failure does not copy model text into the user-visible error', async () => {
+    const fake = makeFakeDeps();
+    await seedCapture(fake);
+    const fakeCall = fake.deps.callClaude;
+    fake.deps.callClaude = async (options) => {
+      const result = await fakeCall(options);
+      if (options.stage === 'classify') return result;
+      const response = { ...result.response, content: [{ type: 'text', text: 'Sorry, prose' }] };
+      return { ...result, response: response as typeof result.response };
+    };
+    await expect(
+      processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' }),
+    ).rejects.toThrow(/Failed to parse event JSON/);
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.error).toContain('Failed to parse event JSON');
+    expect(capture?.error).not.toContain('Sorry, prose');
+    // Still kept, out of the app's view, for debugging.
+    expect(capture?.rawModelOutput).toBe('Sorry, prose');
+  });
+
   it('transient failures mark the capture failed and rethrow for SQS retry', async () => {
     const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
     await seedCapture(fake);

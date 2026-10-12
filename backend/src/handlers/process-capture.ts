@@ -5,7 +5,7 @@ import type { SQSEvent } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
 import { extractSchemaFor, loadPrompt, renderPrompt } from '../prompts/prompts.js';
 import { CLASSIFY_IMAGE_SCHEMA } from '../prompts/schemas.js';
-import { extractEventData } from '../pipeline/extract.js';
+import { assertModelFinished, extractEventData } from '../pipeline/extract.js';
 import { endsAfterStart, mapEventToCalendar } from '../pipeline/map-to-calendar.js';
 import { addDays, todayInZone } from '../pipeline/dates.js';
 import { findDuplicate } from '../pipeline/dedup.js';
@@ -141,11 +141,11 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       ...updates,
     });
   } catch (e) {
-    // Terminal failures (no date, an end before the start, a Google grant that
-    // needs a fresh sign-in) would fail the same way on every retry. They keep
-    // the extraction so the app's review screen can fix and approve the
-    // capture. Anything else rethrows so SQS retries (×3) and then parks the
-    // message on the DLQ.
+    // Terminal failures (no date, an end before the start, a model refusal, a
+    // Google grant that needs a fresh sign-in) would fail the same way on every
+    // retry. They keep whatever was extracted, so when there is an event the
+    // app's review screen can fix and approve the capture. Anything else
+    // rethrows so SQS retries (×3) and then parks the message on the DLQ.
     const needsReauth = e instanceof HttpError && e.code === 'needs_reauth';
     const terminal = e instanceof TerminalProcessingError || needsReauth;
     const message =
@@ -273,8 +273,10 @@ export async function createCalendarEntry(
 }
 
 function extractClassification(response: {
+  stop_reason?: string | null;
   content?: Array<{ type: string; text?: string }>;
 }): Classification {
+  assertModelFinished(response, 'classify');
   const text = (response.content ?? [])
     .filter((b) => b.type === 'text')
     .map((b) => b.text ?? '')

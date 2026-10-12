@@ -4,7 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { extractEventData } from '../../src/pipeline/extract.js';
 import { endsAfterStart, mapEventToCalendar } from '../../src/pipeline/map-to-calendar.js';
 import type { ExtractedEvent } from '../../src/pipeline/types.js';
-import { NoDateError } from '../../src/pipeline/types.js';
+import {
+  MaxTokensError,
+  ModelRefusalError,
+  NoDateError,
+  TerminalProcessingError,
+} from '../../src/pipeline/types.js';
 import { addDays, todayInZone } from '../../src/pipeline/dates.js';
 
 const OPTS = { today: '2026-07-06', timeZone: 'Europe/London' };
@@ -252,6 +257,33 @@ describe('extractEventData (ported v1 cases)', () => {
     expect(() => extractEventData(wrap('not json at all'))).toThrow(
       /Failed to parse event JSON/,
     );
+  });
+
+  it('keeps the model text out of the parse error, which users see', () => {
+    expect(() => extractEventData(wrap('not json at all'))).not.toThrow(/not json at all/);
+  });
+
+  it('throws a terminal ModelRefusalError on a refusal, before reading content', () => {
+    const refused = { stop_reason: 'refusal', content: [{ type: 'text', text: valid }] };
+    expect(() => extractEventData(refused)).toThrow(ModelRefusalError);
+    expect(() => extractEventData(refused)).toThrow(TerminalProcessingError);
+  });
+
+  it('throws a retryable MaxTokensError when the reply was cut off', () => {
+    const cut = { stop_reason: 'max_tokens', content: [{ type: 'text', text: '{"title": "Gi' }] };
+    expect(() => extractEventData(cut)).toThrow(MaxTokensError);
+    expect(() => extractEventData(cut)).not.toThrow(TerminalProcessingError);
+  });
+
+  it('skips thinking blocks before the JSON', () => {
+    const result = extractEventData({
+      stop_reason: 'end_turn',
+      content: [
+        { type: 'thinking', text: undefined },
+        { type: 'text', text: valid },
+      ],
+    });
+    expect(result.title).toBe('Gig');
   });
 
   it('throws on unexpected response structure', () => {
