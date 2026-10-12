@@ -1,9 +1,16 @@
 name: Prompt improvement
 
-# Monthly (or on demand): cluster consented corrections into failure
-# patterns, have Claude propose a minimal prompt revision, run the eval gate,
-# and open a PR if it passes. NEVER auto-merges — a human reviews the diff,
-# the gate report, and the source correction clusters.
+# Manual runs only (Actions tab → Prompt improvement → Run workflow): cluster
+# consented corrections into failure patterns, have Claude propose a minimal
+# prompt revision, run the eval gate, and open a PR if it passes. NEVER
+# auto-merges — a human reviews the diff, the gate report, and the source
+# correction clusters.
+#
+# There is no schedule (ADR 0006). A pattern needs corrections from at least 3
+# independent captures, and prod had zero consented corrections on each of the
+# three monthly runs, so a scheduled run cannot produce a candidate at today's
+# user numbers. Put a schedule back only after #46 and #47 are fixed and real
+# corrections exist.
 #
 # `npm run materialize` is deliberately NOT run here. It pulls consented
 # corrections (with their images) out of prod into evals/dataset/real/, and
@@ -11,8 +18,6 @@ name: Prompt improvement
 # "check the pixels, not just the label", which no CI step can do. It is a
 # maintainer command, run locally. See tools/prompt-improvement/README.md.
 on:
-  schedule:
-    - cron: "0 6 1 * *"
   workflow_dispatch:
 
 permissions:
@@ -33,13 +38,22 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with: { node-version-file: .tool-versions }
+      # Install BEFORE assuming the role, so third-party install scripts never
+      # run with AWS credentials in the environment.
+      - run: npm ci --prefix backend
+      - run: npm ci --prefix evals
+      - run: npm ci --prefix tools/prompt-improvement
       - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: eu-west-2
-      - run: npm ci --prefix backend
-      - run: npm ci --prefix evals
-      - run: npm ci --prefix tools/prompt-improvement
+          # Session policy: this run's credentials can do only what the job
+          # needs, a Scan of the prod table (aggregate-corrections.ts), not
+          # everything the deploy role can do. The account id comes from the
+          # AWS_ACCOUNT_ID repo variable, so this public repo never contains
+          # it. A wrong or missing value fails loudly with AccessDenied.
+          inline-session-policy: >-
+            {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"dynamodb:Scan","Resource":"arn:aws:dynamodb:eu-west-2:${{ vars.AWS_ACCOUNT_ID }}:table/s2c-main-prod"}]}
 
       - name: Aggregate corrections
         working-directory: tools/prompt-improvement
@@ -128,7 +142,9 @@ jobs:
 
       - name: Open PR (human review required)
         if: steps.propose.outputs.proposed == 'true' && steps.gate.outputs.code == '0'
-        uses: peter-evans/create-pull-request@v8
+        # Pinned to a commit: this third-party action gets a write token, and
+        # a tag can be moved to different code.
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           branch: prompt-improvement/${{ steps.propose.outputs.candidate }}
           # Explicit allowlist: never commit work/, reports, or dataset images.
