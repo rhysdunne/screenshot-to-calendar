@@ -2,6 +2,7 @@
 // here and are unit-tested:
 //   #2  a pattern is only eligible with corrections from ≥3 DISTINCT captures
 //   (+) only consented corrections ever reach this module (filtered upstream)
+//   (+) only the owner's corrections reach it: aggregate reads one partition
 import type { CorrectionRecord } from '../../../backend/src/lib/ddb.js';
 
 export const MIN_INDEPENDENT_CAPTURES = 3;
@@ -59,16 +60,32 @@ export function clusterCorrections(corrections: CorrectionRecord[]): FailurePatt
   return patterns.sort((a, b) => b.distinctCaptures - a.distinctCaptures);
 }
 
+function verbFor(kind: FailurePattern['kind']): string {
+  return kind === 'miss'
+    ? 'was missed (extracted null, user filled it in)'
+    : kind === 'hallucination'
+      ? 'was hallucinated (extracted a value, user cleared it)'
+      : 'was extracted incorrectly';
+}
+
+/**
+ * The pattern with up to five example corrections, old and new values
+ * included. For the proposal prompt sent to Claude only: never print it,
+ * because the values are what users typed, and CI logs on this repo are
+ * public. Use summarizePattern for console output.
+ */
 export function describePattern(p: FailurePattern): string {
   const examples = p.corrections
     .slice(0, 5)
     .map((c) => `  - capture ${c.captureId}: "${c.oldValue ?? '(null)'}" → "${c.newValue ?? '(null)'}"`)
     .join('\n');
-  const verb =
-    p.kind === 'miss'
-      ? 'was missed (extracted null, user filled it in)'
-      : p.kind === 'hallucination'
-        ? 'was hallucinated (extracted a value, user cleared it)'
-        : 'was extracted incorrectly';
-  return `Field "${p.field}" ${verb} across ${p.distinctCaptures} independent captures:\n${examples}`;
+  return `Field "${p.field}" ${verbFor(p.kind)} across ${p.distinctCaptures} independent captures:\n${examples}`;
+}
+
+/** Field name and counts only, safe for a public CI log. */
+export function summarizePattern(p: FailurePattern): string {
+  return (
+    `Field "${p.field}" ${verbFor(p.kind)}: ` +
+    `${p.corrections.length} corrections across ${p.distinctCaptures} independent captures`
+  );
 }

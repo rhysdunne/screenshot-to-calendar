@@ -9,7 +9,7 @@ the images, and what does it cost?** — and gates every prompt change.
 |---|---|
 | `src/generate-posters.ts` | Synthetic poster generator (Playwright/Chromium). 8 event templates + a non-event "menu" template for the classifier. Gold labels are emitted from the same data object that fills the template, so ground truth is exact by construction. |
 | `src/score.ts` | Field-level scoring: dates/times exact, title/venue fuzzy (reuses the production dedup similarity), addresses by postcode, URLs normalized. Nulls score three ways: match / hallucination / miss. |
-| `src/harness.ts` | Runs each case through the **real production request path** (`backend/src/lib/anthropic.ts` + pinned prompts + `pipeline/extract.ts`) per model, concurrency 4. |
+| `src/harness.ts` | Runs each case through the **real production request path** (`backend/src/lib/anthropic.ts` + pinned prompts + `backend/src/pipeline/extract.ts`) per model, concurrency 4. |
 | `dataset/synthetic/` | Committed generated cases: `image.png` + `gold.json` + `meta.json`. `meta.frozenToday` pins `{{TODAY}}` so relative dates ("This Saturday") stay deterministic forever. 40 drawn event cases, 4 menus, and 6 fixed `just-past` cases: year-less dates shortly before `frozenToday` plus one months-past control (#27). |
 | `dataset/real/` | Hand-labeled real screenshots — see `docs/adding-eval-images.md`. Only add images you have consent to use; the loader refuses a case without `"consent": true` in its `meta.json`. |
 | `reports/` | Run outputs (gitignored except committed baselines). `model-refresh-2026-10/` holds the runs behind ADR 0007, and `prompt-v4-2026-10/` the ADR 0008 review of the v4 candidate (#27): the report-mode gate run and three `--cases` re-runs on each version. Both are force-added. |
@@ -63,7 +63,7 @@ case, and a scheduled run should go red when that happens.
 
 ## The eval gate
 
-`tools/prompt-improvement/run-gate.ts` runs this harness twice (candidate
+`tools/prompt-improvement/src/run-gate.ts` runs this harness twice (candidate
 prompt vs pinned, extract only) and compares the two runs case by case. It
 fails unless no field regresses, more cases improve than regress by a margin a
 sign test calls significant, and the mean and hallucination rate hold — the

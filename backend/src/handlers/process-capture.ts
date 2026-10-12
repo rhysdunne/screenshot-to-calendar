@@ -109,11 +109,12 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
       .join('');
     event = extractEventData(extractCall.response);
 
-    // 3. Resolve venue → address via Places when missing (non-fatal).
+    // 3. Resolve venue → address via Places when missing (non-fatal, and
+    // capped at 5 s). The user's timezone picks the city hint.
     if (event.venue && !event.address) {
       try {
         const placesKey = await deps.getSecret('places-api-key');
-        const place = await deps.resolveVenue(placesKey, event.venue);
+        const place = await deps.resolveVenue(placesKey, event.venue, timeZone);
         if (place) event = { ...event, address: place.formattedAddress };
       } catch (e) {
         logger.warn('places_lookup_failed', { error: safeError(e) });

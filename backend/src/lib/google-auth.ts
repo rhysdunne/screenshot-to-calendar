@@ -12,7 +12,14 @@ const REVOKE_ENDPOINT = 'https://oauth2.googleapis.com/revoke';
 export interface GoogleTokens {
   accessToken: string;
   refreshToken: string | null;
-  idClaims: { sub: string; email: string };
+  idClaims: IdClaims;
+}
+
+export interface IdClaims {
+  sub: string;
+  email: string;
+  /** Google's email_verified claim: Google has confirmed the account owns this email. */
+  emailVerified: boolean;
 }
 
 export class GoogleAuthError extends Error {
@@ -91,7 +98,7 @@ export async function revokeToken(refreshToken: string): Promise<void> {
 export function parseIdTokenClaims(
   idToken: string,
   expectedAud: string,
-): { sub: string; email: string } {
+): IdClaims {
   const parts = idToken.split('.');
   if (parts.length !== 3) throw new GoogleAuthError('Malformed id_token');
   let claims: Record<string, unknown>;
@@ -113,5 +120,10 @@ export function parseIdTokenClaims(
   if (typeof claims.sub !== 'string' || typeof claims.email !== 'string') {
     throw new GoogleAuthError('id_token missing sub/email');
   }
-  return { sub: claims.sub, email: claims.email };
+  return {
+    sub: claims.sub,
+    email: claims.email,
+    // A boolean in id_tokens; the string form is accepted defensively.
+    emailVerified: claims.email_verified === true || claims.email_verified === 'true',
+  };
 }

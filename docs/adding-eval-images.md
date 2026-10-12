@@ -4,12 +4,18 @@ Synthetic posters cover layout variety, but real Instagram screenshots are the
 distribution that matters. Add any capture the pipeline got wrong (or right —
 regression cases are valuable too).
 
-**Consent rule**: only add images from users whose `consentEvalUse` setting
-was on (for your own screenshots, that's you). The eval harness refuses to
-run if any case in `dataset/real/` lacks `"consent": true` in its
-`meta.json`, and `npm test` in `evals/` checks every committed case. The
-harness can only check that the field is there, not that the consent is
-real, so the rule still rests on you.
+**Owner-only rule**: only add the owner's own screenshots. Never add an
+image from another user's captures, even if they turned `consentEvalUse`
+on. The privacy policy promises that the eval set is built only from the
+owner's captures, and this repo is public. `npm run materialize` enforces
+this: it reads only the account named by `OWNER_USER_ID` and refuses to run
+without it.
+
+**Consent rule**: the eval harness refuses to run if any case in
+`dataset/real/` lacks `"consent": true` in its `meta.json`, and `npm test`
+in `evals/` checks every committed case. The harness can only check that
+the field is there, not that the consent is real, so the rule still rests
+on you.
 
 **This repo is public.** Everything you commit, image pixels included, stays
 readable in git history for good. Work through the checklist under

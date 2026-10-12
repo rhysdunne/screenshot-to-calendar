@@ -18,9 +18,21 @@ struct SettingsView: View {
             }
 
             Section {
+                LabeledContent("Timezone", value: appState.settings?.timezone ?? "Not set")
+                Button("Use this device's timezone") {
+                    guard var settings = appState.settings else { return }
+                    settings.timezone = TimeZone.current.identifier
+                    Task { await save(settings) }
+                }
+                .disabled(appState.settings == nil || appState.settings?.timezone == TimeZone.current.identifier)
+            } footer: {
+                Text("Event times, and dates like “this Saturday”, are read in this timezone. This device is set to \(TimeZone.current.identifier).")
+            }
+
+            Section {
                 Toggle("Help improve extraction", isOn: consentBinding)
             } footer: {
-                Text("Off by default. When on, corrections you make (and the images they belong to) may be used to improve the extraction prompt. See the privacy policy for details.")
+                Text("Off by default. When on, the fixes you make to extracted details (not your images) may be used to find common mistakes and improve the extraction prompt. Prompt changes are tested only on the developer's own screenshots, never on other users' images. See the privacy policy for details.")
             }
 
             Section("Your data") {
@@ -63,7 +75,7 @@ struct SettingsView: View {
             SafariLink(url: url)
         }
         .confirmationDialog(
-            "Delete your account? All captures, images, and records are removed and Google Calendar access is revoked. Events already in your calendar stay.",
+            "Delete your account? All captures, images, and records are removed, and we ask Google to revoke the app's Calendar access. Events already in your calendar stay.",
             isPresented: $showDeleteConfirm,
             titleVisibility: .visible
         ) {

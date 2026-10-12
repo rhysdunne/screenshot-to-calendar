@@ -1,6 +1,10 @@
 // Minimal HS256 JWT — sign/verify with node:crypto, no dependency. Claims:
 // sub (userId), ver (tokenVersion — bumping it on the user record revokes all
 // outstanding tokens), iat, exp.
+//
+// Sessions last 180 days, so a signed-in phone rarely asks for Google again.
+// Revocation does not wait for expiry: scripts/sessions.sh revoke-user bumps
+// one user's tokenVersion, and revoke-all rotates jwt-secret.
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export interface SessionClaims {
@@ -9,6 +13,8 @@ export interface SessionClaims {
   iat: number;
   exp: number;
 }
+
+export const SESSION_TTL_SECONDS = 180 * 24 * 3600;
 
 const HEADER = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
 
@@ -24,7 +30,7 @@ export function signSession(
   userId: string,
   tokenVersion: number,
   secret: string,
-  ttlSeconds = 30 * 24 * 3600,
+  ttlSeconds = SESSION_TTL_SECONDS,
 ): string {
   const now = Math.floor(Date.now() / 1000);
   const claims: SessionClaims = { sub: userId, ver: tokenVersion, iat: now, exp: now + ttlSeconds };

@@ -1,7 +1,9 @@
 // Secrets come from AWS Systems Manager Parameter Store SecureStrings under /s2c/{stage}/…,
 // cached in memory for the lifetime of the Lambda container (with a TTL so
 // rotations propagate within ~5 minutes). Non-secret config is plain env vars
-// set by the CDK stack.
+// set by the CDK stack, except the sign-up allowlist: it changes without a
+// deploy, so it is a plain String parameter beside the secrets, read and
+// cached the same way.
 import { GetParameterCommand, SSMClient } from '@aws-sdk/client-ssm';
 
 const ssm = new SSMClient({});
@@ -15,7 +17,19 @@ export type SecretName =
   | 'jwt-secret'
   | 'token-enc-key';
 
+/**
+ * Every parameter the backend reads. `signup-allowlist` holds the Google
+ * emails allowed to create an account (comma- or newline-separated). It is a
+ * String, not a SecureString: emails, not secrets. scripts/allowlist.sh
+ * manages it.
+ */
+export type ParameterName = SecretName | 'signup-allowlist';
+
 export async function getSecret(name: SecretName): Promise<string> {
+  return getParameter(name);
+}
+
+export async function getParameter(name: ParameterName): Promise<string> {
   const stage = env('STAGE');
   const key = `/s2c/${stage}/${name}`;
   const hit = cache.get(key);

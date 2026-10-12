@@ -11,7 +11,7 @@
 </head>
 <body>
 <h1>Privacy Policy</h1>
-<p>Last updated: July 2026. This policy covers the Screenshot to Calendar app
+<p>Last updated: October 2026. This policy covers the Screenshot to Calendar app
 and its backend service, and explains what personal data we process, why, for
 how long, and the rights you have under UK GDPR.</p>
 
@@ -30,6 +30,15 @@ account ID, obtained when you sign in with Google.</li>
 extracted from them. These are stored encrypted at rest in AWS (eu-west-2,
 London); see "International transfers" below for where they are processed.</li>
 <li><strong>Corrections you make</strong> to extracted event data.</li>
+<li><strong>Your settings</strong>: the calendar you add events to, your
+timezone, and your "Help improve extraction" choice. The app takes the
+timezone from your device when you set it up, and you can change it in
+Settings. We use it to read event dates and times. If it is Europe/London, we
+also add "London" to venue lookups.</li>
+<li><strong>Your email address on our sign-up list</strong>, if you were
+invited. Sign-up is invite-only, and the list holds the Google email addresses
+allowed to create an account. Deleting your account does not remove you from
+the list; ask us and we will.</li>
 </ul>
 
 <h2>How images are processed</h2>
@@ -51,11 +60,20 @@ service secure and preventing abuse.</li>
 </ul>
 
 <h2>Improving the product (opt-in only)</h2>
-<p>If — and only if — you enable "Help improve extraction" in Settings, your
-corrections and the associated images may be added to our internal evaluation
-dataset to improve the extraction prompt. This is off by default, and the
-consent state is recorded per correction at the time you make it. Turning it
-off stops any future correction from being used.</p>
+<p>If — and only if — you enable "Help improve extraction" in Settings, the
+corrections you make may be used to improve the extraction prompt. A
+correction records which detail you changed, and its old and new value. We
+look for mistakes that recur across at least three different captures, and
+send those corrections (not your images) to Anthropic's Claude to draft a
+better prompt. This is off by default, and the consent state is recorded with
+each correction at the time you make it. Turning it off stops any future
+correction from being used. Corrections on a capture you have deleted are not
+used.</p>
+<p>Your images never go into our evaluation dataset. We test prompt changes
+against that dataset, and it is published in the app's public code
+repository, so it is built only from the developer's own screenshots and
+generated test images. It is never built from other users' data, even with
+this setting on.</p>
 
 <h2>International transfers</h2>
 <p>Your data is stored in the UK (AWS London, eu-west-2). However, when an
@@ -67,7 +85,8 @@ agreements with those providers.</p>
 
 <h2>Sub-processors</h2>
 <ul>
-<li><strong>Anthropic</strong> (US) — image classification and event extraction.</li>
+<li><strong>Anthropic</strong> (US) — image classification and event extraction,
+and drafting prompt changes from opted-in corrections.</li>
 <li><strong>Google</strong> — sign-in (OAuth), Calendar, and Places (venue → address).</li>
 <li><strong>Amazon Web Services</strong> (UK, eu-west-2) — hosting and storage.</li>
 </ul>
@@ -76,13 +95,20 @@ agreements with those providers.</p>
 <ul>
 <li><strong>Your account, images, events, and corrections</strong> are kept for
 as long as your account exists. You can delete any capture, or your whole
-account, at any time (see "Your rights").</li>
+account, at any time (see "Your rights"). Deleting a capture removes its image
+and its record. The corrections you made to it stay with your account, and are
+no longer used to improve the prompt, until you delete your account.</li>
 <li><strong>Operational AI-usage logs</strong> (token and cost records, no image
 content) are automatically deleted after 90 days.</li>
 <li><strong>Data exports</strong> you generate expire after 7 days.</li>
-<li><strong>Backups</strong> of our database are retained on a rolling basis for
-up to 35 days and then overwritten. Deleted data is not restored into the live
-service; if a backup is ever restored, your deletion is re-applied.</li>
+<li><strong>Service logs</strong> record internal account and capture IDs, but
+not your images or event details, and are deleted after 30 days.</li>
+<li><strong>Backups</strong>: our database keeps rolling backups for 35 days.
+Data you delete stays in them until it ages out, at most 35 days later. We
+restore a backup only to recover from a failure. If we ever do, we will delete
+again, by hand, any account deleted since that backup was taken. This is a
+best-effort step, not an automatic one. Images are not backed up, so a deleted
+image is gone at once.</li>
 </ul>
 
 <h2>Automated processing</h2>
@@ -97,8 +123,14 @@ this is not solely-automated decision-making under Article 22.</p>
 <li><strong>Access &amp; portability</strong>: Settings → Export my data produces
 a machine-readable copy of everything stored about you, including links to your
 source images.</li>
-<li><strong>Erasure</strong>: Settings → Delete account permanently removes all
-images and records and revokes the app's access to your Google account.</li>
+<li><strong>Erasure</strong>: Settings → Delete account deletes your images, your
+data exports, and every record stored for your account (profile, captures,
+corrections, and AI-usage records), and signs you out everywhere. It also
+asks Google to revoke the app's access to your Google account. That
+request is best-effort: if it fails, deletion still goes ahead, and you can
+remove the app's access yourself in your Google Account settings. Events
+already added to your Google Calendar stay there. Backups age out as described
+above.</li>
 <li><strong>Rectification</strong>: correct extracted details in the app at any
 time.</li>
 <li><strong>Objection, restriction, and withdrawal of consent</strong>: contact

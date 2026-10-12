@@ -4,7 +4,7 @@
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { DdbStore, type UserRecord } from '../lib/ddb.js';
 import { ImageStore } from '../lib/s3.js';
-import { env, envOr, getSecret } from '../lib/config.js';
+import { env, envOr, getParameter, getSecret } from '../lib/config.js';
 import { decrypt } from '../lib/crypto.js';
 import { GoogleAuthError, refreshAccessToken } from '../lib/google-auth.js';
 import { HttpError } from '../lib/http.js';
@@ -50,6 +50,8 @@ export interface Deps {
   >;
   resolveVenue: typeof resolveVenue;
   getSecret: typeof getSecret;
+  /** Non-secret parameters, such as the sign-up allowlist. */
+  getParameter: typeof getParameter;
   config: {
     deepLinkBase: string;
     classifyModel: string;
@@ -106,6 +108,7 @@ export function realDeps(): Deps {
     calendar: gcal,
     resolveVenue,
     getSecret,
+    getParameter,
     config: {
       deepLinkBase: env('DEEPLINK_BASE_URL'),
       classifyModel,

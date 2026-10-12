@@ -38,6 +38,11 @@ describe('jwt (session tokens)', () => {
     expect(claims.ver).toBe(3);
   });
 
+  it('issues sessions that last 180 days by default', () => {
+    const claims = verifySession(signSession('user-1', 1, SECRET), SECRET);
+    expect(claims.exp - claims.iat).toBe(180 * 24 * 3600);
+  });
+
   it('rejects a tampered payload', () => {
     const token = signSession('user-1', 1, SECRET);
     const [h, , s] = token.split('.') as [string, string, string];
