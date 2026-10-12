@@ -12,7 +12,7 @@ The loop is **manual-only** at the moment. See
 | Stage | Script | Reads | Writes |
 |---|---|---|---|
 | aggregate | `src/aggregate-corrections.ts` | prod DynamoDB table | `work/patterns.json` |
-| materialize | `src/materialize-eval-cases.ts` | prod DynamoDB table + images bucket | `evals/dataset/real/corr-<captureId>/` |
+| materialize | `src/materialize-eval-cases.ts` | the owner's partition of the prod table + images bucket | `evals/dataset/real/corr-<captureId>/` |
 | propose | `src/propose-prompt.ts` | `work/patterns.json`, the active prompt | `backend/src/prompts/extract-event.v<N+1>.md`, `work/proposal.json` |
 | gate | `src/run-gate.ts` | the eval dataset, both prompt versions | `evals/reports/gate-candidate-<v>/gate.md` and `gate.json` |
 
@@ -25,10 +25,12 @@ model gave a value and the user cleared it), or a wrong value. A group becomes
 an eligible failure pattern only if its corrections come from at least 3
 different captures.
 
-**materialize** turns consented, corrected captures into permanent eval cases.
-The gold is the original extraction with the user's corrections applied. It
-copies real user images into this public repo's working tree, so it is a
-maintainer command. It never runs in CI. Look at every image, redact
+**materialize** turns the owner's consented, corrected captures into permanent
+eval cases. It reads only the account named by `OWNER_USER_ID` and refuses to
+run without it, so other users' images never become eval cases, even with
+consent. The gold is the original extraction with the user's corrections
+applied. It copies real images into this public repo's working tree, so it is
+a maintainer command. It never runs in CI. Look at every image, redact
 third-party PII (faces, names, handles), then commit. It never overwrites an
 existing case directory.
 
@@ -68,8 +70,11 @@ npm run propose            # add -- --force to propose past a pending candidate
 # 3. Gate the candidate that propose named in work/proposal.json
 npm run gate -- --candidate v4              # optional: --model <model-id>
 
-# Separately, to grow the real eval set (local only, check the pixels):
-AWS_PROFILE=<profile> TABLE_NAME=s2c-main-prod BUCKET_NAME=s2c-images-<account>-prod npm run materialize
+# Separately, to grow the real eval set (local only, check the pixels).
+# OWNER_USER_ID is your own userId. The script's header shows how to look it
+# up by email.
+AWS_PROFILE=<profile> OWNER_USER_ID=<your userId> TABLE_NAME=s2c-main-prod \
+  BUCKET_NAME=s2c-images-<account>-prod npm run materialize
 ```
 
 To run the same aggregate, propose, gate and PR sequence in CI, open the
