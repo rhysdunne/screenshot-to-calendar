@@ -19,6 +19,7 @@ on:
     paths:
       - backend/**
       - infra/**
+      - .tool-versions # the Node version CI and the deploy run on
       - .github/workflows/deploy.yml
       - .github/workflows/deploy-stage.yml
       - .github/workflows/ci.yml

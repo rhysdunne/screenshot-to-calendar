@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: 22, cache: npm, cache-dependency-path: backend/package-lock.json }
+        with: { node-version-file: .tool-versions, cache: npm, cache-dependency-path: backend/package-lock.json }
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
@@ -28,7 +28,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: 22, cache: npm, cache-dependency-path: infra/package-lock.json }
+        with: { node-version-file: .tool-versions, cache: npm, cache-dependency-path: infra/package-lock.json }
       # Lambda bundling needs the backend's node_modules for esbuild resolution.
       - run: npm ci --prefix ../backend
       - run: npm ci
@@ -42,7 +42,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: 22, cache: npm, cache-dependency-path: evals/package-lock.json }
+        with: { node-version-file: .tool-versions, cache: npm, cache-dependency-path: evals/package-lock.json }
       - run: npm ci --prefix ../backend
       - run: npm ci
       - run: npm run typecheck
@@ -57,7 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: 22, cache: npm, cache-dependency-path: tools/prompt-improvement/package-lock.json }
+        with: { node-version-file: .tool-versions, cache: npm, cache-dependency-path: tools/prompt-improvement/package-lock.json }
       - run: npm ci --prefix ../../backend
       - run: npm ci --prefix ../../evals
       - run: npm ci

@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: 22 }
+        with: { node-version-file: .tool-versions }
       - run: npm ci --prefix backend
       - run: npm ci --prefix evals
       - name: Run live smoke eval
