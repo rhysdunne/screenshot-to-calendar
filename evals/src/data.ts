@@ -194,15 +194,21 @@ const TEMPLATE_CAPS: Record<string, TemplateCaps> = {
   'hard-mode': { address: false, url: false, price: false, tagline: false },
 };
 
-export function makeEventCase(random: () => number, index: number, today = FROZEN_TODAY): EventCase {
-  const template = TEMPLATE_NAMES[index % TEMPLATE_NAMES.length] as string;
+export function makeEventCase(
+  random: () => number,
+  index: number,
+  today = FROZEN_TODAY,
+  /** A fixed template and date phrasing instead of drawn ones (see makeJustPastCases). */
+  fixed?: { template: string; spec: DateSpec },
+): EventCase {
+  const template = fixed?.template ?? (TEMPLATE_NAMES[index % TEMPLATE_NAMES.length] as string);
   const venue = pick(random, VENUES);
   const title = pick(random, EVENT_NAMES);
   const tagline = pick(random, TAGLINES);
   const handle = pick(random, HANDLES);
   const url = pick(random, URLS);
   const price = pick(random, PRICES);
-  const spec = makeDateSpec(random, today);
+  const spec = fixed?.spec ?? makeDateSpec(random, today);
   const caps = TEMPLATE_CAPS[template] ?? {
     address: false, url: false, price: false, tagline: false,
   };
@@ -246,6 +252,104 @@ export function makeEventCase(random: () => number, index: number, today = FROZE
   };
 }
 
+/**
+ * Year-less dates shortly before today (#27). The drawn cases above are all
+ * in the future, so they never test the year rule for a date that has just
+ * passed: it is this year's, and a run period without a year stays one
+ * period. The last case is the control, a date months past, which still takes
+ * its next occurrence.
+ */
+const JUST_PAST: { template: string; spec: (today: string) => DateSpec }[] = [
+  {
+    // "3 July", three days ago: the real-031 cinema-release shape.
+    template: 'gig',
+    spec: (today) => {
+      const d = addDays(today, -3);
+      return {
+        dateText: fmt(d, 'long', false),
+        timeText: '7pm – 10:30pm',
+        gold: { start_date: d, end_date: null, start_time: '19:00', end_time: '22:30' },
+      };
+    },
+  },
+  {
+    // "Sat 4 Jul", two days ago: the weekday only fits this year.
+    template: 'club-night',
+    spec: (today) => {
+      const d = addDays(today, -2);
+      return {
+        dateText: fmt(d, 'short', false),
+        timeText: '9pm till late',
+        gold: { start_date: d, end_date: null, start_time: '21:00', end_time: null },
+      };
+    },
+  },
+  {
+    // A run that started last week and is still on.
+    template: 'gallery',
+    spec: (today) => {
+      const start = addDays(today, -8);
+      const end = addDays(today, 13);
+      return {
+        dateText: `${fmt(start, 'long', false)} – ${fmt(end, 'long', false)}`,
+        timeText: null,
+        gold: { start_date: start, end_date: end, start_time: null, end_time: null },
+      };
+    },
+  },
+  {
+    // A run that ended last week.
+    template: 'market',
+    spec: (today) => {
+      const start = addDays(today, -21);
+      const end = addDays(today, -9);
+      return {
+        dateText: `${fmt(start, 'long', false)} – ${fmt(end, 'long', false)}`,
+        timeText: null,
+        gold: { start_date: start, end_date: end, start_time: null, end_time: null },
+      };
+    },
+  },
+  {
+    // A single day two and a half weeks ago.
+    template: 'ig-post',
+    spec: (today) => {
+      const d = addDays(today, -18);
+      return {
+        dateText: fmt(d, 'long', false),
+        timeText: null,
+        gold: { start_date: d, end_date: null, start_time: null, end_time: null },
+      };
+    },
+  },
+  {
+    // Control: months past, so next year's date, as before.
+    template: 'talk',
+    spec: (today) => {
+      const past = addDays(today, -142);
+      const next = `${Number(past.slice(0, 4)) + 1}${past.slice(4)}`;
+      return {
+        dateText: fmt(past, 'long', false),
+        timeText: null,
+        gold: { start_date: next, end_date: null, start_time: null, end_time: null },
+      };
+    },
+  },
+];
+
+/** The #27 cases, numbered from `firstIndex` after the drawn and non-event cases. */
+export function makeJustPastCases(
+  random: () => number,
+  firstIndex: number,
+  today = FROZEN_TODAY,
+): EventCase[] {
+  return JUST_PAST.map((p, i) => {
+    const index = firstIndex + i;
+    const c = makeEventCase(random, index, today, { template: p.template, spec: p.spec(today) });
+    return { ...c, id: `syn-${String(index).padStart(3, '0')}-just-past-${p.template}` };
+  });
+}
+
 /** A non-event scrapbook case (menu photo) to exercise the classifier. */
 export function makeNonEventCase(index: number): EventCase {
   return {
@@ -261,4 +365,21 @@ export function makeNonEventCase(index: number): EventCase {
       handle: null, url: null, priceText: null, tagline: '',
     },
   };
+}
+
+/**
+ * Every synthetic case in generation order: `count` drawn event cases, then
+ * ~10% non-event cases so the classifier gets exercised too, then the #27
+ * just-past cases. The just-past cases draw last, so the cases before them
+ * stay byte-identical to a dataset generated without them.
+ */
+export function makeSyntheticCases(seed: number, count: number): EventCase[] {
+  const random = rng(seed);
+  const cases: EventCase[] = [];
+  for (let i = 0; i < count; i++) cases.push(makeEventCase(random, i));
+  for (let i = count; i < count + Math.max(2, Math.round(count * 0.1)); i++) {
+    cases.push(makeNonEventCase(i));
+  }
+  cases.push(...makeJustPastCases(random, cases.length));
+  return cases;
 }

@@ -9,7 +9,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-import { FROZEN_TODAY, makeEventCase, makeNonEventCase, rng, type EventCase } from './data.js';
+import { FROZEN_TODAY, makeSyntheticCases } from './data.js';
 import { TEMPLATES } from './templates.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -23,14 +23,7 @@ function arg(name: string, fallback: string): string {
 async function main(): Promise<void> {
   const count = Number(arg('count', '40'));
   const seed = Number(arg('seed', '42'));
-  const random = rng(seed);
-
-  const cases: EventCase[] = [];
-  for (let i = 0; i < count; i++) cases.push(makeEventCase(random, i));
-  // ~10% non-event cases so the classifier gets exercised too.
-  for (let i = count; i < count + Math.max(2, Math.round(count * 0.1)); i++) {
-    cases.push(makeNonEventCase(i));
-  }
+  const cases = makeSyntheticCases(seed, count);
 
   rmSync(DATASET_DIR, { recursive: true, force: true });
   // If a pinned Chromium doesn't match the installed playwright-core version,
