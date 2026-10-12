@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { FROZEN_TODAY, makeEventCase, makeJustPastCases, rng, weekdayOf } from '../src/data.js';
+import {
+  FROZEN_TODAY,
+  makeEventCase,
+  makeJustPastCases,
+  makeNonEventCase,
+  makeSyntheticCases,
+  rng,
+  weekdayOf,
+} from '../src/data.js';
 import { TEMPLATES } from '../src/templates.js';
 import { addDays, isValidYmd } from '../../backend/src/pipeline/dates.js';
 
@@ -62,13 +70,18 @@ describe('synthetic case generation', () => {
     expect(control.display.dateText).toBe('14 February');
   });
 
-  it('just-past cases leave the drawn cases unchanged', () => {
-    const plain = rng(42);
-    const withExtra = rng(42);
-    const a = Array.from({ length: 40 }, (_, i) => makeEventCase(plain, i));
-    const b = Array.from({ length: 40 }, (_, i) => makeEventCase(withExtra, i));
-    makeJustPastCases(withExtra, 44);
-    expect(b).toEqual(a);
+  it('just-past cases leave the drawn and menu cases unchanged', () => {
+    // The dataset as generated before the just-past cases existed.
+    const random = rng(42);
+    const before = [
+      ...Array.from({ length: 40 }, (_, i) => makeEventCase(random, i)),
+      ...Array.from({ length: 4 }, (_, i) => makeNonEventCase(40 + i)),
+    ];
+    const cases = makeSyntheticCases(42, 40);
+    expect(cases.slice(0, 44)).toEqual(before);
+    expect(cases.slice(44).map((c) => c.id)).toEqual(
+      makeJustPastCases(rng(1), 44).map((c) => c.id),
+    );
   });
 
   it('every generated template exists and renders the gold-visible facts', () => {

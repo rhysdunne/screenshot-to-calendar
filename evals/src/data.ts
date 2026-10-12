@@ -366,3 +366,20 @@ export function makeNonEventCase(index: number): EventCase {
     },
   };
 }
+
+/**
+ * Every synthetic case in generation order: `count` drawn event cases, then
+ * ~10% non-event cases so the classifier gets exercised too, then the #27
+ * just-past cases. The just-past cases draw last, so the cases before them
+ * stay byte-identical to a dataset generated without them.
+ */
+export function makeSyntheticCases(seed: number, count: number): EventCase[] {
+  const random = rng(seed);
+  const cases: EventCase[] = [];
+  for (let i = 0; i < count; i++) cases.push(makeEventCase(random, i));
+  for (let i = count; i < count + Math.max(2, Math.round(count * 0.1)); i++) {
+    cases.push(makeNonEventCase(i));
+  }
+  cases.push(...makeJustPastCases(random, cases.length));
+  return cases;
+}
