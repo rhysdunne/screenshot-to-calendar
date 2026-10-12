@@ -92,17 +92,15 @@ struct LibraryView: View {
         }
     }
 
+    /// Sized to the scroll view's visible height so it sits centred, but still
+    /// inside the ScrollView so pull-to-refresh works with zero captures.
     private var emptyState: some View {
-        VStack(spacing: 16) {
-            PipelineMark(width: 160)
-            Text("No captures yet").font(.headline)
-            Text("Share an event poster or screenshot from Photos or Instagram and pick “Capture Event”.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+        ContentUnavailableView {
+            Label("No captures yet", systemImage: "photo.on.rectangle")
+        } description: {
+            Text("Screenshot an event poster or post, then share the screenshot and pick “Capture Event”.")
         }
-        .padding(.top, 80)
-        .padding(.horizontal, 40)
+        .containerRelativeFrame(.vertical)
     }
 }
 
