@@ -189,10 +189,14 @@ export async function createCalendarEntry(
   const verdict = findDuplicate(calendarBody, existing);
 
   if (verdict.kind === 'duplicate') {
+    // The match is someone else's event (another capture's, or one the user
+    // made by hand), so it goes in matchedEventId. calendarEventId stays unset:
+    // edit and "delete with event" act on calendarEventId, and must only ever
+    // touch an event this capture created. eventLink still opens the match.
     return {
       status: 'duplicate',
-      calendarEventId: verdict.event.id,
-      calendarId,
+      matchedEventId: verdict.event.id,
+      matchedCalendarId: calendarId,
       eventLink: verdict.event.htmlLink,
     };
   }

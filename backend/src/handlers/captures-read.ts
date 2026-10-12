@@ -16,6 +16,7 @@ export function captureView(c: CaptureRecord) {
     corrected: c.corrected ?? null,
     calendarEventId: c.calendarEventId ?? null,
     eventLink: c.eventLink ?? null,
+    matchedEventId: c.matchedEventId ?? null,
     possibleDuplicateOf: c.possibleDuplicateOf ?? null,
     error: c.error ?? null,
   };

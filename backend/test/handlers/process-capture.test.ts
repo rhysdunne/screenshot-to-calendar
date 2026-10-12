@@ -89,7 +89,7 @@ describe('processCapture', () => {
     expect(fake.claudeCalls).toHaveLength(1); // no extract call
   });
 
-  it('duplicate in the calendar window skips creation and links the existing event', async () => {
+  it('duplicate in the calendar window skips creation and records the match apart from calendarEventId', async () => {
     const fake = makeFakeDeps({
       extractResult: GOOD_EXTRACTION,
       existingEvents: [
@@ -106,7 +106,12 @@ describe('processCapture', () => {
 
     const capture = await fake.store.getCapture('user-1', 'cap-1');
     expect(capture?.status).toBe('duplicate');
-    expect(capture?.calendarEventId).toBe('existing-1');
+    expect(capture?.matchedEventId).toBe('existing-1');
+    expect(capture?.matchedCalendarId).toBe('cal-events');
+    expect(capture?.eventLink).toBe('https://calendar.google.com/event?eid=existing');
+    // Edit and delete act on calendarEventId — it must never name the match.
+    expect(capture?.calendarEventId).toBeUndefined();
+    expect(capture?.calendarId).toBeUndefined();
     expect(fake.insertedEvents).toHaveLength(0);
   });
 

@@ -66,8 +66,11 @@ struct Capture: Codable, Identifiable, Equatable {
     var classification: Classification?
     var event: ExtractedEvent?
     var corrected: ExtractedEvent?
+    /// Only ever an event this capture created; nil for a duplicate.
     var calendarEventId: String?
     var eventLink: String?
+    /// Status duplicate: the existing event this capture matched.
+    var matchedEventId: String?
     var possibleDuplicateOf: String?
     var error: String?
 

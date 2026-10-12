@@ -50,9 +50,13 @@ export interface CaptureRecord {
   classification?: Classification;
   event?: ExtractedEvent;
   corrected?: Partial<ExtractedEvent>;
+  /** Only ever an event this capture created (never set for a duplicate). */
   calendarEventId?: string;
   calendarId?: string;
   eventLink?: string;
+  /** Status duplicate: the existing event it matched, which it must not edit or delete. */
+  matchedEventId?: string;
+  matchedCalendarId?: string;
   possibleDuplicateOf?: string;
   error?: string;
   /** Raw model text kept when extraction failed — debugging only. */
