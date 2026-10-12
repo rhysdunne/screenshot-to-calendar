@@ -78,6 +78,7 @@ ANTHROPIC_API_KEY=... npm run gate -- --candidate v4 --report-only
 ```
 
 Report mode writes `per-case.md` beside `gate.md`, listing every case that
-changed with its field scores, and exits 0. The author checks that the
-targeted cases are fixed and no case loses a field, and re-runs any regression
-once with `--cases` to rule out noise.
+changed with its field scores. It exits 0 on PASS or FAIL, and still exits 2
+when the comparison is unusable (too many cases errored). The author checks
+that the targeted cases are fixed and no case loses a field, and re-runs any
+regression once with `--cases` to rule out noise.

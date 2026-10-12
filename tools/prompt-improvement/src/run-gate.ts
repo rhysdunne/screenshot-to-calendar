@@ -10,8 +10,9 @@
 //
 // --report-only is for human-written candidates (ADR 0008). It runs the same
 // comparison, prints every case that changed with its field deltas, writes them
-// to per-case.md, and exits 0 whatever the verdict. The author reviews the diff
-// instead of the rules above deciding. Machine-proposed candidates never use it.
+// to per-case.md, and exits 0 on PASS or FAIL. It still exits 2 when the
+// comparison is unusable. The author reviews the diff instead of the rules
+// above deciding. Machine-proposed candidates never use it.
 //
 // (b) replaces an earlier "aggregate must improve by ≥0.5pt" rule. Both arms run
 // at API default temperature, and four runs of an IDENTICAL prompt were measured
@@ -21,7 +22,7 @@
 // "on this same image, did the candidate do better or worse".
 //
 // Exit codes:
-//   0 = candidate passed (or any verdict with --report-only)
+//   0 = candidate passed (or FAIL with --report-only)
 //   1 = gate REJECTED the candidate (the mechanism working; not a broken job)
 //   2 = misuse, crash, or a comparison too error-ridden to trust
 //

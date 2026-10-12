@@ -55,7 +55,8 @@ Options considered:
   ```
 
   This writes `gate.md` (the verdict, marked advisory) and `per-case.md` (every
-  case that changed, with its field scores before and after), and exits 0.
+  case that changed, with its field scores before and after). It exits 0 on
+  PASS or FAIL, and still exits 2 when the comparison is unusable.
 - The author adopts the candidate only if the per-case diff shows all of these:
   - the targeted cases are fixed,
   - no case loses a field,
