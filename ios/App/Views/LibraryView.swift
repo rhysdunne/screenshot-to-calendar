@@ -92,13 +92,14 @@ struct LibraryView: View {
 
     // MARK: Triage
 
-    /// Captures that need the user to act: low-confidence extractions, failures
-    /// that still produced an event to salvage, or possible duplicates. These
-    /// float to the top so they don't scroll out of sight in reverse-chron order.
+    /// Captures that need the user to act: low-confidence extractions, or
+    /// failures that still produced an event to salvage. These float to the
+    /// top so they don't scroll out of sight in reverse-chron order. Possible
+    /// duplicates are left out: the backend never clears that flag, so they
+    /// could never leave this section. The detail view still warns about them.
     private func needsAttention(_ capture: Capture) -> Bool {
         capture.status == .needsReview
             || (capture.status == .failed && capture.event != nil)
-            || capture.possibleDuplicateOf != nil
     }
 
     private var reviewCaptures: [Capture] { appState.captures.filter(needsAttention) }
