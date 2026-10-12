@@ -1,6 +1,8 @@
 // Thin Google Calendar API v3 client over fetch (no googleapis dependency —
 // it's ~50MB and we use five endpoints).
 import type { CalendarEventInput, ExistingCalendarEvent } from '../pipeline/types.js';
+import { HttpError } from './http.js';
+import { logger } from './logger.js';
 
 const BASE = 'https://www.googleapis.com/calendar/v3';
 
@@ -20,10 +22,31 @@ export class GoogleCalendarError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** Google's machine-readable reason, e.g. rateLimitExceeded. Safe to log. */
+    readonly reason?: string,
   ) {
     super(message);
     this.name = 'GoogleCalendarError';
   }
+}
+
+// 403 reasons meaning the grant lacks the calendar scope, as for an account
+// that signed in under an older, narrower consent. The legacy errors[] entry
+// says insufficientPermissions and the ErrorInfo detail says
+// ACCESS_TOKEN_SCOPE_INSUFFICIENT. Rate-limit 403s (rateLimitExceeded,
+// userRateLimitExceeded) are not here: they clear without the user.
+const SCOPE_REASONS = new Set(['insufficientPermissions', 'ACCESS_TOKEN_SCOPE_INSUFFICIENT']);
+
+/** Every machine reason in a Google error body, legacy errors[] first. */
+function errorReasons(error: unknown): string[] {
+  const body = (typeof error === 'object' && error !== null ? error : {}) as {
+    errors?: unknown;
+    details?: unknown;
+  };
+  return [body.errors, body.details]
+    .flatMap((list) => (Array.isArray(list) ? list : []))
+    .map((entry) => (entry as { reason?: unknown } | null)?.reason)
+    .filter((reason): reason is string => typeof reason === 'string');
 }
 
 async function gfetch<T>(
@@ -43,10 +66,18 @@ async function gfetch<T>(
   if (res.status === 204) return undefined as T;
   const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
   if (!res.ok) {
+    const reasons = errorReasons(json.error);
+    // A revoked token, or a grant without the calendar scope: only signing in
+    // again fixes either, and needs_reauth is the code that tells the app to
+    // ask for that. Google's own message stays out of the response.
+    if (res.status === 401 || (res.status === 403 && reasons.some((r) => SCOPE_REASONS.has(r)))) {
+      logger.warn('google_calendar_needs_reauth', { status: res.status, reason: reasons[0] });
+      throw new HttpError(401, 'Reconnect your Google account', 'needs_reauth');
+    }
     const message =
       ((json.error as Record<string, unknown> | undefined)?.message as string) ??
       `HTTP ${res.status}`;
-    throw new GoogleCalendarError(`Google Calendar: ${message}`, res.status);
+    throw new GoogleCalendarError(`Google Calendar: ${message}`, res.status, reasons[0]);
   }
   return json as T;
 }
