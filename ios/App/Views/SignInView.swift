@@ -37,10 +37,10 @@ struct SignInView: View {
             .padding(.horizontal, 32)
             .padding(.bottom, 24)
         }
-        .alert("Sign-in failed", isPresented: .constant(appState.lastError != nil)) {
-            Button("OK") { appState.lastError = nil }
+        .alert("Sign-in failed", isPresented: .constant(appState.signInError != nil)) {
+            Button("OK") { appState.signInError = nil }
         } message: {
-            Text(appState.lastError ?? "")
+            Text(appState.signInError ?? "")
         }
     }
 }

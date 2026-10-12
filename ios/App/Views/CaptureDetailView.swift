@@ -269,7 +269,7 @@ struct CaptureDetailView: View {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             await appState.refreshCaptures()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = appState.message(for: error)
         }
     }
 
@@ -328,7 +328,7 @@ struct CaptureDetailView: View {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             await appState.refreshCaptures()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = appState.message(for: error)
         }
     }
 
@@ -338,7 +338,7 @@ struct CaptureDetailView: View {
             await appState.refreshCaptures()
             dismiss()
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = appState.message(for: error)
         }
     }
 

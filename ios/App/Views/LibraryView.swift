@@ -5,24 +5,40 @@ struct LibraryView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedCapture: Capture?
+    @State private var isRetrying = false
+    @State private var isReconnecting = false
 
     private let columns = [GridItem(.adaptive(minimum: 110), spacing: 12)]
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                if appState.captures.isEmpty {
-                    emptyState
-                } else if reviewCaptures.isEmpty {
-                    // Nothing needs attention — show the flat grid, no section
-                    // headers, so the tidy common case looks unchanged.
-                    grid(recentCaptures).padding()
-                } else {
-                    VStack(alignment: .leading, spacing: 24) {
-                        titledSection("Needs your review (\(reviewCaptures.count))", reviewCaptures)
-                        titledSection("Recent", recentCaptures)
+                VStack(spacing: 0) {
+                    if appState.needsReauth {
+                        reconnectBanner.padding([.horizontal, .top])
                     }
-                    .padding()
+                    if appState.captures.isEmpty {
+                        if let error = appState.capturesError {
+                            loadErrorState(error)
+                        } else {
+                            emptyState
+                        }
+                    } else {
+                        if let error = appState.capturesError {
+                            refreshErrorRow(error).padding([.horizontal, .top])
+                        }
+                        if reviewCaptures.isEmpty {
+                            // Nothing needs attention — show the flat grid, no section
+                            // headers, so the tidy common case looks unchanged.
+                            grid(recentCaptures).padding()
+                        } else {
+                            VStack(alignment: .leading, spacing: 24) {
+                                titledSection("Needs your review (\(reviewCaptures.count))", reviewCaptures)
+                                titledSection("Recent", recentCaptures)
+                            }
+                            .padding()
+                        }
+                    }
                 }
             }
             .navigationTitle("Captures")
@@ -52,6 +68,12 @@ struct LibraryView: View {
                 appState.pendingDeepLinkCaptureId = nil
                 selectedCapture = appState.captures.first { $0.captureId == captureId }
                     ?? Capture(captureId: captureId, status: .completed, createdAt: "")
+            }
+            // A failed reconnect; SignInView shows the same error before sign-in.
+            .alert("Couldn't reconnect", isPresented: .constant(appState.signInError != nil)) {
+                Button("OK") { appState.signInError = nil }
+            } message: {
+                Text(appState.signInError ?? "")
             }
         }
     }
@@ -101,6 +123,74 @@ struct LibraryView: View {
             Text("Screenshot an event poster or post, then share the screenshot and pick “Capture Event”.")
         }
         .containerRelativeFrame(.vertical)
+    }
+
+    // MARK: Failure states
+
+    /// The first fetch failed and there is nothing cached to show. Sized like
+    /// `emptyState` so pull-to-refresh still works too.
+    private func loadErrorState(_ message: String) -> some View {
+        ContentUnavailableView {
+            Label("Couldn't load your captures", systemImage: "exclamationmark.triangle")
+        } description: {
+            Text(message)
+        } actions: {
+            Button("Retry") { Task { await retry() } }
+                .buttonStyle(.borderedProminent)
+                .disabled(isRetrying)
+        }
+        .containerRelativeFrame(.vertical)
+    }
+
+    /// A refresh failed but the last good list is still on screen, so keep it
+    /// and say so in one quiet line.
+    private func refreshErrorRow(_ message: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle").foregroundStyle(.orange)
+            Text("Couldn't refresh. \(message)")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            Button("Retry") { Task { await retry() } }
+                .font(.footnote.weight(.semibold))
+                .disabled(isRetrying)
+        }
+    }
+
+    /// The backend lost the Google grant. Captures and unsaved edits stay; a
+    /// fresh Google sign-in stores a new grant and clears the banner.
+    private var reconnectBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label {
+                Text("Reconnect your Google account")
+            } icon: {
+                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+            }
+            .font(.subheadline.weight(.semibold))
+            Text("Google stopped accepting this app's access, so captures can't reach your calendar until you sign in with Google again.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            Button("Reconnect") { Task { await reconnect() } }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .disabled(isReconnecting)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func retry() async {
+        isRetrying = true
+        await appState.refreshCaptures()
+        isRetrying = false
+    }
+
+    private func reconnect() async {
+        guard let root = UIApplication.shared.rootViewController else { return }
+        isReconnecting = true
+        await appState.signIn(presenting: root)
+        isReconnecting = false
     }
 }
 
