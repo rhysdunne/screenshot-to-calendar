@@ -32,11 +32,15 @@ export interface DatasetCase {
   classification?: Classification;
 }
 
-export function loadDataset(which: 'synthetic' | 'real' | 'all', limit?: number): DatasetCase[] {
+export function loadDataset(
+  which: 'synthetic' | 'real' | 'all',
+  limit?: number,
+  datasetRoot: string = DATASET_ROOT,
+): DatasetCase[] {
   const dirs = which === 'all' ? ['synthetic', 'real'] : [which];
   const cases: DatasetCase[] = [];
   for (const d of dirs) {
-    const root = join(DATASET_ROOT, d);
+    const root = join(datasetRoot, d);
     if (!existsSync(root)) continue;
     for (const id of readdirSync(root).sort()) {
       const caseDir = join(root, id);
@@ -48,7 +52,17 @@ export function loadDataset(which: 'synthetic' | 'real' | 'all', limit?: number)
       const meta = JSON.parse(readFileSync(join(caseDir, 'meta.json'), 'utf8')) as {
         frozenToday: string;
         classification?: Classification;
+        consent?: unknown;
       };
+      // Real cases are people's screenshots. A case without recorded consent
+      // stops the run, so consent is checked here rather than trusted to
+      // whoever added the files (#88).
+      if (d === 'real' && meta.consent !== true) {
+        throw new Error(
+          `Eval case real/${id} has no "consent": true in its meta.json. Only add ` +
+            'images you have consent to use (docs/adding-eval-images.md).',
+        );
+      }
       cases.push({
         id,
         imagePath,

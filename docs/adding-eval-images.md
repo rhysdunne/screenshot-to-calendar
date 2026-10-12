@@ -5,8 +5,15 @@ distribution that matters. Add any capture the pipeline got wrong (or right —
 regression cases are valuable too).
 
 **Consent rule**: only add images from users whose `consentEvalUse` setting
-was on (for your own screenshots, that's you). The prompt-improvement
-pipeline treats everything in `dataset/real/` as consented.
+was on (for your own screenshots, that's you). The eval harness refuses to
+run if any case in `dataset/real/` lacks `"consent": true` in its
+`meta.json`, and `npm test` in `evals/` checks every committed case. The
+harness can only check that the field is there, not that the consent is
+real, so the rule still rests on you.
+
+**This repo is public.** Everything you commit, image pixels included, stays
+readable in git history for good. Work through the checklist under
+[Before you commit](#before-you-commit) for every case.
 
 ## Steps
 
@@ -27,9 +34,15 @@ pipeline treats everything in `dataset/real/` as consented.
   "end_time": "HH:MM or null",
   "description": null,
   "url": "only if visible, else null",
+  "price": "as printed, e.g. \"Free\" or \"£12.50\", else null",
+  "category": "exhibition | music | theatre | club_night | food_drink | market | workshop | talk | film | other",
   "confidence": "high"
 }
 ```
+
+`price` and `category` are the fields extract-event v3 added. Label them the
+way that prompt asks: "free entry" is `"Free"`, and when several prices show
+(advance and door, say) use the lowest with its label, e.g. `"£8 adv"`.
 
 4. Create `meta.json`. `frozenToday` is the date you took the screenshot —
    it's what `{{TODAY}}` is set to during evals, which is what makes
@@ -46,6 +59,19 @@ pipeline treats everything in `dataset/real/` as consented.
 ```
 
 5. Verify it loads: `cd evals && npm run eval -- --mock --dataset real`.
+
+## Before you commit
+
+- [ ] **Redact third parties in the pixels.** Blur or box out the names,
+      handles and faces of private people, such as commenters, tagged friends
+      and whoever sent you the post. The organiser's or venue's own name and
+      handle can stay. Check the image itself, not just the labels.
+- [ ] **No camera-roll filenames.** Keep `IMG_####`-style source names out of
+      `meta.json`, including the `notes` field.
+- [ ] **Consent recorded.** `meta.json` has `"consent": true`, and you have
+      that consent.
+- [ ] **Tests pass.** `cd evals && npm test` checks consent on every real
+      case.
 
 ## Labeling rules
 
