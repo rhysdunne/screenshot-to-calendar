@@ -228,6 +228,71 @@ describe('captures-update (corrections)', () => {
     expect(fake.patchedEvents).toHaveLength(0);
   });
 
+  it('a failed Google patch writes no corrections', async () => {
+    const fake = makeFakeDeps();
+    const token = await seed(fake);
+    fake.deps.calendar.patchEvent = async () => {
+      throw new Error('Google 503');
+    };
+    const res = await invoke(
+      makeUpdateHandler(fake.deps),
+      apiEvent({ token, pathParameters: { id: 'cap-1' }, body: { title: 'Frieze 2026' } }),
+    );
+    expect(res.statusCode).toBe(500);
+    expect(fake.store.corrections).toHaveLength(0);
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.corrected).toBeUndefined();
+  });
+
+  it('rejects a malformed date or time with 400 before writing anything', async () => {
+    const fake = makeFakeDeps();
+    const token = await seed(fake);
+    const malformed = [{ start_date: '14/10/2026' }, { start_date: '2026-02-30' }, { start_time: '7pm' }];
+    for (const body of malformed) {
+      const res = await invoke(
+        makeUpdateHandler(fake.deps),
+        apiEvent({ token, pathParameters: { id: 'cap-1' }, body }),
+      );
+      expect(res.statusCode).toBe(400);
+    }
+    expect(fake.store.corrections).toHaveLength(0);
+    expect(fake.patchedEvents).toHaveLength(0);
+  });
+
+  it('rejects an edit that leaves the event ending before it starts (400, no patch)', async () => {
+    const fake = makeFakeDeps();
+    const token = await seed(fake, {
+      event: { ...extracted, end_date: null, start_time: '19:00', end_time: '22:00' },
+    });
+    const res = await invoke(
+      makeUpdateHandler(fake.deps),
+      apiEvent({ token, pathParameters: { id: 'cap-1' }, body: { end_date: '2026-10-13' } }),
+    );
+    expect(res.statusCode).toBe(400);
+    expect(res.body.code).toBe('invalid_time_range');
+    expect(fake.patchedEvents).toHaveLength(0);
+    expect(fake.store.corrections).toHaveLength(0);
+  });
+
+  it('a capture that failed for ending before it starts takes other edits, then the fix', async () => {
+    const fake = makeFakeDeps();
+    const token = await seed(fake, {
+      status: 'failed',
+      calendarEventId: undefined,
+      calendarId: undefined,
+      event: { ...extracted, end_date: '2026-10-12' },
+    });
+    const edit = (body: Record<string, string>) =>
+      invoke(makeUpdateHandler(fake.deps), apiEvent({ token, pathParameters: { id: 'cap-1' }, body }));
+
+    // A title edit does not touch the timing, so the broken range does not block it.
+    expect((await edit({ title: 'Frieze 2026' })).statusCode).toBe(200);
+    // A date edit that leaves it broken is refused; the one that fixes it is not.
+    expect((await edit({ start_date: '2026-10-13' })).statusCode).toBe(400);
+    expect((await edit({ end_date: '2026-10-18' })).statusCode).toBe(200);
+    expect(fake.store.corrections.map((c) => c.field)).toEqual(['title', 'end_date']);
+  });
+
   it('enforces the daily correction rate limit (poisoning defense)', async () => {
     const fake = makeFakeDeps();
     const token = await seed(fake);
