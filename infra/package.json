@@ -7,9 +7,7 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "synth": "cdk synth",
-    "deploy:staging": "cdk deploy S2cWeb-staging S2cBackend-staging",
-    "deploy:prod": "cdk deploy S2cWeb-prod S2cBackend-prod"
+    "synth": "cdk synth"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.271.0",
