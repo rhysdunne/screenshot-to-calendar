@@ -35,7 +35,8 @@ obey → **add a `CLAUDE.md` invariant**.
 ## How AI-authored change is kept safe
 
 - **CI gate.** [`ci.yml`](.github/workflows/ci.yml) runs typecheck + tests on every
-  PR across `backend`, `infra`, `evals`, and `tools/prompt-improvement`.
+  PR across `backend`, `infra`, `evals`, and `tools/prompt-improvement`, plus lint in
+  `backend` and a mock eval in `evals`.
   [`ios.yml`](.github/workflows/ios.yml) compiles the iOS app without signing.
   `just check` runs the `ci.yml` steps locally.
 - **Eval gate for prompt changes.** `tools/prompt-improvement` runs two fresh evals,

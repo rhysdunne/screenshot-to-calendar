@@ -132,7 +132,7 @@ Every value now exists: Team ID (step 1), both OAuth client ids (step 2),
 - [ ] Open the app: capture completes → event in Google Calendar
 - [ ] Tap the "View capture" link inside the calendar event → app opens the
       original image (universal link; if Safari opens instead, see
-      docs/setup-apple.md §3.5)
+      docs/setup-apple.md §3 step 5)
 - [ ] Edit a field, save → calendar event updates
 - [ ] Share the same image again → "Already in calendar" (dedup)
 
