@@ -23,9 +23,20 @@ jobs:
       group: deploy-${{ inputs.stage }}
       cancel-in-progress: false
     steps:
+      # An empty ALERT_EMAIL still deploys, but backend-stack.ts then skips the
+      # SNS email subscription: CloudFormation deletes the existing one and the
+      # alarms notify nobody. Fail first, before installing or assuming a role.
+      - name: Check ALERT_EMAIL is set
+        env:
+          ALERT_EMAIL: ${{ vars.ALERT_EMAIL }}
+        run: |
+          test -n "$ALERT_EMAIL" || {
+            echo "::error title=ALERT_EMAIL is empty::Set the ALERT_EMAIL repo variable. Deploying without it removes the alarm email subscription."
+            exit 1
+          }
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: 22 }
+        with: { node-version-file: .tool-versions }
       - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}

@@ -15,7 +15,13 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: {
         // Type-aware linting without maintaining an explicit `project` list.
-        projectService: true,
+        // The root config files sit outside tsconfig's src/test include, so the
+        // project service cannot find them. allowDefaultProject parses them
+        // anyway, which lets `npx eslint .` (and editors) lint the whole folder.
+        // `npm run lint` still checks src and test only, as before.
+        projectService: {
+          allowDefaultProject: ['eslint.config.js', 'vitest.config.ts'],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },

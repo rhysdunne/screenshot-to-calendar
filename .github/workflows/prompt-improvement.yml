@@ -1,20 +1,36 @@
 name: Prompt improvement
 
-# Monthly (or on demand): cluster consented corrections into failure
-# patterns, have Claude propose a minimal prompt revision, run the eval gate,
-# and open a PR if it passes. NEVER auto-merges — a human reviews the diff,
-# the gate report, and the source correction clusters.
+# Manual runs only (Actions tab → Prompt improvement → Run workflow): cluster
+# the owner's consented corrections into failure patterns, have Claude propose
+# a minimal prompt revision, run the eval gate, and open a PR if it passes.
+# NEVER auto-merges — a human reviews the diff, the gate report, and the
+# source correction clusters.
 #
-# `npm run materialize` is deliberately NOT run here. It pulls consented
-# corrections (with their images) out of prod into evals/dataset/real/, and
-# CLAUDE.md requires in-image third-party PII to be redacted before commit —
-# "check the pixels, not just the label", which no CI step can do. It is a
-# maintainer command, run locally. See tools/prompt-improvement/README.md.
+# Owner only: the aggregate step reads nothing but the OWNER_USER_ID account's
+# partition (tools/prompt-improvement/src/owner.ts). Other users' corrections
+# stay out even with consent, because propose sends the values to Claude and
+# this job pushes the candidate prompt to a public branch.
+#
+# There is no schedule (ADR 0006). A pattern needs corrections from at least 3
+# independent captures, and prod had zero consented corrections on each of the
+# three monthly runs, so a scheduled run cannot produce a candidate at today's
+# user numbers. Put a schedule back only after #46 and #47 are fixed and real
+# corrections exist.
+#
+# `npm run materialize` is deliberately NOT run here. It pulls the owner's
+# consented corrections (with their images) out of prod into
+# evals/dataset/real/, and CLAUDE.md requires in-image third-party PII to be
+# redacted before commit — "check the pixels, not just the label", which no
+# CI step can do. It is a maintainer command, run locally. See
+# tools/prompt-improvement/README.md.
 on:
-  schedule:
-    - cron: "0 6 1 * *"
   workflow_dispatch:
 
+# Known gap: while this job holds id-token: write, ANY step, an npm install
+# script included, can request a GitHub OIDC token itself and assume the
+# deploy role WITHOUT the inline session policy below. The install order and
+# the session policy narrow the normal path only. The real fix is a dedicated
+# least-privilege role for this workflow, tracked in #33.
 permissions:
   id-token: write
   contents: write
@@ -32,19 +48,37 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
-        with: { node-version: 22 }
+        with: { node-version-file: .tool-versions }
+      # Install BEFORE assuming the role, so no AWS credentials are in the
+      # environment while third-party install scripts run. Not a boundary:
+      # see the id-token note above the permissions block.
+      - run: npm ci --prefix backend
+      - run: npm ci --prefix evals
+      - run: npm ci --prefix tools/prompt-improvement
       - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: eu-west-2
-      - run: npm ci --prefix backend
-      - run: npm ci --prefix evals
-      - run: npm ci --prefix tools/prompt-improvement
+          # Session policy: the credentials this step creates can do only what
+          # the job needs, a Query of the owner's partition of the prod table
+          # (aggregate-corrections.ts), not everything the deploy role can do.
+          # The Query uses no IndexName, so the table ARN alone covers it. It
+          # does not bind a step that mints its own token (see the id-token
+          # note above). The account id comes from the AWS_ACCOUNT_ID repo
+          # variable, so this public repo never contains it. A wrong or missing
+          # value fails loudly with AccessDenied.
+          inline-session-policy: >-
+            {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":"dynamodb:Query","Resource":"arn:aws:dynamodb:eu-west-2:${{ vars.AWS_ACCOUNT_ID }}:table/s2c-main-prod"}]}
 
       - name: Aggregate corrections
         working-directory: tools/prompt-improvement
         env:
           TABLE_NAME: s2c-main-prod
+          # The aggregator reads only this account's partition and stops with
+          # "Set OWNER_USER_ID" when it is empty (src/owner.ts). It comes from
+          # a repository SECRET, not a variable, so GitHub masks the value in
+          # this public repo's logs. Setup: docs/setup-aws.md, section 6.
+          OWNER_USER_ID: ${{ secrets.OWNER_USER_ID }}
         run: npm run aggregate
 
       # propose is the ONLY thing that knows whether it wrote a candidate file,
@@ -128,7 +162,9 @@ jobs:
 
       - name: Open PR (human review required)
         if: steps.propose.outputs.proposed == 'true' && steps.gate.outputs.code == '0'
-        uses: peter-evans/create-pull-request@v8
+        # Pinned to a commit: this third-party action gets a write token, and
+        # a tag can be moved to different code.
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           branch: prompt-improvement/${{ steps.propose.outputs.candidate }}
           # Explicit allowlist: never commit work/, reports, or dataset images.
@@ -138,7 +174,7 @@ jobs:
           body: |
             Automated prompt-improvement run.
 
-            - Source: clustered consented corrections (see workflow logs)
+            - Source: the owner's clustered consented corrections (see workflow logs)
             - Eval gate: PASSED — ${{ steps.gate.outputs.better }} cases improved,
               ${{ steps.gate.outputs.worse }} regressed of ${{ steps.gate.outputs.paired }}
               paired (sign test p=${{ steps.gate.outputs.pvalue }}). The classify stage

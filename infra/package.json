@@ -7,16 +7,14 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "synth": "cdk synth",
-    "deploy:staging": "cdk deploy S2cWeb-staging S2cBackend-staging",
-    "deploy:prod": "cdk deploy S2cWeb-prod S2cBackend-prod"
+    "synth": "cdk synth"
   },
   "dependencies": {
     "aws-cdk-lib": "^2.271.0",
     "constructs": "^10.4.0"
   },
   "devDependencies": {
-    "@types/node": "^26.1.0",
+    "@types/node": "^22.20.5",
     "aws-cdk": "^2.1143.0",
     "esbuild": "^0.28.0",
     "tsx": "^4.19.0",

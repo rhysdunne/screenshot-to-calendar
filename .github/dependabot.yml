@@ -8,14 +8,48 @@ updates:
       - /tools/prompt-improvement
     schedule:
       interval: monthly
+    # Wait 7 days before proposing a new release. Most bad or hijacked
+    # releases are yanked or patched within that time.
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 10
+    # Minor and patch updates arrive as at most three PRs a month: CDK,
+    # runtime dependencies and dev tooling. The groups leave majors out, so
+    # each major arrives as its own PR and gets its own review. A dependency
+    # joins the first group it matches, so cdk must stay above the others.
     groups:
-      aws-sdk:
-        patterns: ["@aws-sdk/*", "aws-cdk*"]
-      dev-tooling:
-        patterns: ["typescript", "vitest", "tsx", "esbuild", "@types/*", "aws-sdk-client-mock"]
-    open-pull-requests-limit: 5
+      # The CDK CLI (aws-cdk) must be at least as new as the library
+      # (aws-cdk-lib): an older CLI refuses the cloud assembly a newer library
+      # writes. aws-cdk is a dev dependency and aws-cdk-lib a production one,
+      # so the type groups below would split them into separate PRs.
+      cdk:
+        patterns: ["aws-cdk", "aws-cdk-lib", "constructs"]
+        update-types: [minor, patch]
+      production:
+        dependency-type: production
+        update-types: [minor, patch]
+      development:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      # typescript-eslint 8.x declares TypeScript ">=4.8.4 <6.1.0", so a
+      # TypeScript major breaks `npm run lint`. Bump TypeScript by hand when
+      # a typescript-eslint release supports the new major.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # @types/node follows the Lambda runtime (NODEJS_22_X in
+      # infra/lib/backend-stack.ts) and .tool-versions. Bump all three
+      # together by hand (docs/ci-cd.md).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 7
+    # All action bumps in one PR.
+    groups:
+      github-actions:
+        patterns: ["*"]
