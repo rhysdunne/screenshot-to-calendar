@@ -56,3 +56,26 @@ describe('summarize per-case scores', () => {
     expect(report.errors).toBe(1);
   });
 });
+
+describe('summarize classification and tuning', () => {
+  it('scores is_event on its own, apart from the category', () => {
+    const report = summarize('claude-haiku-5-5', [
+      // Category wrong, is_event right: the bit that gates processing held.
+      result('a', { classificationCorrect: false, isEventCorrect: true }),
+      result('b', { classificationCorrect: true, isEventCorrect: true }),
+      result('c', { classificationCorrect: false, isEventCorrect: false }),
+      // Classify skipped: counts towards neither.
+      result('d', { classificationCorrect: null, isEventCorrect: null }),
+    ]);
+    expect(report.classificationAccuracy).toBeCloseTo(1 / 3);
+    expect(report.isEventAccuracy).toBeCloseTo(2 / 3);
+  });
+
+  it('records the tuning each stage sent when given it', () => {
+    const tuning = {
+      extract: { thinking: 'disabled' as const, effort: 'low' as const, maxTokens: 1024 },
+    };
+    expect(summarize('claude-sonnet-5', [result('a')], tuning).tuning).toEqual(tuning);
+    expect(summarize('claude-sonnet-5', [result('a')])).not.toHaveProperty('tuning');
+  });
+});

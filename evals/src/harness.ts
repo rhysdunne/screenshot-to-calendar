@@ -7,10 +7,18 @@
 //   npm run eval -- --mock                      # plumbing check, no API calls
 //   npm run eval -- --prompt-version v4         # eval a candidate prompt (gate)
 //   npm run eval -- --no-classify               # extract only (skip classify stage)
+//   npm run eval -- --thinking between_tools --effort medium [--max-tokens 2048]
+//                     # compare thinking settings: each flag replaces that field
+//                     # of the MODELS tuning for every stage the run calls
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { callClaude } from '../../backend/src/lib/anthropic.js';
+import {
+  stageTuning,
+  type PipelineStage,
+  type StageTuning,
+} from '../../backend/src/lib/models.js';
 import { extractSchemaFor, loadPrompt, renderPrompt } from '../../backend/src/prompts/prompts.js';
 import { CLASSIFY_IMAGE_SCHEMA } from '../../backend/src/prompts/schemas.js';
 import { extractClassification, extractEventData } from '../../backend/src/pipeline/extract.js';
@@ -80,15 +88,32 @@ interface CaseResult {
   id: string;
   score: CaseScore | null; // null for non-event cases
   classificationCorrect: boolean | null;
+  /** is_event alone: the bit that decides whether a capture is processed. */
+  isEventCorrect?: boolean | null;
   latencyMs: number;
   costUsd: number;
   error?: string;
 }
 
+/** The stage's MODELS tuning with any harness override laid over it. */
+function tuningFor(
+  model: string,
+  stage: PipelineStage,
+  override: Partial<StageTuning> | undefined,
+): StageTuning {
+  return { ...stageTuning(model, stage), ...override };
+}
+
 async function runCase(
   model: string,
   c: DatasetCase,
-  opts: { apiKey: string; promptVersion?: string; mock: boolean; classify: boolean },
+  opts: {
+    apiKey: string;
+    promptVersion?: string;
+    mock: boolean;
+    classify: boolean;
+    tuning?: Partial<StageTuning>;
+  },
 ): Promise<CaseResult> {
   if (opts.mock) {
     return {
@@ -109,6 +134,7 @@ async function runCase(
   // the extract prompt is under test, re-running an unchanged classify prompt adds
   // cost and variance but no signal.
   let classificationCorrect: boolean | null = null;
+  let isEventCorrect: boolean | null = null;
   let isEvent = c.classification?.is_event ?? true;
   if (c.classification && opts.classify) {
     const call = await callClaude({
@@ -119,18 +145,20 @@ async function runCase(
       mediaType,
       schema: CLASSIFY_IMAGE_SCHEMA,
       stage: 'classify',
+      tuning: tuningFor(model, 'classify', opts.tuning),
     });
     latencyMs += call.usage.latencyMs;
     costUsd += call.usage.costUsd;
     const predicted = extractClassification(call.response);
     const cls = scoreClassification(c.classification, predicted);
     classificationCorrect = cls.categoryCorrect && cls.isEventCorrect;
+    isEventCorrect = cls.isEventCorrect;
     isEvent = predicted.is_event;
   }
 
   if (c.classification?.is_event === false) {
     // Non-event case: extraction is not scored, by design and on both arms.
-    return { id: c.id, score: null, classificationCorrect, latencyMs, costUsd };
+    return { id: c.id, score: null, classificationCorrect, isEventCorrect, latencyMs, costUsd };
   }
 
   if (!isEvent) {
@@ -139,7 +167,7 @@ async function runCase(
       title: null, venue: null, address: null, start_date: null, end_date: null,
       start_time: null, end_time: null, description: null, url: null, confidence: 'low',
     });
-    return { id: c.id, score: zero, classificationCorrect, latencyMs, costUsd };
+    return { id: c.id, score: zero, classificationCorrect, isEventCorrect, latencyMs, costUsd };
   }
 
   const call = await callClaude({
@@ -153,6 +181,7 @@ async function runCase(
     mediaType,
     schema: extractSchemaFor(opts.promptVersion),
     stage: 'extract',
+    tuning: tuningFor(model, 'extract', opts.tuning),
   });
   latencyMs += call.usage.latencyMs;
   costUsd += call.usage.costUsd;
@@ -161,6 +190,7 @@ async function runCase(
     id: c.id,
     score: scoreCase(c.gold, predicted),
     classificationCorrect,
+    isEventCorrect,
     latencyMs,
     costUsd,
   };
@@ -186,7 +216,11 @@ function percentile(values: number[], p: number): number {
   return sorted[Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)] ?? 0;
 }
 
-export function summarize(model: string, results: CaseResult[]): ModelReport {
+export function summarize(
+  model: string,
+  results: CaseResult[],
+  tuning?: ModelReport['tuning'],
+): ModelReport {
   const scored = results.filter((r): r is CaseResult & { score: CaseScore } => r.score !== null);
   const fieldAccuracy: Record<string, number> = {};
   for (const field of SCORED_FIELDS) {
@@ -198,6 +232,9 @@ export function summarize(model: string, results: CaseResult[]): ModelReport {
       : 0;
   }
   const classified = results.filter((r) => r.classificationCorrect !== null);
+  const isEventScored = results.filter(
+    (r) => r.isEventCorrect !== null && r.isEventCorrect !== undefined,
+  );
   const latencies = results.map((r) => r.latencyMs);
   return {
     model,
@@ -215,6 +252,9 @@ export function summarize(model: string, results: CaseResult[]): ModelReport {
     classificationAccuracy: classified.length
       ? classified.filter((r) => r.classificationCorrect).length / classified.length
       : null,
+    isEventAccuracy: isEventScored.length
+      ? isEventScored.filter((r) => r.isEventCorrect).length / isEventScored.length
+      : null,
     meanLatencyMs: latencies.length
       ? latencies.reduce((a, b) => a + b, 0) / latencies.length
       : 0,
@@ -223,6 +263,7 @@ export function summarize(model: string, results: CaseResult[]): ModelReport {
       ? (results.reduce((a, r) => a + r.costUsd, 0) / results.length) * 100
       : 0,
     errors: results.filter((r) => r.error).length,
+    ...(tuning ? { tuning } : {}),
     perCase: results.map((r) => ({
       id: r.id,
       aggregate: r.score ? r.score.aggregate : null,
@@ -251,6 +292,11 @@ export async function runEval(options: {
    * prompt is under test — see the note in `runCase`.
    */
   classify?: boolean;
+  /**
+   * Fields laid over each stage's MODELS tuning, to compare thinking settings
+   * before one goes into MODELS. Omit to measure what production sends.
+   */
+  tuning?: Partial<StageTuning>;
 }): Promise<EvalRunResult> {
   const apiKey = process.env.ANTHROPIC_API_KEY ?? '';
   if (!options.mock && !apiKey) {
@@ -271,6 +317,7 @@ export async function runEval(options: {
           promptVersion: options.promptVersion,
           mock: options.mock ?? false,
           classify: options.classify ?? true,
+          tuning: options.tuning,
         });
         console.log(
           `  ${c.id}: ${r.score ? r.score.aggregate.toFixed(2) : 'n/a'} ($${r.costUsd.toFixed(4)})`,
@@ -288,7 +335,13 @@ export async function runEval(options: {
         } satisfies CaseResult;
       }
     });
-    reports.push(summarize(model, results));
+    const classify = options.classify ?? true;
+    reports.push(
+      summarize(model, results, {
+        ...(classify ? { classify: tuningFor(model, 'classify', options.tuning) } : {}),
+        extract: tuningFor(model, 'extract', options.tuning),
+      }),
+    );
   }
 
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -303,6 +356,7 @@ export async function runEval(options: {
         promptVersion: options.promptVersion ?? 'pinned',
         mock: options.mock ?? false,
         classify: options.classify ?? true,
+        tuningOverride: options.tuning ?? null,
         reports,
       },
       null,
@@ -321,6 +375,15 @@ if (isMain) {
     const i = process.argv.indexOf(`--${name}`);
     return i >= 0 && process.argv[i + 1] ? (process.argv[i + 1] as string) : fallback;
   };
+  const tuningOverride = (): Partial<StageTuning> | undefined => {
+    const has = (name: string) => process.argv.includes(`--${name}`);
+    if (!has('thinking') && !has('effort') && !has('max-tokens')) return undefined;
+    return {
+      ...(has('thinking') ? { thinking: arg('thinking', '') as StageTuning['thinking'] } : {}),
+      ...(has('effort') ? { effort: arg('effort', '') as StageTuning['effort'] } : {}),
+      ...(has('max-tokens') ? { maxTokens: Number(arg('max-tokens', '0')) } : {}),
+    };
+  };
   runEval({
     models: arg('models', 'claude-haiku-4-5').split(','),
     dataset: arg('dataset', 'synthetic') as 'synthetic' | 'real' | 'all',
@@ -331,6 +394,7 @@ if (isMain) {
     mock: process.argv.includes('--mock'),
     label: process.argv.includes('--label') ? arg('label', '') : undefined,
     classify: !process.argv.includes('--no-classify'),
+    tuning: tuningOverride(),
   })
     .then(({ reports }) => {
       // runCase errors are caught per case so one bad call does not sink a run,
