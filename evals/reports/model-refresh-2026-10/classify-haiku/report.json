@@ -1,0 +1,2798 @@
+{
+  "generatedAt": "2026-10-12T12:14:31.268Z",
+  "dataset": "all",
+  "promptVersion": "pinned",
+  "mock": false,
+  "classify": true,
+  "tuningOverride": null,
+  "reports": [
+    {
+      "model": "claude-haiku-4-5",
+      "cases": 76,
+      "aggregate": 0.8677548274770497,
+      "fieldAccuracy": {
+        "title": 0.9444444444444444,
+        "venue": 0.8888888888888888,
+        "address": 0.9027777777777778,
+        "start_date": 0.9166666666666666,
+        "end_date": 0.4444444444444444,
+        "start_time": 1,
+        "end_time": 0.9861111111111112,
+        "url": 0.9305555555555556
+      },
+      "hallucinationRate": 0.8194444444444444,
+      "missRate": 0.05555555555555555,
+      "classificationAccuracy": 0.6842105263157895,
+      "isEventAccuracy": 1,
+      "meanLatencyMs": 2872.6184210526317,
+      "p95LatencyMs": 3848,
+      "costPer100Images": 0.3998105263157894,
+      "errors": 0,
+      "tuning": {
+        "classify": {
+          "thinking": "disabled",
+          "maxTokens": 256
+        },
+        "extract": {
+          "thinking": "disabled",
+          "maxTokens": 1024
+        }
+      },
+      "perCase": [
+        {
+          "id": "syn-000-gallery",
+          "aggregate": 0.9615384615384616,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-001-gig",
+          "aggregate": 0.8148148148148148,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-002-club-night",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-003-ig-post",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-004-ig-story",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-005-market",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-006-talk",
+          "aggregate": 0.8148148148148148,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-007-hard-mode",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-008-gallery",
+          "aggregate": 0.84,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-009-gig",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 0,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-010-club-night",
+          "aggregate": 0.84,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-011-ig-post",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-012-ig-story",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-013-market",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-014-talk",
+          "aggregate": 0.8148148148148148,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-015-hard-mode",
+          "aggregate": 0.84,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-016-gallery",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-017-gig",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-018-club-night",
+          "aggregate": 0.84,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-019-ig-post",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-020-ig-story",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-021-market",
+          "aggregate": 0.8461538461538461,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-022-talk",
+          "aggregate": 0.7692307692307693,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 0,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-023-hard-mode",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-024-gallery",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-025-gig",
+          "aggregate": 0.8461538461538461,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-026-club-night",
+          "aggregate": 0.84,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-027-ig-post",
+          "aggregate": 0.8461538461538461,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-028-ig-story",
+          "aggregate": 0.84,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-029-market",
+          "aggregate": 0.8461538461538461,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-030-talk",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-031-hard-mode",
+          "aggregate": 0.84,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 0,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-032-gallery",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-033-gig",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-034-club-night",
+          "aggregate": 0.84,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-035-ig-post",
+          "aggregate": 0.8148148148148148,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-036-ig-story",
+          "aggregate": 0.84,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-037-market",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 0,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-038-talk",
+          "aggregate": 0.8148148148148148,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-039-hard-mode",
+          "aggregate": 0.84,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-040-menu",
+          "aggregate": null,
+          "fields": {},
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-041-menu",
+          "aggregate": null,
+          "fields": {},
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-042-menu",
+          "aggregate": null,
+          "fields": {},
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-043-menu",
+          "aggregate": null,
+          "fields": {},
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-001-ig-ad-neon-dance",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-002-ig-ad-hyperfixation",
+          "aggregate": 0.7777777777777778,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 0,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-003-ig-ad-blizzard",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-004-ig-story-ronin-the-place",
+          "aggregate": 0.8888888888888888,
+          "fields": {
+            "title": 1,
+            "venue": 0,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 1,
+          "errored": false
+        },
+        {
+          "id": "real-005-ig-story-judgement-hall-raptures",
+          "aggregate": 0.7777777777777778,
+          "fields": {
+            "title": 1,
+            "venue": 0,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-006-ig-story-suram-fortress-rio",
+          "aggregate": 0.7777777777777778,
+          "fields": {
+            "title": 1,
+            "venue": 0,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-007-ig-post-bespoked-talks",
+          "aggregate": 0.7407407407407407,
+          "fields": {
+            "title": 1,
+            "venue": 0.5,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 0,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-008-ig-ad-olafur-arnalds",
+          "aggregate": 0.9259259259259259,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 0,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-009-ig-story-another-sky-festival",
+          "aggregate": 0.9259259259259259,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 0,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-010-ig-ad-nik-bartsch-ronin",
+          "aggregate": 0.7407407407407407,
+          "fields": {
+            "title": 1,
+            "venue": 0.5,
+            "address": 0,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-011-ig-story-another-sky-market",
+          "aggregate": 0.6481481481481481,
+          "fields": {
+            "title": 0.5,
+            "venue": 1,
+            "address": 1,
+            "start_date": 0,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-012-ig-story-uccellini-coronet",
+          "aggregate": 0.9259259259259259,
+          "fields": {
+            "title": 1,
+            "venue": 0,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-013-ig-post-ultra-process-av",
+          "aggregate": 0.5740740740740741,
+          "fields": {
+            "title": 0.5,
+            "venue": 0,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 0,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 1,
+          "errored": false
+        },
+        {
+          "id": "real-014-ig-story-asymmetry-symposium",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-015-ig-ad-sunn-o",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-016-ig-story-interjection-chisenhale",
+          "aggregate": 0.7962962962962963,
+          "fields": {
+            "title": 0.5,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-017-ig-ad-bodies-in-action",
+          "aggregate": 0.7777777777777778,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 0,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-018-ig-ad-no60-the-place",
+          "aggregate": 0.6666666666666666,
+          "fields": {
+            "title": 0,
+            "venue": 0,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 1,
+          "errored": false
+        },
+        {
+          "id": "real-019-ig-story-claude-code-workshop",
+          "aggregate": 0.7777777777777778,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 0,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-020-ig-ad-anish-kapoor-hayward",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 0,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-021-ig-ad-ual-summer-festival",
+          "aggregate": 0.9074074074074074,
+          "fields": {
+            "title": 0.5,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-022-ig-post-london-bike-studio",
+          "aggregate": 0.8148148148148148,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-023-ig-post-ballet-black",
+          "aggregate": 0.7407407407407407,
+          "fields": {
+            "title": 0,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-024-ig-post-algorhythms",
+          "aggregate": 0.7407407407407407,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 0,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-025-ig-post-holy-pop-somerset-house",
+          "aggregate": 0.9259259259259259,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 0,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-026-ig-post-mountain-photography-alpine",
+          "aggregate": 0.7777777777777778,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 0,
+            "start_date": 0,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-027-ig-post-julio-le-parc-tate",
+          "aggregate": 0.8888888888888888,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 0,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 0,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-028-ig-post-first-light-barbican",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-029-webview-yard-theatre-philosophy",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-030-poster-zurbaran-national-gallery",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-031-poster-the-invite-film",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-032-poster-henry-moore-kew",
+          "aggregate": 0.6296296296296297,
+          "fields": {
+            "title": 1,
+            "venue": 0,
+            "address": 1,
+            "start_date": 0,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 1,
+          "errored": false
+        }
+      ]
+    },
+    {
+      "model": "claude-haiku-5-5",
+      "cases": 76,
+      "aggregate": 0.9639458689458691,
+      "fieldAccuracy": {
+        "title": 0.9930555555555556,
+        "venue": 0.9305555555555556,
+        "address": 0.9722222222222222,
+        "start_date": 0.9861111111111112,
+        "end_date": 0.8888888888888888,
+        "start_time": 1,
+        "end_time": 0.9861111111111112,
+        "url": 0.9861111111111112
+      },
+      "hallucinationRate": 0.19444444444444445,
+      "missRate": 0.06944444444444445,
+      "classificationAccuracy": 0.881578947368421,
+      "isEventAccuracy": 1,
+      "meanLatencyMs": 3050.7368421052633,
+      "p95LatencyMs": 3594,
+      "costPer100Images": 0.046278947368421045,
+      "errors": 0,
+      "tuning": {
+        "classify": {
+          "thinking": "disabled",
+          "effort": "low",
+          "maxTokens": 256
+        },
+        "extract": {
+          "thinking": "disabled",
+          "effort": "low",
+          "maxTokens": 1024
+        }
+      },
+      "perCase": [
+        {
+          "id": "syn-000-gallery",
+          "aggregate": 0.9615384615384616,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-001-gig",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-002-club-night",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-003-ig-post",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-004-ig-story",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-005-market",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-006-talk",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-007-hard-mode",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-008-gallery",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-009-gig",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-010-club-night",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-011-ig-post",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-012-ig-story",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-013-market",
+          "aggregate": 0.8461538461538461,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-014-talk",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-015-hard-mode",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-016-gallery",
+          "aggregate": 0.9230769230769231,
+          "fields": {
+            "title": 1,
+            "venue": 0,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 1,
+          "errored": false
+        },
+        {
+          "id": "syn-017-gig",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-018-club-night",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-019-ig-post",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-020-ig-story",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-021-market",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-022-talk",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-023-hard-mode",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-024-gallery",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-025-gig",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-026-club-night",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-027-ig-post",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-028-ig-story",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-029-market",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-030-talk",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-031-hard-mode",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-032-gallery",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-033-gig",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-034-club-night",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-035-ig-post",
+          "aggregate": 0.8888888888888888,
+          "fields": {
+            "title": 1,
+            "venue": 0,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 1,
+          "errored": false
+        },
+        {
+          "id": "syn-036-ig-story",
+          "aggregate": 0.92,
+          "fields": {
+            "title": 1,
+            "venue": 0,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 1,
+          "errored": false
+        },
+        {
+          "id": "syn-037-market",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-038-talk",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-039-hard-mode",
+          "aggregate": 0.92,
+          "fields": {
+            "title": 1,
+            "venue": 0,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1
+          },
+          "hallucinations": 0,
+          "misses": 1,
+          "errored": false
+        },
+        {
+          "id": "syn-040-menu",
+          "aggregate": null,
+          "fields": {},
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-041-menu",
+          "aggregate": null,
+          "fields": {},
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-042-menu",
+          "aggregate": null,
+          "fields": {},
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "syn-043-menu",
+          "aggregate": null,
+          "fields": {},
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-001-ig-ad-neon-dance",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-002-ig-ad-hyperfixation",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-003-ig-ad-blizzard",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-004-ig-story-ronin-the-place",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-005-ig-story-judgement-hall-raptures",
+          "aggregate": 0.7777777777777778,
+          "fields": {
+            "title": 1,
+            "venue": 0,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-006-ig-story-suram-fortress-rio",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-007-ig-post-bespoked-talks",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-008-ig-ad-olafur-arnalds",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-009-ig-story-another-sky-festival",
+          "aggregate": 0.9259259259259259,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 0,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-010-ig-ad-nik-bartsch-ronin",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-011-ig-story-another-sky-market",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-012-ig-story-uccellini-coronet",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-013-ig-post-ultra-process-av",
+          "aggregate": 0.7037037037037037,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 0,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-014-ig-story-asymmetry-symposium",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-015-ig-ad-sunn-o",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-016-ig-story-interjection-chisenhale",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-017-ig-ad-bodies-in-action",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-018-ig-ad-no60-the-place",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-019-ig-story-claude-code-workshop",
+          "aggregate": 0.7777777777777778,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 0,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 0,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 2,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-020-ig-ad-anish-kapoor-hayward",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 0,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-021-ig-ad-ual-summer-festival",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-022-ig-post-london-bike-studio",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-023-ig-post-ballet-black",
+          "aggregate": 0.8703703703703703,
+          "fields": {
+            "title": 0.5,
+            "venue": 1,
+            "address": 0,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 1,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-024-ig-post-algorhythms",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-025-ig-post-holy-pop-somerset-house",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-026-ig-post-mountain-photography-alpine",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-027-ig-post-julio-le-parc-tate",
+          "aggregate": 0.8518518518518519,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 0,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 1,
+          "errored": false
+        },
+        {
+          "id": "real-028-ig-post-first-light-barbican",
+          "aggregate": 0.9629629629629629,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 0
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-029-webview-yard-theatre-philosophy",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-030-poster-zurbaran-national-gallery",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-031-poster-the-invite-film",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        },
+        {
+          "id": "real-032-poster-henry-moore-kew",
+          "aggregate": 1,
+          "fields": {
+            "title": 1,
+            "venue": 1,
+            "address": 1,
+            "start_date": 1,
+            "end_date": 1,
+            "start_time": 1,
+            "end_time": 1,
+            "url": 1,
+            "price": 1,
+            "category": 1
+          },
+          "hallucinations": 0,
+          "misses": 0,
+          "errored": false
+        }
+      ]
+    }
+  ]
+}

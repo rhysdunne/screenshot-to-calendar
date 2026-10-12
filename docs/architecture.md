@@ -82,9 +82,10 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 
 - AWS: Lambda/DynamoDB/SQS well inside free tier at personal volume; S3 +
   CloudFront pennies. Expected ≲ $2/month steady state.
-- Anthropic: ~$0.01/capture (Haiku classify + Sonnet extract at ~1.5k input
-  tokens each). Tracked per call in `AICALL#` records; the eval report gives
-  $/100 images per model.
+- Anthropic: ~$0.006/capture (Haiku 5.5 classify at ~1.6k input tokens, about
+  $0.0002, plus Sonnet 5 extract at ~2.3k, about $0.006; measured in
+  `evals/reports/model-refresh-2026-10/`). Tracked per call in `AICALL#`
+  records; the eval report gives $/100 images per model.
 - Google: Calendar API free; Places free tier covers hobby volume.
 
 ## Dedup design

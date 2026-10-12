@@ -69,10 +69,13 @@ export const MODELS: Record<string, ModelInfo> = {
     inputPerMTok: 2.0,
     outputPerMTok: 10.0,
     structuredOutputs: true,
-    // What the API did when these calls sent no thinking or effort.
+    // extract: thinking off scored the same as the adaptive thinking the API
+    // ran when none was sent, for no more cost or latency, and leaves all of
+    // max_tokens to the JSON (evals/reports/model-refresh-2026-10/).
+    // classify: what the API did when no thinking or effort was sent.
     tuning: {
       classify: { thinking: 'adaptive', effort: 'high', maxTokens: 256 },
-      extract: { thinking: 'adaptive', effort: 'high', maxTokens: 1024 },
+      extract: { thinking: 'disabled', effort: 'high', maxTokens: 1024 },
     },
   },
   'claude-sonnet-5-5': {
@@ -93,9 +96,12 @@ export const MODELS: Record<string, ModelInfo> = {
   },
 };
 
-/** Per-pipeline-stage defaults. Overridable via Lambda env (CLASSIFY_MODEL / EXTRACT_MODEL). */
+/**
+ * Per-pipeline-stage defaults. Overridable via Lambda env (CLASSIFY_MODEL /
+ * EXTRACT_MODEL). Chosen in docs/decisions/0007-model-refresh-2026-10.md.
+ */
 export const DEFAULT_MODELS = {
-  classify: 'claude-haiku-4-5',
+  classify: 'claude-haiku-5-5',
   extract: 'claude-sonnet-5',
   /** Used offline by tools/prompt-improvement, never in the request path. */
   proposePrompt: 'claude-opus-4-8',
