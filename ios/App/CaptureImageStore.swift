@@ -1,6 +1,6 @@
 import UIKit
 
-/// In-memory image cache keyed by captureId. Fixes the grid flicker (#75):
+/// In-memory image cache keyed by captureId. It fixed the old grid's flicker (#75):
 /// every fetch mints a fresh presigned S3 URL, so URL-keyed caches (URLCache
 /// under AsyncImage) can never hit — the decoded image must be cached against
 /// the capture instead. NSCache evicts under memory pressure; images are also
@@ -9,8 +9,9 @@ import UIKit
 final class CaptureImageStore {
     private let api: APIClient
     private let cache = NSCache<NSString, UIImage>()
-    /// One fetch per capture at a time — a tile and the detail sheet asking
-    /// for the same image await a single request instead of racing.
+    /// One fetch per capture at a time — a list row (its prefetch or its
+    /// long-press preview) and the detail sheet asking for the same image
+    /// await a single request instead of racing.
     private var inFlight: [String: Task<UIImage?, Never>] = [:]
 
     init(api: APIClient) {

@@ -90,7 +90,9 @@ cd evals   && npm run eval -- --models claude-haiku-4-5,claude-sonnet-5-5 --data
   use `backend/src/pipeline/dates.ts` (`todayInZone`, `addDays`, etc.). The v1 bug this
   fixed: UTC "today" is wrong from midnight–1am BST. Google Calendar bodies always carry
   an explicit `timeZone` from user settings. New accounts start on `Europe/London`, and
-  onboarding replaces it with the device's zone.
+  onboarding replaces it with the device's zone. In the iOS app, take "today" from
+  `EventDates.today(in:)` in `ios/App/EventSections.swift` (the settings zone), never
+  from `Calendar.current`, `TimeZone.current` or `ISO8601DateFormatter`.
 - **Models**: model IDs, prices, per-stage tuning (thinking, effort, max tokens) and
   defaults live ONLY in `backend/src/lib/models.ts`. Production classifies with
   `claude-haiku-5-5` and extracts with `claude-sonnet-5`, thinking off (ADR 0007). All

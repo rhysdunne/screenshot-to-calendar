@@ -8,8 +8,9 @@ struct CaptureDetailView: View {
     let captureId: String
 
     @State private var capture: Capture?
-    /// Decoded via the app-wide CaptureImageStore, so a tile that already
-    /// loaded this capture makes the detail image instant (and vice versa).
+    /// Decoded via the app-wide CaptureImageStore, so a list row that already
+    /// loaded this capture (a review row's prefetch, or a long-press preview)
+    /// makes the detail image instant (and vice versa).
     @State private var imageState: ImageState = .loading
     /// Drives the full-screen viewer. Item-based (not a bool) so the image is
     /// passed into the cover atomically at tap time — presenting via
@@ -346,9 +347,9 @@ struct CaptureDetailView: View {
     // MARK: Data
 
     private func load() async {
-        // Image and capture load in parallel — the image is usually already
-        // cached by the grid tile, so it paints immediately instead of
-        // waiting out the getCapture round-trip.
+        // Image and capture load in parallel — the image is often already
+        // cached (review rows prefetch theirs), so it paints immediately
+        // instead of waiting out the getCapture round-trip.
         Task { await loadImage() }
         do {
             apply(try await appState.api.getCapture(id: captureId))
