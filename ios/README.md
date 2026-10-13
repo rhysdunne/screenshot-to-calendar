@@ -41,9 +41,10 @@ are registered to this Apple team. A fork also renames them in `project.yml`,
 
 - `App/`: the app target. It has sign-in (Google, calendar scope), an
   onboarding calendar picker that also saves the device's timezone, and the
-  capture library grid. It also has the editable capture detail (corrections,
-  and approve for a capture that needs review) and settings (calendar,
-  timezone, consent toggle, export, delete account).
+  Events list, which sorts captures by event date (`EventSections.swift`). It
+  also has the editable capture detail (corrections, and approve for a capture
+  that needs review) and settings (calendar, timezone, consent toggle, export,
+  delete account).
 - `ShareExtension/`: receives an image from the share sheet and resizes it to
   1000px/JPEG 0.8. A file or data item is downsampled with ImageIO, so the
   full-size image is never decoded. The extension then uploads through a

@@ -26,7 +26,7 @@ final class AppState: ObservableObject {
     /// Reconnect fails, because the library's alert can't show over the sheet.
     @Published var signInError: String?
     /// Why the last captures fetch failed (offline, 5xx, timeout). The library
-    /// shows it as a retry screen when empty, or a small row above the grid.
+    /// shows it as a retry screen when empty, or a small row above the list.
     @Published var capturesError: String?
     /// The backend can no longer use the user's Google grant (revoked, or the
     /// refresh token expired). Signing out would lose unsaved edits, so the

@@ -116,7 +116,7 @@ write back. Idempotent, rate-limited, prints cost as it goes.
 ### 5. iOS
 
 - Phase 1: search field in `LibraryView` → `POST /v1/search` → results in
-  the existing `CaptureTile` grid, ranked. Empty query = normal library.
+  the Events list's rows (`EventRow`), ranked. Empty query = normal list.
 - Phase 2 (visual layout): a Boards tab — sections per `describe.platform`
   and per topic cluster. Topic clusters can start embarrassingly simple:
   group by most-common `topics` tags; k-means over embeddings only if tags

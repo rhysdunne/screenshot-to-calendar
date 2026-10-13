@@ -8,8 +8,9 @@ struct CaptureDetailView: View {
     let captureId: String
 
     @State private var capture: Capture?
-    /// Decoded via the app-wide CaptureImageStore, so a tile that already
-    /// loaded this capture makes the detail image instant (and vice versa).
+    /// Decoded via the app-wide CaptureImageStore, so a list row that already
+    /// loaded this capture (a review row's prefetch, or a long-press preview)
+    /// makes the detail image instant (and vice versa).
     @State private var imageState: ImageState = .loading
     /// Drives the full-screen viewer. Item-based (not a bool) so the image is
     /// passed into the cover atomically at tap time — presenting via
@@ -250,6 +251,14 @@ struct CaptureDetailView: View {
 
     private var startDateValue: Date { WireFormat.date.date(from: form.startDate ?? "") ?? Date() }
 
+    /// Today in the user's settings zone, the zone the backend reads dates in.
+    /// WireFormat uses the device zone, so it must not make "today": abroad,
+    /// the device date can differ from the settings date, and the Events list
+    /// and the backend both use the settings date.
+    private var today: String {
+        EventDates.today(in: EventDates.zone(identifier: appState.settings?.timezone))
+    }
+
     private var startDateBinding: Binding<Date> {
         Binding(get: { startDateValue },
                 set: { form.startDate = WireFormat.date.string(from: $0) })
@@ -266,7 +275,7 @@ struct CaptureDetailView: View {
 
     private var endDateOn: Binding<Bool> {
         Binding(get: { form.endDate != nil },
-                set: { form.endDate = $0 ? (form.endDate ?? form.startDate ?? WireFormat.date.string(from: Date())) : nil })
+                set: { form.endDate = $0 ? (form.endDate ?? form.startDate ?? today) : nil })
     }
     private var endDateBinding: Binding<Date> {
         Binding(get: { WireFormat.date.date(from: form.endDate ?? "") ?? startDateValue },
@@ -346,9 +355,9 @@ struct CaptureDetailView: View {
     // MARK: Data
 
     private func load() async {
-        // Image and capture load in parallel — the image is usually already
-        // cached by the grid tile, so it paints immediately instead of
-        // waiting out the getCapture round-trip.
+        // Image and capture load in parallel — the image is often already
+        // cached (review rows prefetch theirs), so it paints immediately
+        // instead of waiting out the getCapture round-trip.
         Task { await loadImage() }
         do {
             apply(try await appState.api.getCapture(id: captureId))
@@ -365,9 +374,9 @@ struct CaptureDetailView: View {
         // A calendar event needs a date; if the extraction had none, seed
         // today so the always-visible Start date picker has a value to edit.
         if loaded.event != nil, form.startDate == nil {
-            let today = WireFormat.date.string(from: Date())
-            form.startDate = today
-            seededStartDate = today
+            let seed = today
+            form.startDate = seed
+            seededStartDate = seed
         }
     }
 

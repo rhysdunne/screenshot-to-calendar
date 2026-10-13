@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// The capture library: a grid of shared images with status badges.
+/// The Events list: captures as text rows, sorted by event date into
+/// sections (EventSections.swift). The poster stays one tap away in the
+/// detail sheet, and a long press previews it.
 struct LibraryView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.scenePhase) private var scenePhase
@@ -11,41 +13,34 @@ struct LibraryView: View {
     /// sharing, say) fetches first. The launch's own inactive-to-active step
     /// and a glance at Control Centre don't.
     @State private var wasInBackground = false
-
-    private let columns = [GridItem(.adaptive(minimum: 110), spacing: 12)]
+    /// Past grows without limit, so it starts collapsed and "Other captures"
+    /// below it stays in reach.
+    @State private var isPastExpanded = false
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 0) {
-                    if appState.needsReauth {
-                        reconnectBanner.padding([.horizontal, .top])
-                    }
-                    if appState.captures.isEmpty {
-                        if let error = appState.capturesError {
-                            loadErrorState(error)
-                        } else {
-                            emptyState
-                        }
-                    } else {
-                        if let error = appState.capturesError {
-                            refreshErrorRow(error).padding([.horizontal, .top])
-                        }
-                        if reviewCaptures.isEmpty {
-                            // Nothing needs attention — show the flat grid, no section
-                            // headers, so the tidy common case looks unchanged.
-                            grid(recentCaptures).padding()
-                        } else {
-                            VStack(alignment: .leading, spacing: 24) {
-                                titledSection("Needs your review (\(reviewCaptures.count))", reviewCaptures)
-                                titledSection("Recent", recentCaptures)
+            Group {
+                if appState.captures.isEmpty {
+                    // A ScrollView, not the List: the centred empty and error
+                    // states size themselves to it, and pull-to-refresh works
+                    // with zero captures.
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            if appState.needsReauth {
+                                reconnectBanner.padding([.horizontal, .top])
                             }
-                            .padding()
+                            if let error = appState.capturesError {
+                                loadErrorState(error)
+                            } else {
+                                emptyState
+                            }
                         }
                     }
+                } else {
+                    eventList
                 }
             }
-            .navigationTitle("Captures")
+            .navigationTitle("Events")
             .toolbar {
                 NavigationLink {
                     SettingsView()
@@ -73,7 +68,7 @@ struct LibraryView: View {
                 }
             }
             // initial: a link that cold-launches the app is set before the
-            // library appears (behind the launch splash), so there is no change
+            // list appears (behind the launch splash), so there is no change
             // to observe. Without it the link was dropped.
             .onChange(of: appState.pendingDeepLinkCaptureId, initial: true) { _, captureId in
                 guard let captureId else { return }
@@ -90,61 +85,130 @@ struct LibraryView: View {
         }
     }
 
-    // MARK: Triage
+    // MARK: Sections
 
-    /// Captures that need the user to act: low-confidence extractions, or
-    /// failures that still produced an event to salvage. These float to the
-    /// top so they don't scroll out of sight in reverse-chron order. Possible
-    /// duplicates are left out: the backend never clears that flag, so they
-    /// could never leave this section. The detail view still warns about them.
-    private func needsAttention(_ capture: Capture) -> Bool {
-        capture.status == .needsReview
-            || (capture.status == .failed && capture.event != nil)
+    private var eventList: some View {
+        // Once a minute, so "today" moves on at midnight even while the list
+        // sits on screen untouched. Re-sorting a few hundred captures is cheap.
+        TimelineView(.everyMinute) { context in
+            eventSections(now: context.date)
+        }
     }
 
-    private var reviewCaptures: [Capture] { appState.captures.filter(needsAttention) }
-    private var recentCaptures: [Capture] { appState.captures.filter { !needsAttention($0) } }
+    private func eventSections(now: Date) -> some View {
+        let zone = EventDates.zone(identifier: appState.settings?.timezone)
+        let today = EventDates.today(in: zone, now: now)
+        let sections = EventSections(appState.captures, today: today)
 
-    @ViewBuilder private func grid(_ captures: [Capture]) -> some View {
-        LazyVGrid(columns: columns, spacing: 12) {
-            ForEach(captures) { capture in
-                Button { selectedCapture = capture } label: {
-                    CaptureTile(capture: capture)
+        return List {
+            // Separate sections: in one, the clear-backed banner ran into the
+            // error row below it.
+            if appState.needsReauth {
+                Section {
+                    reconnectBanner
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
                 }
-                .buttonStyle(.plain)
+            }
+            if let error = appState.capturesError {
+                Section { refreshErrorRow(error) }
+            }
+
+            if !sections.processing.isEmpty {
+                Section("Processing") {
+                    rows(sections.processing, today: today, zone: zone)
+                }
+            }
+
+            if !sections.review.isEmpty {
+                Section("Needs your review (\(sections.review.count))") {
+                    // Prefetch these posters: the next step is to open one
+                    // and compare it with the fields.
+                    rows(sections.review, today: today, zone: zone, prefetchImages: true)
+                }
+            }
+
+            Section("Upcoming") {
+                if sections.upcoming.isEmpty {
+                    Text("Nothing coming up. Share a screenshot of an event poster to add one.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    rows(sections.upcoming, today: today, zone: zone)
+                }
+            }
+
+            if !sections.onNow.isEmpty {
+                Section("On now") {
+                    rows(sections.onNow, today: today, zone: zone, whenStyle: .until)
+                }
+            }
+
+            if !sections.past.isEmpty {
+                Section {
+                    DisclosureGroup(isExpanded: $isPastExpanded) {
+                        rows(sections.past, today: today, zone: zone, isPast: true)
+                    } label: {
+                        Text("Past (\(sections.past.count))")
+                    }
+                }
+            }
+
+            if !sections.other.isEmpty {
+                Section {
+                    rows(sections.other, today: today, zone: zone)
+                } header: {
+                    Text("Other captures")
+                } footer: {
+                    Text("Screenshots that didn't become a dated event.")
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    /// One tappable row per capture. A tap opens the detail sheet. A long
+    /// press previews the poster, so it can be checked without opening.
+    @ViewBuilder private func rows(_ captures: [Capture], today: String, zone: TimeZone,
+                                   whenStyle: EventWhen.Style = .full, isPast: Bool = false,
+                                   prefetchImages: Bool = false) -> some View {
+        ForEach(captures) { capture in
+            Button { selectedCapture = capture } label: {
+                EventRow(capture: capture, today: today, zone: zone,
+                         whenStyle: whenStyle, isPast: isPast)
+            }
+            .contextMenu {
+                Button { selectedCapture = capture } label: {
+                    Label("Show details", systemImage: "info.circle")
+                }
+            } preview: {
+                PosterPreview(captureId: capture.captureId, images: appState.images)
+            }
+            .task(id: capture.captureId) {
+                guard prefetchImages else { return }
+                _ = await appState.images.image(for: capture.captureId)
             }
         }
     }
 
-    /// A labelled grid, rendered only when it has content (so an all-in-review
-    /// state doesn't leave an empty "Recent" header behind).
-    @ViewBuilder private func titledSection(_ title: String, _ captures: [Capture]) -> some View {
-        if !captures.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(title).font(.headline)
-                grid(captures)
-            }
-        }
-    }
+    // MARK: Empty and failure states
 
     /// Sized to the scroll view's visible height so it sits centred, but still
     /// inside the ScrollView so pull-to-refresh works with zero captures.
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("No captures yet", systemImage: "photo.on.rectangle")
+            Label("No events yet", systemImage: "calendar")
         } description: {
             Text("Screenshot an event poster or post, then share the screenshot and pick “Capture Event”.")
         }
         .containerRelativeFrame(.vertical)
     }
 
-    // MARK: Failure states
-
     /// The first fetch failed and there is nothing cached to show. Sized like
     /// `emptyState` so pull-to-refresh still works too.
     private func loadErrorState(_ message: String) -> some View {
         ContentUnavailableView {
-            Label("Couldn't load your captures", systemImage: "exclamationmark.triangle")
+            Label("Couldn't load your events", systemImage: "exclamationmark.triangle")
         } description: {
             Text(message)
         } actions: {
@@ -166,6 +230,9 @@ struct LibraryView: View {
             Spacer(minLength: 0)
             Button("Retry") { Task { await retry() } }
                 .font(.footnote.weight(.semibold))
+                // Borderless, so only the button retries, not a tap anywhere
+                // on the List row.
+                .buttonStyle(.borderless)
                 .disabled(isRetrying)
         }
     }
@@ -207,81 +274,124 @@ struct LibraryView: View {
     }
 }
 
-struct CaptureTile: View {
-    @EnvironmentObject private var appState: AppState
+/// One capture as text: what, when, where. Pure, with no AppState, so the
+/// preview below can show every case with "today" pinned.
+struct EventRow: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let capture: Capture
-    @State private var image: UIImage?
+    let today: String
+    let zone: TimeZone
+    var whenStyle: EventWhen.Style = .full
+    var isPast = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // The image lives in an overlay of a fixed-height spacer so it can
-            // never drive layout: a fill-mode image with only its height fixed
-            // reports width = 130 × aspect, and one landscape photo would
-            // inflate its grid cell until the row clipped off the screen edge.
-            Color.clear
-                .frame(height: 130)
-                .overlay {
-                    if let image {
-                        Image(uiImage: image).resizable().scaledToFill()
-                    } else {
-                        Rectangle().fill(.quaternary)
-                            .overlay { Image(systemName: "photo").foregroundStyle(.secondary) }
-                    }
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                // A duplicate is an echo of a capture you already have — dim
-                // its thumbnail so the original reads as the real one.
-                .opacity(capture.status == .duplicate ? 0.55 : 1)
-                // Badge only when something is off — completed tiles (the
-                // common case) stay clean, so badged ones read as "needs a
-                // look". Applied after .opacity so the badge stays full-strength.
-                .overlay(alignment: .topTrailing) {
-                    if capture.status != .completed {
-                        StatusBadge(status: capture.status, style: .overlay)
-                            .padding(6)
-                    }
-                }
-
-            Text(capture.effectiveEvent?.title ?? capture.status.label)
-                .font(.caption.weight(.medium))
-                .lineLimit(1)
+        VStack(alignment: .leading, spacing: 2) {
+            if let event = capture.effectiveEvent {
+                eventLines(event)
+            } else {
+                statusLines
+            }
         }
+        // Colours, not the hierarchical .primary/.secondary styles: inside a
+        // List button those resolve against the tint, so the text came out
+        // blue-grey. Past rows grey out with semantic colours, which adapt to
+        // dark mode and Increase Contrast, and the "Past" label says it too.
+        .foregroundStyle(isPast ? Color.secondary : Color.primary)
+        .padding(.vertical, 2)
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private func eventLines(_ event: ExtractedEvent) -> some View {
+        Text(title(event))
+            .font(.body.weight(.semibold))
+            .lineLimit(2)
+        if let when = EventWhen.text(for: event, today: today, style: whenStyle) {
+            Text(when).font(.subheadline)
+        } else {
+            Text("No date").font(.subheadline).foregroundStyle(.orange)
+        }
+        if let place = whereAndWhat(event) {
+            Text(place)
+                .font(.subheadline)
+                .foregroundStyle(Color.secondary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 2 : 1)
+        }
+        // Its own line, so at large text sizes it never squeezes the title.
+        // "In calendar" is the normal case and gets no badge.
+        if capture.status != .completed {
+            StatusBadge(status: capture.status).padding(.top, 2)
+        }
+    }
+
+    /// Rows with no event yet (processing) or none at all (not an event,
+    /// failed): the status is the title.
+    @ViewBuilder private var statusLines: some View {
+        HStack {
+            Text(capture.status.label).font(.body.weight(.semibold))
+            if !capture.status.isTerminal {
+                Spacer()
+                ProgressView()
+            }
+        }
+        if let shared = SharedAt.text(createdAt: capture.createdAt, zone: zone) {
+            Text(shared).font(.subheadline).foregroundStyle(Color.secondary)
+        }
+    }
+
+    /// The backend's calendar title falls back to "Untitled Event" too.
+    private func title(_ event: ExtractedEvent) -> String {
+        guard let title = event.title, !title.isEmpty else { return "Untitled event" }
+        return title
+    }
+
+    /// "Jazz Cafe · Music". The venue, else the address, then the category.
+    private func whereAndWhat(_ event: ExtractedEvent) -> String? {
+        let place = [event.venue, event.address].compactMap { $0 }.first { !$0.isEmpty }
+        let parts = [place, EventCategoryLabel.text(event.category)].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
+/// The long-press preview: the poster at a fixed size, so the menu does not
+/// resize when the image arrives.
+private struct PosterPreview: View {
+    let captureId: String
+    let images: CaptureImageStore
+    @State private var image: UIImage?
+    @State private var didFail = false
+
+    var body: some View {
+        ZStack {
+            Color(.secondarySystemBackground)
+            if let image {
+                Image(uiImage: image).resizable().scaledToFit()
+            } else if didFail {
+                Label("Image unavailable", systemImage: "photo.badge.exclamationmark")
+                    .foregroundStyle(.secondary)
+            } else {
+                ProgressView()
+            }
+        }
+        .frame(width: 280, height: 373)
         .task {
-            image = await appState.images.image(for: capture.captureId)
+            image = await images.image(for: captureId)
+            didFail = image == nil
         }
     }
 }
 
 struct StatusBadge: View {
     let status: CaptureStatus
-    var style: Style = .tinted
-
-    enum Style {
-        /// Translucent capsule, coloured text — for flat grounds like Form rows.
-        case tinted
-        /// Solid capsule, white text — stays legible overlaid on a photo.
-        case overlay
-    }
 
     var body: some View {
-        Text(label)
+        // No line limit: at the largest text sizes "Already in calendar" is
+        // wider than a row, and wrapping beats "Already in cal…".
+        Text(status.label)
             .font(.caption2.weight(.semibold))
-            .lineLimit(1)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
-            .background(style == .overlay ? color : color.opacity(0.15), in: Capsule())
-            .foregroundStyle(style == .overlay ? .white : color)
-    }
-
-    /// Overlay badges sit on ~110pt tiles; the two long labels get compact
-    /// forms there ("Already in calendar" truncated mid-word on device).
-    private var label: String {
-        guard style == .overlay else { return status.label }
-        switch status {
-        case .duplicate: return "Duplicate"
-        case .notEvent: return "Not an event"
-        default: return status.label
-        }
+            .background(color.opacity(0.15), in: Capsule())
+            .foregroundStyle(color)
     }
 
     private var color: Color {
@@ -295,21 +405,57 @@ struct StatusBadge: View {
     }
 }
 
-#Preview("StatusBadge styles") {
-    let statuses: [CaptureStatus] = [
-        .queued, .processing, .needsReview, .failed, .duplicate, .notEvent, .completed,
-    ]
-    return HStack(alignment: .top, spacing: 24) {
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(statuses, id: \.self) { StatusBadge(status: $0) }
+#Preview("Event rows") {
+    // "Today" is pinned, so the sections and dates in this preview never move.
+    let today = "2026-10-13"
+    let zone = EventDates.zone(identifier: "Europe/London")
+    func capture(_ id: String, _ status: CaptureStatus = .completed, title: String? = nil,
+                 venue: String? = nil, category: String? = nil, start: String? = nil,
+                 end: String? = nil, startTime: String? = nil, endTime: String? = nil) -> Capture {
+        let event = title.map {
+            ExtractedEvent(title: $0, venue: venue, startDate: start, endDate: end,
+                           startTime: startTime, endTime: endTime, category: category)
         }
-        // Overlay style on a photo-ish ground, as on a capture tile.
-        VStack(alignment: .leading, spacing: 8) {
-            ForEach(statuses, id: \.self) { StatusBadge(status: $0, style: .overlay) }
-        }
-        .padding(8)
-        .background(LinearGradient(colors: [.brown, .teal],
-                                   startPoint: .topLeading, endPoint: .bottomTrailing))
+        return Capture(captureId: id, status: status, createdAt: "2026-10-12T14:22:01.456Z", event: event)
     }
-    .padding()
+    let captures = [
+        capture("01", .processing),
+        capture("02", .needsReview, title: "Supper Club", venue: "Peckham Levels",
+                category: "food_drink", start: "2027-10-03", startTime: "19:00"),
+        capture("03", .failed, title: "Open Studios", venue: "Cockpit Arts"),
+        capture("04", title: "Film Club", venue: "Rio Cinema", category: "film",
+                start: "2026-10-13", startTime: "20:00"),
+        capture("05", title: "Ezra Collective", venue: "Jazz Cafe", category: "music",
+                start: "2026-10-18", startTime: "19:30", endTime: "23:00"),
+        capture("06", .duplicate, title: "Ezra Collective", venue: "Jazz Cafe", category: "music",
+                start: "2026-10-18", startTime: "19:30"),
+        capture("07", title: "Frieze London", venue: "Regent's Park", category: "exhibition",
+                start: "2026-10-14", end: "2026-10-18"),
+        capture("08", title: "Hockney: Drawing from Life", venue: "National Portrait Gallery",
+                category: "exhibition", start: "2026-09-01", end: "2026-11-30"),
+        capture("09", title: "Late at the Tate", end: "2026-10-31"),
+        capture("10", title: "Quiz Night", venue: "The Albert", start: "2026-10-10", startTime: "19:00"),
+        capture("11", .notEvent),
+    ]
+    let sections = EventSections(captures, today: today)
+    return List {
+        Section("Processing") {
+            ForEach(sections.processing) { EventRow(capture: $0, today: today, zone: zone) }
+        }
+        Section("Needs your review (\(sections.review.count))") {
+            ForEach(sections.review) { EventRow(capture: $0, today: today, zone: zone) }
+        }
+        Section("Upcoming") {
+            ForEach(sections.upcoming) { EventRow(capture: $0, today: today, zone: zone) }
+        }
+        Section("On now") {
+            ForEach(sections.onNow) { EventRow(capture: $0, today: today, zone: zone, whenStyle: .until) }
+        }
+        Section("Past") {
+            ForEach(sections.past) { EventRow(capture: $0, today: today, zone: zone, isPast: true) }
+        }
+        Section("Other captures") {
+            ForEach(sections.other) { EventRow(capture: $0, today: today, zone: zone) }
+        }
+    }
 }
