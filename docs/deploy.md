@@ -89,6 +89,13 @@ the choice in a new ADR.
   or a Google grant that needs a new sign-in. So the DLQ holds only failures
   that a retry might have fixed. `just dlq prod` counts the messages. After you
   fix the cause, redrive from the SQS console.
+  A capture whose processor timed out or crashed stays `processing` in
+  DynamoDB. Ten minutes after its last write, the API reports it as `failed`
+  and the app tells the user to delete it and share the screenshot again. A
+  redrive repairs such a capture by itself: the processor writes `processing`
+  again, and the app then shows the result. So a redrive helps only the
+  captures that users have not deleted yet. For a deleted capture the
+  processor logs `capture_missing` and drops the message.
 - **API 5xx alarm** (`s2c-api-5xx-*`) fires when the HTTP API returns any 5xx.
   Look for `unhandled_error` in the logs of the route Lambdas
   (`/aws/lambda/s2c-<route>-prod`), for example
