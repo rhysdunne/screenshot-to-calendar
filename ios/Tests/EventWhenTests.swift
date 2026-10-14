@@ -19,6 +19,7 @@ struct EventWhenTests {
         (event(start: "2026-10-20", end: "2026-10-15"), "Tue 20 Oct – Thu 15 Oct"),
         (event(start: "2027-10-03", startTime: "19:00"), "Sun, 3 Oct 2027, 19:00"),
         (event(start: "2025-10-01"), "Wed, 1 Oct 2025"),
+        (event(start: "2028-02-29"), "Tue, 29 Feb 2028"), // a real leap day still parses strictly
         (event(end: "2026-10-31"), "Until Sat 31 Oct"),
         (event(start: "2026-03-29"), "Sun 29 Mar"),
         (event(start: "2026-10-25"), "Sun 25 Oct"),
@@ -27,13 +28,12 @@ struct EventWhenTests {
         #expect(EventWhen.text(for: event, today: today) == expected)
     }
 
-    @Test("A well-shaped but impossible date is shown as it is")
-    func impossibleDate() {
-        // DateFormatter rolls 30 Feb over to 2 Mar unless isLenient is set
-        // explicitly, although its getter already reports false.
-        withKnownIssue("wireParser needs isLenient = false") {
-            #expect(EventWhen.text(for: event(start: "2026-02-30"), today: today) == "2026-02-30")
-        }
+    // A lenient parse would roll 30 Feb over to "Mon 2 Mar" (wireParser sets
+    // isLenient = false). 2026 is not a leap year.
+    @Test("A well-shaped but impossible date is shown as it is",
+          arguments: ["2026-02-30", "2026-02-29", "2026-13-01"])
+    func impossibleDate(wire: String) {
+        #expect(EventWhen.text(for: event(start: wire), today: today) == wire)
     }
 
     @Test(arguments: [
