@@ -4,7 +4,7 @@
 
 
 ## Checklist
-- [ ] `npm run typecheck` and `npm test` pass in the affected package(s)
+- [ ] `npm run typecheck` and `npm test` pass in the affected package(s), or `just ios-test` for iOS changes
 - [ ] `CLAUDE.md` invariants respected (dates via `dates.ts`; pipeline purity; models via `models.ts`; secrets in Parameter Store; corrections never overwrite the original `event`)
 - [ ] If a prompt changed: new version file + `ACTIVE_VERSIONS` bump + eval gate run, report attached
 - [ ] If a non-obvious / reversible decision was made: ADR added under `docs/decisions/`

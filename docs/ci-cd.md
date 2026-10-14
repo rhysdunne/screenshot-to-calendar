@@ -26,7 +26,8 @@ the matching recipe in the same PR.
 |---|---|---|
 | `just install` | `npm ci` in backend, infra, evals and tools/prompt-improvement | the install steps in `ci.yml` |
 | `just check` | install, then typecheck, lint, tests and the mock eval in every package | the four `ci.yml` jobs |
-| `just ios-build` | XcodeGen, then an unsigned compile. Set `DEVELOPER_DIR` to use a different Xcode | `ios.yml` |
+| `just ios-build` | XcodeGen, then an unsigned compile. Set `DEVELOPER_DIR` to use a different Xcode | `ios.yml`, first step |
+| `just ios-test` | XcodeGen, then the iOS unit tests natively on this Mac. Set `DEVELOPER_DIR` to use a different Xcode | `ios.yml`, second step |
 | `just deploy staging` | ALERT_EMAIL check, `cdk diff`, typed confirmation, `cdk deploy` of both stacks | `deploy-stage.yml` |
 | `just logs prod processor` | follow one Lambda's CloudWatch logs | none |
 | `just dlq prod` | count the messages on the dead-letter queue | none |
@@ -43,10 +44,23 @@ checks pass, each the job id of a workflow:
   [`ci.yml`](../.github/workflows/ci.yml): typecheck, lint (backend), and the
   full mocked test suites. No AWS or API credentials; everything is stubbed.
   `just check` runs the same steps locally.
-- `ios-build` — [`ios.yml`](../.github/workflows/ios.yml): a compile-only check
-  on a macOS runner, pinned to **Xcode 26.6 (17F113)** to match the Xcode Cloud
-  release lane. No signing, no tests (there is no XCTest target yet). Separate
-  from `ci.yml` so a backend deploy never waits on a macOS build.
+- `ios-build` — [`ios.yml`](../.github/workflows/ios.yml): on a macOS runner,
+  pinned to **Xcode 26.6 (17F113)** to match the Xcode Cloud release lane. It
+  compiles the app for a device, then runs the Swift Testing unit tests
+  (`ios/Tests/`, scheme `Screenshot2CalTests`) natively on the runner's Mac,
+  with no simulator. No signing. Separate from `ci.yml` so a backend deploy
+  never waits on a macOS build. It has no `paths:` filter, so it runs on every
+  PR. `just ios-build` and `just ios-test` run the two steps locally.
+
+  The tests compare exact en_GB date strings such as "Sun 18 Oct". Those
+  strings come from the CLDR data in the macOS that runs the tests, not from
+  Xcode, and `runs-on: macos-26` takes the runner image's latest macOS 26
+  update. If the test step fails on a PR that did not touch `ios/`, and only
+  date strings differ, check the runner image's macOS version (the "Set up
+  job" step logs it) before you change any code. The same CLDR change will
+  reach users in an iOS release, so read the new strings before you update
+  the expected ones. `just ios-test` follows your own Mac's macOS version in
+  the same way.
 
 ## 2. Backend + web deploy (automatic on merge)
 
