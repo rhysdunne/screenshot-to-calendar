@@ -7,9 +7,11 @@ import { authenticate, errorResponse, HttpError, json, type ApiHandler } from '.
 import type { CaptureRecord } from '../lib/ddb.js';
 
 // The app does not follow the cursor yet, so the first page is the whole
-// library it shows. 200 keeps a personal library on one page. At 1-2 KB a
-// capture that is inside DynamoDB's 1 MB read per Query (past which the page
-// comes back short, with a cursor) and well inside the 6 MB Lambda response.
+// library it shows. 200 keeps a personal library on one page. listCaptures
+// reads one capture more, to return a cursor only when an older one exists.
+// At 1-2 KB a capture those 201 are inside DynamoDB's 1 MB read per Query
+// (past which the page comes back short, with a cursor) and the page is well
+// inside the 6 MB Lambda response.
 const LIBRARY_PAGE_SIZE = 200;
 
 // A processor that times out or crashes never reaches the catch block in

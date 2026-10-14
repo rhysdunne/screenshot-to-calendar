@@ -221,27 +221,42 @@ export class DdbStore {
     return (r.Item as CaptureRecord | undefined) ?? null;
   }
 
+  /**
+   * Up to `limit` captures, newest first. The cursor is the id of the last
+   * capture returned, and the next page starts after it. It is set only when
+   * older captures may exist.
+   */
   async listCaptures(
     userId: string,
     limit = 50,
     cursor?: string,
   ): Promise<{ items: CaptureRecord[]; cursor?: string }> {
+    // One item more than the page shows whether an older capture exists.
+    // DynamoDB returns a LastEvaluatedKey whenever a Query stops at its Limit,
+    // even when nothing follows, so with Limit: limit a library of exactly
+    // `limit` captures got a cursor.
     const r = await this.doc.send(
       new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
         ExpressionAttributeValues: { ':pk': userPk(userId), ':sk': 'CAPTURE#' },
         ScanIndexForward: false, // newest first (ULID sort)
-        Limit: limit,
+        Limit: limit + 1,
         ExclusiveStartKey: cursor
           ? { PK: userPk(userId), SK: `CAPTURE#${cursor}` }
           : undefined,
       }),
     );
-    const items = (r.Items ?? []) as CaptureRecord[];
-    const nextCursor = r.LastEvaluatedKey
-      ? String(r.LastEvaluatedKey.SK).replace('CAPTURE#', '')
-      : undefined;
+    const found = (r.Items ?? []) as Array<CaptureRecord & { SK: string }>;
+    const items = found.slice(0, limit);
+    const lastReturned = found.length > limit ? found[limit - 1] : undefined;
+    let nextCursor: string | undefined;
+    if (lastReturned) {
+      nextCursor = lastReturned.SK.replace('CAPTURE#', '');
+    } else if (r.LastEvaluatedKey) {
+      // DynamoDB's 1 MB read limit cut the page short, so more may follow.
+      nextCursor = String(r.LastEvaluatedKey.SK).replace('CAPTURE#', '');
+    }
     return { items, cursor: nextCursor };
   }
 

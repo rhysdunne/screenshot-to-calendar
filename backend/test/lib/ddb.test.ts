@@ -164,3 +164,81 @@ describe('DdbStore', () => {
     expect(await store.countCorrectionsToday('u1')).toBe(2);
   });
 });
+
+describe('DdbStore.listCaptures paging', () => {
+  const store = new DdbStore('s2c-main-test');
+
+  // A user's captures as DynamoDB serves them, newest first. A Query stops at
+  // its Limit or after `perRead` items (standing in for the 1 MB read limit),
+  // and returns a LastEvaluatedKey whenever it stops at either, even when
+  // nothing follows.
+  function serveCaptures(count: number, perRead = Infinity) {
+    const ids = Array.from({ length: count }, (_, i) => `cap${String(count - i).padStart(3, '0')}`);
+    const rows = ids.map((id) => ({ PK: 'USER#u1', SK: `CAPTURE#${id}`, captureId: id }));
+    ddbMock.on(QueryCommand).callsFake((input: { Limit: number; ExclusiveStartKey?: { SK: string } }) => {
+      const start = input.ExclusiveStartKey
+        ? rows.findIndex((r) => r.SK === input.ExclusiveStartKey!.SK) + 1
+        : 0;
+      const take = Math.min(input.Limit, perRead);
+      const page = rows.slice(start, start + take);
+      const last = page[page.length - 1];
+      return {
+        Items: page,
+        LastEvaluatedKey: page.length === take && last ? { PK: last.PK, SK: last.SK } : undefined,
+      };
+    });
+    return ids;
+  }
+
+  const ids = (items: Array<{ captureId: string }>) => items.map((c) => c.captureId);
+
+  it('asks for one capture more than the page', async () => {
+    serveCaptures(0);
+    await store.listCaptures('u1', 200);
+    expect(ddbMock.commandCalls(QueryCommand)[0]!.args[0].input.Limit).toBe(201);
+  });
+
+  it('exactly a page of captures comes back with no cursor', async () => {
+    const all = serveCaptures(3);
+    const page = await store.listCaptures('u1', 3);
+    expect(ids(page.items)).toEqual(all);
+    expect(page.cursor).toBeUndefined();
+  });
+
+  it('one capture more than a page sets the cursor to the last one returned', async () => {
+    const all = serveCaptures(4);
+    const first = await store.listCaptures('u1', 3);
+    expect(ids(first.items)).toEqual(all.slice(0, 3));
+    expect(first.cursor).toBe(all[2]);
+
+    // The next page starts with the capture after the last one returned.
+    const second = await store.listCaptures('u1', 3, first.cursor);
+    expect(ids(second.items)).toEqual(all.slice(3));
+    expect(second.cursor).toBeUndefined();
+  });
+
+  it('a page cut short by the read limit keeps DynamoDB’s cursor', async () => {
+    const all = serveCaptures(5, 2);
+    const first = await store.listCaptures('u1', 3);
+    expect(ids(first.items)).toEqual(all.slice(0, 2));
+    expect(first.cursor).toBe(all[1]);
+  });
+
+  it('following the cursor returns every capture once, in order', async () => {
+    for (const [count, perRead] of [[7, Infinity], [9, Infinity], [7, 2]] as const) {
+      ddbMock.reset();
+      const all = serveCaptures(count, perRead);
+      const seen: string[] = [];
+      let cursor: string | undefined;
+      let pages = 0;
+      do {
+        const page = await store.listCaptures('u1', 3, cursor);
+        seen.push(...ids(page.items));
+        cursor = page.cursor;
+        pages++;
+      } while (cursor && pages < 20);
+      expect(seen).toEqual(all);
+      expect(cursor).toBeUndefined();
+    }
+  });
+});
