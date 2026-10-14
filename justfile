@@ -27,11 +27,18 @@ check: install
     cd evals && npm run typecheck && npm test && npm run eval -- --mock --label ci-smoke
     cd tools/prompt-improvement && npm run typecheck && npm test
 
-# Compile the iOS app without signing, like ios.yml (set DEVELOPER_DIR to use another Xcode)
+# Compile the iOS app without signing, like ios.yml's first step (set DEVELOPER_DIR to use another Xcode)
 ios-build:
     cd ios && xcodegen generate
     cd ios && DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
         xcodebuild build -scheme Screenshot2Cal -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO
+
+# Run the iOS unit tests natively on this Mac, like ios.yml's second step (set DEVELOPER_DIR to use another Xcode)
+ios-test:
+    cd ios && xcodegen generate
+    cd ios && DEVELOPER_DIR="${DEVELOPER_DIR:-/Applications/Xcode.app/Contents/Developer}" \
+        xcodebuild test -scheme Screenshot2CalTests -destination 'platform=macOS,arch=arm64' \
+        -collect-test-diagnostics never CODE_SIGNING_ALLOWED=NO
 
 # Deploy web + backend to STAGE (staging|prod) from this machine: diff, confirm, deploy
 deploy STAGE: (_stage STAGE)
