@@ -259,9 +259,12 @@ struct LibraryView: View {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
             }
             .font(.subheadline.weight(.semibold))
+            // Primary, not secondary: secondary text on the orange tint was
+            // 3.2:1 in light mode (#133). Color.primary, not the hierarchical
+            // .primary style, as in StatusBadge.
             Text("Google stopped accepting this app's access, so captures can't reach your calendar until you sign in with Google again.")
                 .font(.footnote)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.primary)
             Button("Reconnect") { Task { await reconnect() } }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)

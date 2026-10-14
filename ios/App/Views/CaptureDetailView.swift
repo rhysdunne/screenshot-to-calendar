@@ -121,26 +121,33 @@ struct CaptureDetailView: View {
             Group {
                 switch imageState {
                 case .loading:
+                    // A fixed height is enough here: the spinner fits in
+                    // 200 pt at every text size.
                     Rectangle().fill(.quaternary).frame(height: 200)
                         .overlay { ProgressView() }
                         .accessibilityElement()
                         .accessibilityLabel("Loading image")
                 case .failed:
-                    Rectangle().fill(.quaternary).frame(height: 200)
-                        .overlay {
-                            VStack(spacing: 8) {
-                                Image(systemName: "photo.badge.exclamationmark")
-                                    .font(.title2)
-                                    .foregroundStyle(.secondary)
-                                Text("Image unavailable")
-                                    .font(.callout)
-                                    .foregroundStyle(.secondary)
-                                // Failures are never cached, so a retry refetches.
-                                Button("Try again") { Task { await loadImage() } }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                            }
-                        }
+                    // A minimum height, not a fixed one: at the largest text
+                    // sizes the icon, text and button need more than 200 pt,
+                    // and a fixed frame cut them off (#132). When they fit,
+                    // it stays at 200 pt, the loading height and image cap.
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo.badge.exclamationmark")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                        Text("Image unavailable")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                        // Failures are never cached, so a retry refetches.
+                        Button("Try again") { Task { await loadImage() } }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    }
+                    .multilineTextAlignment(.center)
+                    .padding()
+                    .frame(maxWidth: .infinity, minHeight: 200)
+                    .background(.quaternary)
                 case let .loaded(image):
                     Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
                         // Capped at the placeholders' height: at full width a
