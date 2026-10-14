@@ -143,6 +143,14 @@ struct CaptureDetailView: View {
                         }
                 case let .loaded(image):
                     Image(uiImage: image).resizable().aspectRatio(contentMode: .fit)
+                        // Capped at the placeholders' height: at full width a
+                        // portrait screenshot filled the sheet and hid every
+                        // field (#121). At 200 pt the image, the status and
+                        // the fields down to Start date fit on a 6.1-inch
+                        // iPhone at the default text size and one step larger.
+                        // maxWidth centres a narrow image. It goes before
+                        // contentShape, so the whole row opens the viewer.
+                        .frame(maxWidth: .infinity, maxHeight: 200)
                         .contentShape(Rectangle())
                         .onTapGesture { viewerImage = ViewerImage(image: Image(uiImage: image)) }
                         .accessibilityLabel("Capture image")
