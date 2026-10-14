@@ -73,6 +73,10 @@ describe('BackendStack', () => {
     // capture between retries must never look stalled, so the visibility
     // timeout stays well under 600 s. AWS suggests 6 x the function timeout
     // (720 s here); raising it means raising STALLED_AFTER_MS with it.
+    // Queue wait also counts towards the 600 s, and this test does not cover
+    // it: with the processor's MaximumConcurrency of 2 (next test), a long
+    // backlog can hold a live capture past the threshold. captures-read.ts
+    // gives the numbers.
     const queues = backend.findResources('AWS::SQS::Queue', {
       Properties: { QueueName: 's2c-process-staging' },
     });

@@ -95,7 +95,10 @@ the choice in a new ADR.
   redrive repairs such a capture by itself: the processor writes `processing`
   again, and the app then shows the result. So a redrive helps only the
   captures that users have not deleted yet. For a deleted capture the
-  processor logs `capture_missing` and drops the message.
+  processor logs `capture_missing` and drops the message. A large redrive
+  also delays new shares: the processor takes two captures at a time, and a
+  new capture that waits more than ten minutes behind the redrive is reported
+  as `failed` too. Redrive a large DLQ at a quiet time.
 - **API 5xx alarm** (`s2c-api-5xx-*`) fires when the HTTP API returns any 5xx.
   Look for `unhandled_error` in the logs of the route Lambdas
   (`/aws/lambda/s2c-<route>-prod`), for example

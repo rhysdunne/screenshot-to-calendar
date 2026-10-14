@@ -17,9 +17,22 @@ const LIBRARY_PAGE_SIZE = 200;
 // SQS moves the message to the DLQ. Every attempt rewrites `processing`, which
 // refreshes updatedAt, and SQS retries a dead attempt once the queue's
 // visibility timeout runs out (infra/lib/backend-stack.ts: processor timeout
-// 120 s, visibility 180 s, maxReceiveCount 3). So no live capture keeps one
-// updatedAt for 10 minutes, and one that has is reported as failed. The stack
-// tests hold the visibility timeout well under this; change them together.
+// 120 s, visibility 180 s, maxReceiveCount 3). The visibility timeout starts
+// when the attempt receives the message, so its write and the retry are about
+// 3 of the 10 minutes apart. A capture that nothing has written for 10 minutes
+// is reported as failed. The stack tests hold the visibility timeout well
+// under this; change them together.
+//
+// Time in the queue counts too, and the threshold does not allow for it.
+// Nothing writes a capture while its message waits: a new capture keeps
+// updatedAt from its creation, and one between retries keeps the start of its
+// last attempt. The processor takes two captures at a time (maxConcurrency 2),
+// so a backlog can hold a live capture past 10 minutes: a burst of shares, a
+// DLQ redrive, or slow Claude replies where each attempt runs to the 120 s
+// timeout. That needs about 60 captures ahead at normal speed, or about 10
+// when every attempt times out. The API then reports the live capture as
+// failed and tells the user to delete it. If the user does, the processor
+// drops the message when it gets to it (capture_missing).
 export const STALLED_AFTER_MS = 10 * 60 * 1000;
 // Says delete first: sharing the same image again without deleting returns
 // this capture as a duplicate (the exact-image dedup in captures-create.ts).
