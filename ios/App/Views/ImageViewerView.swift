@@ -51,7 +51,8 @@ struct ImageViewerView: View {
                     .gesture(magnify(in: geo.size))
                     .simultaneousGesture(pan(in: geo.size))
             }
-            // Keeps a zoomed image below the bar.
+            // Keeps a zoomed image inside the fit area: below the bar and
+            // above the home indicator.
             .clipped()
             .background(Color.black.ignoresSafeArea())
             .navigationTitle("Original image")
