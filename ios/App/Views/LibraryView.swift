@@ -308,7 +308,12 @@ struct EventRow: View {
         if let when = EventWhen.text(for: event, today: today, style: whenStyle) {
             Text(when).font(.subheadline)
         } else {
-            Text("No date").font(.subheadline).foregroundStyle(.orange)
+            // The row's text colour, with the orange on the icon only:
+            // orange text was 2.3:1 on white (#124). The icon is inline, not
+            // a Label: a List gives a Label an icon column and indents the
+            // row separator to its title.
+            let warning = Text(Image(systemName: "exclamationmark.triangle.fill")).foregroundStyle(.orange)
+            Text("\(warning) No date").font(.subheadline)
         }
         if let place = whereAndWhat(event) {
             Text(place)
@@ -386,14 +391,20 @@ struct StatusBadge: View {
     var body: some View {
         // No line limit: at the largest text sizes "Already in calendar" is
         // wider than a row, and wrapping beats "Already in cal…".
+        // Primary text on a tint of the status colour (#124). Text in the
+        // status colour on its own tint was below 4.5:1 contrast for every
+        // colour in light mode (orange 2.0:1), and for red and blue in dark
+        // mode. Color.primary, not the hierarchical .primary style, which a
+        // List button resolves against the tint.
         Text(status.label)
             .font(.caption2.weight(.semibold))
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(color.opacity(0.15), in: Capsule())
-            .foregroundStyle(color)
+            .foregroundStyle(Color.primary)
     }
 
+    /// The fill only. The label carries the meaning.
     private var color: Color {
         switch status {
         case .completed: return .green
@@ -458,4 +469,16 @@ struct StatusBadge: View {
             ForEach(sections.other) { EventRow(capture: $0, today: today, zone: zone) }
         }
     }
+}
+
+#Preview("Status badges") {
+    // Every status. The detail sheet can show any of them, but the Events
+    // list never badges "In calendar" or "Saved (not an event)".
+    let statuses: [CaptureStatus] = [
+        .queued, .processing, .needsReview, .failed, .duplicate, .notEvent, .completed,
+    ]
+    return List {
+        ForEach(statuses, id: \.self) { StatusBadge(status: $0) }
+    }
+    .listStyle(.insetGrouped)
 }

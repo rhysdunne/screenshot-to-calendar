@@ -180,7 +180,14 @@ struct CaptureDetailView: View {
                     .font(.callout)
             }
             if let error = capture.error {
-                Text(error).font(.callout).foregroundStyle(.red)
+                // Primary text, with the colour on the icon only: red text
+                // was 3.6:1 on white (#124).
+                Label {
+                    Text(error)
+                } icon: {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                }
+                .font(.callout)
             }
             if capture.possibleDuplicateOf != nil {
                 Label("Might duplicate an existing event — check your calendar.",
