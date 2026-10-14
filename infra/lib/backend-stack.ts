@@ -93,6 +93,10 @@ export class BackendStack extends Stack {
     });
     const queue = new sqs.Queue(this, 'ProcessQueue', {
       queueName: `s2c-process-${stage}`,
+      // Keep well under STALLED_AFTER_MS (10 min) in backend/src/handlers/
+      // captures-read.ts: a capture waiting for its retry was last written up
+      // to this long ago, and must not be reported as failed. The stack tests
+      // hold it at 300 s or less.
       visibilityTimeout: Duration.seconds(180),
       deadLetterQueue: { queue: dlq, maxReceiveCount: 3 },
     });

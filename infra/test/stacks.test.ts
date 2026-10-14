@@ -65,6 +65,21 @@ describe('BackendStack', () => {
     });
   });
 
+  it('retries a dead processor attempt well inside the stalled-capture threshold', () => {
+    // backend/src/handlers/captures-read.ts reports a queued or processing
+    // capture as failed once nothing has written it for STALLED_AFTER_MS
+    // (600 s). After an attempt times out, the capture waits one visibility
+    // timeout for its retry, with updatedAt from that attempt's start. A live
+    // capture between retries must never look stalled, so the visibility
+    // timeout stays well under 600 s. AWS suggests 6 x the function timeout
+    // (720 s here); raising it means raising STALLED_AFTER_MS with it.
+    const queues = backend.findResources('AWS::SQS::Queue', {
+      Properties: { QueueName: 's2c-process-staging' },
+    });
+    const [queue] = Object.values(queues);
+    expect(queue?.Properties.VisibilityTimeout).toBeLessThanOrEqual(300);
+  });
+
   it('caps the processor at two concurrent captures to bound Claude spend', () => {
     backend.hasResourceProperties('AWS::Lambda::EventSourceMapping', {
       BatchSize: 1,
