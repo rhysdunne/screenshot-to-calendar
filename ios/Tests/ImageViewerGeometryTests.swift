@@ -23,7 +23,8 @@ struct ImageViewerGeometryTests {
 
     @Test("An image with no size fills the space inside the inset")
     func noSize() {
-        let fitted = ImageViewerGeometry.fittedSize(of: .zero, in: container, inset: 1)
+        let fitted = ImageViewerGeometry.fittedSize(
+            of: CGSize(width: 0, height: 0), in: container, inset: 1)
         #expect(isClose(fitted.width, 391))
         #expect(isClose(fitted.height, 713))
     }
@@ -34,7 +35,8 @@ struct ImageViewerGeometryTests {
             of: CGSize(width: 1000, height: 1000), in: container, inset: 1)
         let o = ImageViewerGeometry.clampedOffset(
             CGSize(width: 500, height: -500), fitted: fitted, scale: 1, in: container)
-        #expect(o == .zero)
+        #expect(o.width == 0)
+        #expect(o.height == 0)
     }
 
     // #145: the old bounds came from the container, so at 5x a square poster
@@ -57,7 +59,8 @@ struct ImageViewerGeometryTests {
             of: CGSize(width: 1000, height: 563), in: container, inset: 1)
         let o = ImageViewerGeometry.clampedOffset(
             CGSize(width: -10_000, height: 10_000), fitted: fitted, scale: 2.5, in: container)
-        #expect(isClose(o.width, -(391 * 2.5 - 393) / 2))
+        let expectedWidth: CGFloat = -(391 * 2.5 - 393) / 2
+        #expect(isClose(o.width, expectedWidth))
         #expect(o.height == 0)
     }
 
