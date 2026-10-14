@@ -11,7 +11,7 @@ struct ImageViewerView: View {
     /// The image's size, for the pan bounds. A SwiftUI Image does not expose it.
     let imageSize: CGSize
 
-    /// Padding between the image and its outline, on each side.
+    /// The padding that holds the outline just outside the image, on each side.
     private static let outlineInset: CGFloat = 1
     private static let minScale: CGFloat = 1
     private static let maxScale: CGFloat = 5
@@ -133,9 +133,9 @@ struct ImageViewerView: View {
         }
     }
 
-    /// Bounds pan so the image's edges stop at the container's edges, with no
-    /// black beside a letterboxed image (#145). An image smaller than the
-    /// container on an axis stays centred on that axis.
+    /// Bounds pan so the image's edges stop at the container's edges, so a pan
+    /// adds no black beside a letterboxed image (#145). An image smaller than
+    /// the container on an axis stays centred on that axis.
     private func clampedOffset(_ o: CGSize, in size: CGSize) -> CGSize {
         let fitted = ImageViewerGeometry.fittedSize(of: imageSize, in: size,
                                                     inset: Self.outlineInset)

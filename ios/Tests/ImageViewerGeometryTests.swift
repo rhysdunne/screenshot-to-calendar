@@ -62,7 +62,7 @@ struct ImageViewerGeometryTests {
     }
 
     // Shapes: portrait screenshot, 4:5 post, square, 16:9 poster.
-    @Test("A pan past the limit never shows black beside the image",
+    @Test("A pan past the limit stops at an edge, or keeps the image centred",
           arguments: [461.0 / 1000, 4.0 / 5, 1, 1000.0 / 563], [1.5, 2.5, 5])
     func noGap(aspect: Double, scale: Double) {
         let fitted = ImageViewerGeometry.fittedSize(
