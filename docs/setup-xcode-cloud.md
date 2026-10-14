@@ -3,7 +3,7 @@
 Xcode Cloud archives the app and uploads to TestFlight, with signing managed by
 Apple in the cloud — no certificates, profiles, or Apple credentials ever touch
 this repo or GitHub Actions. It complements CI: `ios.yml` (GitHub Actions) is the
-fast per-PR compile gate; Xcode Cloud is the release lane.
+fast per-PR compile and unit-test gate; Xcode Cloud is the release lane.
 
 ## How this repo supports it
 

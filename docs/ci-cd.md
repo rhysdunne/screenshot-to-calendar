@@ -178,8 +178,8 @@ run, so a new XcodeGen release can change the generated project without a PR.
 
 **Xcode.** Two places declare Xcode 26.6 (17F113) and must change together: the
 `xcode-select` line in [`ios.yml`](../.github/workflows/ios.yml) and the Xcode
-Cloud workflow's Environment setting. Pinning both keeps the PR compile gate and
-the release archive on one toolchain. Bumping is a deliberate, paired act.
+Cloud workflow's Environment setting. Pinning both keeps the `ios-build` PR check
+and the release archive on one toolchain. Bumping is a deliberate, paired act.
 
 **Node.** [`.tool-versions`](../.tool-versions) holds the Node major (`nodejs 22`)
 once. Every `actions/setup-node` step reads it through `node-version-file`, and
