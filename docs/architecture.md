@@ -54,6 +54,8 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 - `duplicate`: the dedup step matched an existing event, so nothing was created. `matchedEventId` is that event, and `eventLink` opens it. The capture never edits or deletes it. `matchedEventId` is null for every other status.
 - `possibleDuplicateOf`: the event was created, but a similar existing event (by title) was found.
 
+[ADR 0009](decisions/0009-stalled-captures-derived-at-read-time.md) records why a stalled capture's status is derived on read, and not written by a DLQ consumer.
+
 ## DynamoDB single table (`s2c-main-{stage}`)
 
 | Entity | PK | SK | Notes |

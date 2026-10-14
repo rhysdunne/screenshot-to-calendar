@@ -50,7 +50,9 @@ checks pass, each the job id of a workflow:
   (`ios/Tests/`, scheme `Screenshot2CalTests`) natively on the runner's Mac,
   with no simulator. No signing. Separate from `ci.yml` so a backend deploy
   never waits on a macOS build. It has no `paths:` filter, so it runs on every
-  PR. `just ios-build` and `just ios-test` run the two steps locally.
+  PR. `just ios-build` and `just ios-test` run the two steps locally. Why the
+  tests run on macOS and not on a simulator:
+  [ADR 0010](decisions/0010-ios-logic-tests-native-on-macos.md).
 
   The tests compare exact en_GB date strings such as "Sun 18 Oct". Those
   strings come from the CLDR data in the macOS that runs the tests, not from

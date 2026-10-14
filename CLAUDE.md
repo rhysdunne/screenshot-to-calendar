@@ -153,9 +153,10 @@ cd evals   && npm run eval -- --models claude-haiku-4-5,claude-sonnet-5-5 --data
   compiles `App/EventSections.swift` and `Shared/Models.swift` directly, with no host
   app or simulator, so any file it lists must stay Foundation-only. Its scheme pins
   en_GB and `TZ=Pacific/Auckland`, so a "today" taken from the device zone fails.
-  `just ios-build` and `just ios-test` run the same steps on a Mac. Views, `AppState`
-  and the Share Extension have no tests: check them on a device or simulator. Keep
-  `ios/Shared/Models.swift` in sync with API changes.
+  `just ios-build` and `just ios-test` run the same steps on a Mac. Why macOS and not
+  a simulator: ADR 0010. Views, `AppState` and the Share Extension have no tests:
+  check them on a device or simulator. Keep `ios/Shared/Models.swift` in sync with
+  API changes.
 
 ## Environments
 
