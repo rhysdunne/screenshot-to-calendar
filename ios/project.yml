@@ -172,7 +172,10 @@ schemes:
       targets:
         - Screenshot2CalTests
       # Exact strings in the tests are en_GB ("Sun 18 Oct"). The device zone is
-      # pinned far from London so a stray TimeZone.current shows up as a failure.
+      # pinned far from London, so a "today" or a wire-date parse taken from the
+      # device zone fails the tests. A display formatter that loses its GMT zone
+      # does not fail them: GMT midnight is the same date in Auckland. A zone
+      # west of GMT catches that one, but then misses the wire parse.
       language: en
       region: GB
       environmentVariables:
