@@ -1,7 +1,7 @@
 import Foundation
 
 // The Events list's date logic. Foundation only, with no SwiftUI or AppState,
-// so it can be checked on its own (see #125 for the test target it waits for).
+// so the Screenshot2CalTests target (ios/Tests/) compiles it on its own.
 //
 // Every rule compares `yyyy-MM-dd` strings against "today" in the user's
 // settings timezone. There is no date arithmetic, so the DST change days and
@@ -175,9 +175,9 @@ enum EventDates {
 /// The text for a row's "when" line.
 enum EventWhen {
     enum Style {
-        /// The dates as extracted: "Sat 18 Oct, 19:30–23:00", or a range.
+        /// The dates as extracted: "Sun 18 Oct, 19:30–23:00", or a range.
         case full
-        /// For a running event: "Until Sun 30 Nov".
+        /// For a running event: "Until Mon 30 Nov".
         case until
     }
 
@@ -208,10 +208,11 @@ enum EventWhen {
         return "\(dayText), \(startTime)"
     }
 
-    /// "Sat 18 Oct", or "Sat 18 Oct 2027" outside the current year, in the
-    /// user's locale. Parse and display share one fixed zone (GMT), so the
-    /// shown day never shifts and a DST-gap midnight cannot fail the parse.
-    /// A date that does not parse is shown as it is.
+    /// "Sun 18 Oct", or "Mon, 18 Oct 2027" outside the current year, in the
+    /// user's locale. The examples are en_GB, which adds the comma only with
+    /// the year. Parse and display share one fixed zone (GMT), so the shown
+    /// day never shifts and a DST-gap midnight cannot fail the parse. A date
+    /// that does not parse, such as 2026-02-30, is shown as it is.
     static func day(_ wire: String, currentYear: String) -> String {
         guard let date = wireParser.date(from: wire) else { return wire }
         return (wire.hasPrefix(currentYear) ? dayFormatter : dayWithYearFormatter).string(from: date)
@@ -225,6 +226,9 @@ enum EventWhen {
         f.calendar = Calendar(identifier: .gregorian)
         f.timeZone = gmt
         f.dateFormat = "yyyy-MM-dd"
+        // Without this, 2026-02-30 parses as 2 March. The getter already
+        // reports false, but only an explicit set makes the parse strict.
+        f.isLenient = false
         return f
     }()
 

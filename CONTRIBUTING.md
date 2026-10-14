@@ -37,7 +37,8 @@ obey → **add a `CLAUDE.md` invariant**.
 - **CI gate.** [`ci.yml`](.github/workflows/ci.yml) runs typecheck + tests on every
   PR across `backend`, `infra`, `evals`, and `tools/prompt-improvement`, plus lint in
   `backend` and a mock eval in `evals`.
-  [`ios.yml`](.github/workflows/ios.yml) compiles the iOS app without signing.
+  [`ios.yml`](.github/workflows/ios.yml) compiles the iOS app without signing, then
+  runs its unit tests natively on the runner's Mac (`just ios-build`, `just ios-test`).
   `just check` runs the `ci.yml` steps locally.
 - **Eval gate for prompt changes.** `tools/prompt-improvement` runs two fresh evals,
   the candidate prompt and the pinned one, and compares them **paired per case**. It

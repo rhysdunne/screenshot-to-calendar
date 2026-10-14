@@ -13,7 +13,9 @@ open Screenshot2Cal.xcodeproj
 ```
 
 From the repo root, `just ios-build` runs the same unsigned compile as the
-`ios-build` PR check.
+`ios-build` PR check, and `just ios-test` runs the same unit tests. In Xcode,
+choose the Screenshot2CalTests scheme with My Mac as the destination, then
+press Cmd-U.
 
 ## Committed configuration
 
@@ -59,6 +61,15 @@ are registered to this Apple team. A fork also renames them in `project.yml`,
   config. It also holds `SessionToken.swift`, which reads the session JWT's
   expiry, and `UploadBodyStore.swift`, which writes, sweeps and deletes upload
   bodies.
+- `Tests/`: Swift Testing unit tests for the Foundation-only logic
+  (`EventSections.swift` and `Models.swift`). The Screenshot2CalTests target
+  compiles those two files straight in and runs on the Mac, with no host app
+  or simulator, so it cannot test views or `AppState`. To test another file,
+  add it to the target's sources in `project.yml`. That file must stay
+  Foundation-only: `import UIKit` or `import GoogleSignIn` fails the test
+  build, but `import SwiftUI` compiles on macOS, so review has to catch it.
+  The scheme pins en_GB and `TZ=Pacific/Auckland`, so the exact date strings
+  are stable and a "today" from the device zone fails.
 
 Deep links: `https://<cloudfront-domain>/c/<captureId>` (from calendar event
 descriptions) open the capture detail via Associated Domains.

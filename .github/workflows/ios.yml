@@ -1,8 +1,9 @@
 name: iOS
 
-# Compile check only — no signing, no tests (no XCTest target exists yet).
-# Separate from ci.yml so the deploy pipeline doesn't rerun a macOS build
-# before backend deploys. macOS runners are free on public repos.
+# Compiles the app for a device (unsigned), then runs the unit tests natively
+# on the runner's Mac (the Screenshot2CalTests scheme: no simulator, no host
+# app). No signing. Separate from ci.yml so the deploy pipeline doesn't rerun
+# a macOS build before backend deploys. macOS runners are free on public repos.
 on:
   pull_request:
 
@@ -20,7 +21,19 @@ jobs:
       - run: sudo xcode-select --switch /Applications/Xcode_26.6.app
       - run: brew install xcodegen
       - run: xcodegen generate
-      - run: >
+      - name: Compile the app (device, unsigned)
+        run: >
           xcodebuild build -scheme Screenshot2Cal
           -destination 'generic/platform=iOS'
+          CODE_SIGNING_ALLOWED=NO
+      # Language, region and device timezone are pinned in the scheme
+      # (project.yml). The date strings come from the runner's macOS, so if only
+      # they differ on a PR that did not touch ios/, see docs/ci-cd.md.
+      # -collect-test-diagnostics never: a failed run reports at once instead
+      # of first collecting verbose diagnostics (about 150 MB on a Mac).
+      - name: Unit tests (Foundation-only logic, on the runner's Mac)
+        run: >
+          xcodebuild test -scheme Screenshot2CalTests
+          -destination 'platform=macOS,arch=arm64'
+          -collect-test-diagnostics never
           CODE_SIGNING_ALLOWED=NO

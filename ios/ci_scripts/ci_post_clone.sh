@@ -14,4 +14,7 @@ xcodegen generate
 # monotonically per Xcode Cloud build; stamp it over the placeholder
 # CURRENT_PROJECT_VERSION from project.yml (-all keeps the app and the
 # Share Extension in sync, which App Store validation requires).
+# It also prints `Cannot find "Screenshot2Cal.xcodeproj/../YES"`. That is
+# harmless: it reads the unit-test target's GENERATE_INFOPLIST_FILE = YES as a
+# plist path, still exits 0 and stamps both shipping targets.
 agvtool new-version -all "$CI_BUILD_NUMBER"

@@ -36,7 +36,7 @@ for the port map).
 | `infra/` | CDK app. `lib/backend-stack.ts` = the whole AWS shape; `lib/web-stack.ts` = CloudFront (AASA for universal links, /c/* fallback, privacy/terms). |
 | `evals/` | Synthetic poster generator (Playwright), labeled datasets, scoring, model-comparison harness. `reports/baseline/` is the July 2026 run (prompt v2, Haiku 4.5 classify, the old Sonnet price). It stays as a historical reference until someone regenerates it. `reports/model-refresh-2026-10/` and `reports/prompt-v4-2026-10/` hold the evidence for ADRs 0007 and 0008. |
 | `tools/prompt-improvement/` | The owner's consented corrections → clustered failure patterns → proposed prompt version → eval gate → PR. Runs on demand only (ADR 0006). |
-| `ios/` | SwiftUI app + Share Extension. `project.yml` is the source of truth (XcodeGen); no .xcodeproj is committed. |
+| `ios/` | SwiftUI app + Share Extension. `project.yml` is the source of truth (XcodeGen); no .xcodeproj is committed. `Tests/` holds the Swift Testing unit tests for the Foundation-only logic. |
 | `docs/` | Setup guides, architecture, CI/CD, privacy policy, ToS, ADRs (`decisions/`). `design-semantic-search.md` is a parked design: not built and not planned. |
 | `scripts/` | Labelled operator commands: `secrets.sh` (Keychain and Parameter Store secrets), `allowlist.sh` (who may create an account), `sessions.sh` (sign users out). The header of each script documents its usage. |
 | `justfile` | Labelled local entry points that copy what CI does. `just --list` shows them. When a workflow changes, change the matching recipe in the same PR. |
@@ -52,6 +52,7 @@ just --list                         # every recipe (a bare `just` does the same)
 just install                        # npm ci in backend, infra, evals, tools/prompt-improvement
 just check                          # what the PR checks run: typecheck, lint, tests, mock eval
 just ios-build                      # unsigned iOS compile, like ios.yml (Mac only)
+just ios-test                       # iOS unit tests natively on this Mac, like ios.yml (Mac only)
 just eval                           # live eval of production's models. COSTS MONEY (about $0.85)
 just deploy <stage>                 # ALERT_EMAIL check, cdk diff, typed confirmation, deploy
 just logs <stage> <fn>              # follow one Lambda's logs, e.g. `just logs prod processor`
@@ -146,9 +147,14 @@ cd evals   && npm run eval -- --models claude-haiku-4-5,claude-sonnet-5-5 --data
 - Evals: synthetic posters are generated from the same data object as their gold
   labels, so ground truth is exact by construction. `meta.frozenToday` pins `{{TODAY}}`
   for deterministic relative-date cases.
-- iOS: `ios.yml` compiles the app on a macOS runner (Xcode 26.6, no signing) as the
-  required `ios-build` PR check. There is no XCTest target yet, so check behaviour on a
-  device or simulator. `just ios-build` runs the same compile on a Mac. Keep
+- iOS: the required `ios-build` PR check (`ios.yml`, macOS runner, Xcode 26.6, no
+  signing) compiles the app for a device, then runs the Swift Testing target
+  `Screenshot2CalTests` (`ios/Tests/`) natively on the runner's Mac. The target
+  compiles `App/EventSections.swift` and `Shared/Models.swift` directly, with no host
+  app or simulator, so any file it lists must stay Foundation-only. Its scheme pins
+  en_GB and `TZ=Pacific/Auckland`, so a "today" taken from the device zone fails.
+  `just ios-build` and `just ios-test` run the same steps on a Mac. Views, `AppState`
+  and the Share Extension have no tests: check them on a device or simulator. Keep
   `ios/Shared/Models.swift` in sync with API changes.
 
 ## Environments

@@ -115,10 +115,40 @@ targets:
         CURRENT_PROJECT_VERSION: "3"
         TARGETED_DEVICE_FAMILY: "1"
 
-# Explicit shared scheme for the app. Without it, XcodeGen generates no shared
-# scheme and Xcode auto-creates only the extension's on open — so after any
+  # Unit tests (Swift Testing) for the app's Foundation-only logic, run
+  # natively on the Mac by `just ios-test` and the ios-build PR check. The
+  # files under test are compiled straight into the bundle, so it needs no
+  # host app, no simulator, no GoogleSignIn and no app launch. A test that
+  # needs another file adds it to sources. That file must stay Foundation-only:
+  # `import UIKit` or `import GoogleSignIn` fails this target's build, but
+  # `import SwiftUI` would not (SwiftUI exists on macOS), so review catches that.
+  # No MARKETING_VERSION here: `just ship-ios` reads every MARKETING_VERSION in
+  # this file and stops unless they all agree.
+  Screenshot2CalTests:
+    type: bundle.unit-test
+    platform: macOS
+    # Without it the target takes the SDK's macOS version (27.0 under Xcode
+    # 27), and the bundle then fails to load on an older Mac.
+    deploymentTarget: "14.0"
+    sources:
+      - Tests
+      - App/EventSections.swift
+      - Shared/Models.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: digital.callaeas.s2c.tests
+        GENERATE_INFOPLIST_FILE: YES
+        # Ad hoc ("Sign to Run Locally"), so Cmd-U on My Mac works without an
+        # Apple Development certificate for the team.
+        CODE_SIGN_IDENTITY: "-"
+
+# Explicit shared schemes. Without them, XcodeGen generates no shared scheme
+# and Xcode auto-creates only the extension's on open — so after any
 # `xcodegen generate` the app scheme disappears and only the extension can be
-# archived. Defining it here makes the app scheme persist across regenerations.
+# archived. Defining them here makes both persist across regenerations.
+# Screenshot2Cal is the app scheme that Xcode Cloud archives. It does not
+# build the tests. Screenshot2CalTests runs the unit tests: in Xcode, choose
+# it with My Mac as the destination and press Cmd-U.
 schemes:
   Screenshot2Cal:
     build:
@@ -132,3 +162,21 @@ schemes:
       config: Debug
     archive:
       config: Release
+
+  Screenshot2CalTests:
+    build:
+      targets:
+        Screenshot2CalTests: [test]
+    test:
+      config: Debug
+      targets:
+        - Screenshot2CalTests
+      # Exact strings in the tests are en_GB ("Sun 18 Oct"). The device zone is
+      # pinned far from London, so a "today" or a wire-date parse taken from the
+      # device zone fails the tests. A display formatter that loses its GMT zone
+      # does not fail them: GMT midnight is the same date in Auckland. A zone
+      # west of GMT catches that one, but then misses the wire parse.
+      language: en
+      region: GB
+      environmentVariables:
+        TZ: Pacific/Auckland
