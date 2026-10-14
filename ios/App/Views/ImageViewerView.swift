@@ -24,14 +24,26 @@ struct ImageViewerView: View {
     @State private var offset: CGSize = .zero
     @State private var committedOffset: CGSize = .zero
 
+    // Most captures are screenshots with their own status bar, X and "..."
+    // buttons. A close button drawn over the image was hard to tell from
+    // them, so the app's controls sit in a bar above the image instead. The
+    // real status bar shows above that bar, so the screenshot's own clock
+    // and battery no longer pass for the phone's.
     var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                Color.black.ignoresSafeArea()
+        NavigationStack {
+            GeometryReader { geo in
                 image
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    // A thin outline just outside the image marks where the
+                    // picture ends, even when its top is as black as the
+                    // background. It goes when zoomed, as scaleEffect would
+                    // thicken it.
+                    .padding(1)
+                    .border(Color.white.opacity(scale > 1 ? 0 : 0.3), width: 1)
                     .frame(width: geo.size.width, height: geo.size.height)
+                    // Gestures work from the margins beside the image too.
+                    .contentShape(Rectangle())
                     // Scale first, then offset, so pan works in screen points.
                     .scaleEffect(scale)
                     .offset(offset)
@@ -39,10 +51,21 @@ struct ImageViewerView: View {
                     .gesture(magnify(in: geo.size))
                     .simultaneousGesture(pan(in: geo.size))
             }
-            .overlay(alignment: .topTrailing) { closeButton }
+            // Keeps a zoomed image below the bar.
+            .clipped()
+            .background(Color.black.ignoresSafeArea())
+            .navigationTitle("Original image")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color(.secondarySystemBackground), for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar {
+                // A word, not an xmark: screenshots are full of X glyphs.
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
         }
         .preferredColorScheme(.dark)
-        .statusBarHidden()
     }
 
     // MARK: Gestures
@@ -115,16 +138,5 @@ struct ImageViewerView: View {
         let maxY = max(0, size.height * (scale - 1) / 2)
         return CGSize(width: min(max(o.width, -maxX), maxX),
                       height: min(max(o.height, -maxY), maxY))
-    }
-
-    private var closeButton: some View {
-        Button { dismiss() } label: {
-            Image(systemName: "xmark.circle.fill")
-                .font(.title)
-                .symbolRenderingMode(.hierarchical)
-                .foregroundStyle(.white)
-                .padding()
-        }
-        .accessibilityLabel("Close")
     }
 }
