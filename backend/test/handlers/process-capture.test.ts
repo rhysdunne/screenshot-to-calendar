@@ -2,6 +2,7 @@
 // real pipeline code (prompts, extraction, mapping, dedup) in the loop.
 import { describe, expect, it } from 'vitest';
 import { processCapture } from '../../src/handlers/process-capture.js';
+import { captureView } from '../../src/handlers/captures-read.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
 import { todayInZone } from '../../src/pipeline/dates.js';
 import { HttpError } from '../../src/lib/http.js';
@@ -402,6 +403,34 @@ describe('processCapture', () => {
     const capture = await fake.store.getCapture('user-1', 'cap-1');
     expect(capture?.status).toBe('completed');
     expect(capture?.error).toBeUndefined();
+  });
+
+  it('a redrive of a stalled capture reports processing while it runs, then completes', async () => {
+    // A timed-out attempt left the capture stored as processing, last written
+    // 11 minutes ago, so the API reports it as failed.
+    const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
+    await seedCapture(fake);
+    await fake.store.updateCapture('user-1', 'cap-1', { status: 'processing' });
+    fake.store.captures.get('user-1/cap-1')!.updatedAt = new Date(
+      Date.now() - 11 * 60_000,
+    ).toISOString();
+    expect(captureView((await fake.store.getCapture('user-1', 'cap-1'))!).status).toBe('failed');
+
+    // The redriven attempt's first write refreshes updatedAt, so by the time
+    // it calls Claude the capture reads as processing again.
+    const seen: Array<{ status: string; error: string | null }> = [];
+    const fakeCall = fake.deps.callClaude;
+    fake.deps.callClaude = async (options) => {
+      const view = captureView((await fake.store.getCapture('user-1', 'cap-1'))!);
+      seen.push({ status: view.status, error: view.error });
+      return fakeCall(options);
+    };
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+
+    expect(seen[0]).toEqual({ status: 'processing', error: null });
+    const view = captureView((await fake.store.getCapture('user-1', 'cap-1'))!);
+    expect(view.status).toBe('completed');
+    expect(view.error).toBeNull();
   });
 
   it('no target calendar selected fails with guidance', async () => {

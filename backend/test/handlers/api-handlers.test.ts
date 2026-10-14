@@ -5,7 +5,14 @@ import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from '
 import { makeHandler as makeCreateHandler } from '../../src/handlers/captures-create.js';
 import { makeHandler as makeUpdateHandler } from '../../src/handlers/captures-update.js';
 import { makeHandler as makeDeleteCaptureHandler } from '../../src/handlers/captures-delete.js';
-import { makeGetHandler, makeListHandler } from '../../src/handlers/captures-read.js';
+import {
+  captureView,
+  isStalled,
+  makeGetHandler,
+  makeListHandler,
+  STALLED_AFTER_MS,
+  STALLED_ERROR,
+} from '../../src/handlers/captures-read.js';
 import { makeExportHandler, makeDeleteHandler } from '../../src/handlers/account.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
 import { signSession } from '../../src/lib/jwt.js';
@@ -43,6 +50,10 @@ async function invoke(
 
 // The fake getSecret returns `secret-${name}` for jwt-secret.
 const JWT_SECRET = 'secret-jwt-secret';
+
+// FakeStore stamps updatedAt with the real clock, so a stalled capture is
+// seeded by moving its updatedAt back.
+const minutesAgo = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
 
 describe('captures-create', () => {
   it('rejects missing auth', async () => {
@@ -568,6 +579,46 @@ describe('captures-read', () => {
     expect(res.body.eventLink).toBe('https://calendar.google.com/event?eid=existing');
   });
 
+  it('lists a stalled capture as failed and a fresh one as processing, leaving both stored as is', async () => {
+    const fake = makeFakeDeps();
+    await fake.store.putUser(testUser());
+    for (const id of ['cap-stalled', 'cap-fresh']) {
+      await fake.store.createCapture(
+        { userId: 'user-1', status: 'processing', imageKey: 'k', imageSha256: id, mediaType: 'image/png' },
+        id,
+      );
+    }
+    fake.store.captures.get('user-1/cap-stalled')!.updatedAt = minutesAgo(11);
+    const token = signSession('user-1', 1, JWT_SECRET);
+
+    const res = await invoke(makeListHandler(fake.deps), apiEvent({ token }));
+
+    // The handler passes the time, not map's index, as captureView's `now`.
+    expect(res.statusCode).toBe(200);
+    const captures = res.body.captures as Array<Record<string, unknown>>;
+    const byId = new Map(captures.map((c) => [c.captureId, c]));
+    expect(byId.get('cap-stalled')).toMatchObject({ status: 'failed', error: STALLED_ERROR });
+    expect(byId.get('cap-fresh')).toMatchObject({ status: 'processing', error: null });
+    expect((await fake.store.getCapture('user-1', 'cap-stalled'))?.status).toBe('processing');
+  });
+
+  it('gets a stalled capture as failed', async () => {
+    const fake = makeFakeDeps();
+    await fake.store.putUser(testUser());
+    await fake.store.createCapture(
+      { userId: 'user-1', status: 'queued', imageKey: 'k', imageSha256: 's', mediaType: 'image/png' },
+      'cap-1',
+    );
+    fake.store.captures.get('user-1/cap-1')!.updatedAt = minutesAgo(11);
+    const token = signSession('user-1', 1, JWT_SECRET);
+
+    const res = await invoke(makeGetHandler(fake.deps), apiEvent({ token, pathParameters: { id: 'cap-1' } }));
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.status).toBe('failed');
+    expect(res.body.error).toBe(STALLED_ERROR);
+  });
+
   it('lists up to 200 captures per page, since the app reads only the first', async () => {
     const fake = makeFakeDeps();
     await fake.store.putUser(testUser());
@@ -577,6 +628,87 @@ describe('captures-read', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ captures: [], cursor: null });
     expect(list).toHaveBeenCalledWith('user-1', 200, undefined);
+  });
+});
+
+describe('captureView: stalled captures', () => {
+  // A processor that timed out or crashed leaves the stored status queued or
+  // processing. Past STALLED_AFTER_MS since the last write, the API reports it
+  // as failed.
+  const NOW = new Date('2026-10-14T12:00:00.000Z');
+  const before = (ms: number) => new Date(NOW.getTime() - ms).toISOString();
+
+  function record(overrides: Partial<CaptureRecord>): CaptureRecord {
+    return {
+      userId: 'user-1',
+      captureId: 'cap-1',
+      status: 'processing',
+      imageKey: 'k',
+      imageSha256: 's',
+      mediaType: 'image/png',
+      createdAt: before(15 * 60_000),
+      updatedAt: before(60_000),
+      ...overrides,
+    };
+  }
+
+  it('reports a processing capture past the threshold as failed with the stalled error', () => {
+    const view = captureView(record({ updatedAt: before(11 * 60_000) }), NOW);
+    expect(view.status).toBe('failed');
+    expect(view.error).toBe(STALLED_ERROR);
+  });
+
+  it('reports a queued capture past the threshold as failed', () => {
+    const view = captureView(record({ status: 'queued', updatedAt: before(11 * 60_000) }), NOW);
+    expect(view.status).toBe('failed');
+    expect(view.error).toBe(STALLED_ERROR);
+  });
+
+  it('leaves a fresh processing capture as processing', () => {
+    const view = captureView(record({ updatedAt: before(60_000) }), NOW);
+    expect(view.status).toBe('processing');
+    expect(view.error).toBeNull();
+  });
+
+  it('counts as stalled only once the threshold has passed', () => {
+    expect(isStalled(record({ updatedAt: before(STALLED_AFTER_MS - 1) }), NOW)).toBe(false);
+    expect(isStalled(record({ updatedAt: before(STALLED_AFTER_MS) }), NOW)).toBe(false);
+    expect(isStalled(record({ updatedAt: before(STALLED_AFTER_MS + 1) }), NOW)).toBe(true);
+  });
+
+  it('falls back to createdAt when updatedAt does not parse', () => {
+    expect(
+      captureView(record({ updatedAt: 'not a date', createdAt: before(11 * 60_000) }), NOW).status,
+    ).toBe('failed');
+    expect(
+      captureView(record({ updatedAt: 'not a date', createdAt: before(60_000) }), NOW).status,
+    ).toBe('processing');
+  });
+
+  it('leaves the capture processing when neither timestamp parses', () => {
+    const view = captureView(record({ updatedAt: 'not a date', createdAt: '' }), NOW);
+    expect(view.status).toBe('processing');
+    expect(view.error).toBeNull();
+  });
+
+  it('never changes a finished status, however old', () => {
+    for (const status of ['completed', 'needs_review', 'not_event', 'duplicate'] as const) {
+      expect(captureView(record({ status, updatedAt: before(60 * 60_000) }), NOW).status).toBe(status);
+    }
+    const failed = captureView(
+      record({ status: 'failed', error: 'Processing failed: boom', updatedAt: before(60 * 60_000) }),
+      NOW,
+    );
+    expect(failed.error).toBe('Processing failed: boom');
+  });
+
+  it('keeps the event of a stalled capture that has one', () => {
+    // An attempt after the capture had already finished (an SQS redelivery or
+    // a redrive) rewrote processing and then timed out.
+    const event = { title: 'Frieze London', start_date: '2026-10-14' } as ExtractedEvent;
+    const view = captureView(record({ event, updatedAt: before(11 * 60_000) }), NOW);
+    expect(view.status).toBe('failed');
+    expect(view.event).toEqual(event);
   });
 });
 

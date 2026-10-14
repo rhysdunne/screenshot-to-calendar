@@ -1,9 +1,12 @@
 // Confidence gating (#2): low-confidence extractions stop at needs_review;
-// the approve endpoint creates the event through the same dedup path.
+// the approve endpoint creates the event through the same dedup path. It also
+// accepts a stalled capture that kept an event (#122).
 import { describe, expect, it } from 'vitest';
 import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 import { processCapture } from '../../src/handlers/process-capture.js';
 import { makeHandler as makeApproveHandler } from '../../src/handlers/captures-approve.js';
+import { makeHandler as makeUpdateHandler } from '../../src/handlers/captures-update.js';
+import { STALLED_ERROR } from '../../src/handlers/captures-read.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
 import { signSession } from '../../src/lib/jwt.js';
 import type { ExtractedEvent } from '../../src/pipeline/types.js';
@@ -35,6 +38,29 @@ async function seedProcessedLowConfidence(fake: ReturnType<typeof makeFakeDeps>)
   await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
 }
 
+// Stored as processing with an event, last written `minutesOld` minutes ago.
+// FakeStore stamps updatedAt with the real clock, so it is moved back here.
+async function seedProcessingWithEvent(
+  fake: ReturnType<typeof makeFakeDeps>,
+  minutesOld: number,
+) {
+  await fake.store.putUser(testUser());
+  await fake.store.createCapture(
+    {
+      userId: 'user-1',
+      status: 'processing',
+      imageKey: 'k',
+      imageSha256: 's',
+      mediaType: 'image/png',
+      event: { ...LOW_CONFIDENCE_EXTRACTION, confidence: 'high' } as ExtractedEvent,
+    },
+    'cap-1',
+  );
+  fake.store.captures.get('user-1/cap-1')!.updatedAt = new Date(
+    Date.now() - minutesOld * 60_000,
+  ).toISOString();
+}
+
 async function invokeApprove(
   fake: ReturnType<typeof makeFakeDeps>,
   captureId = 'cap-1',
@@ -46,6 +72,25 @@ async function invokeApprove(
     isBase64Encoded: false,
   } as unknown as APIGatewayProxyEventV2;
   const result = (await makeApproveHandler(fake.deps)(event)) as APIGatewayProxyStructuredResultV2;
+  return {
+    statusCode: result.statusCode ?? 0,
+    body: JSON.parse(result.body ?? '{}') as Record<string, unknown>,
+  };
+}
+
+async function invokeUpdate(
+  fake: ReturnType<typeof makeFakeDeps>,
+  body: Record<string, string | null>,
+  captureId = 'cap-1',
+): Promise<{ statusCode: number; body: Record<string, unknown> }> {
+  const token = signSession('user-1', 1, JWT_SECRET);
+  const event = {
+    headers: { authorization: `Bearer ${token}` },
+    pathParameters: { id: captureId },
+    body: JSON.stringify(body),
+    isBase64Encoded: false,
+  } as unknown as APIGatewayProxyEventV2;
+  const result = (await makeUpdateHandler(fake.deps)(event)) as APIGatewayProxyStructuredResultV2;
   return {
     statusCode: result.statusCode ?? 0,
     body: JSON.parse(result.body ?? '{}') as Record<string, unknown>,
@@ -154,6 +199,14 @@ describe('confidence gating', () => {
     expect(res.statusCode).toBe(409);
   });
 
+  it('approve still refuses a capture that is processing now', async () => {
+    const fake = makeFakeDeps();
+    await seedProcessingWithEvent(fake, 1);
+    const res = await invokeApprove(fake);
+    expect(res.statusCode).toBe(409);
+    expect(fake.insertedEvents).toHaveLength(0);
+  });
+
   it('high/medium confidence still auto-creates (no gate)', async () => {
     const fake = makeFakeDeps({
       extractResult: { ...LOW_CONFIDENCE_EXTRACTION, confidence: 'medium' },
@@ -162,5 +215,56 @@ describe('confidence gating', () => {
     const capture = await fake.store.getCapture('user-1', 'cap-1');
     expect(capture?.status).toBe('completed');
     expect(fake.insertedEvents).toHaveLength(1);
+  });
+});
+
+describe('stalled captures', () => {
+  // An attempt after the capture had already finished (an SQS redelivery, or
+  // a redrive) rewrote processing over it and then timed out. The event stays,
+  // and captureView reports the capture as failed, so the app offers approve.
+  it('approve accepts a stalled capture that has an event', async () => {
+    const fake = makeFakeDeps();
+    await seedProcessingWithEvent(fake, 11);
+
+    const res = await invokeApprove(fake);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.status).toBe('completed');
+    expect(res.body.error).toBeNull();
+    expect(fake.insertedEvents).toHaveLength(1);
+  });
+
+  it('an edit before approving stores the failure, so the approve that follows is accepted', async () => {
+    // The app's approve saves pending edits first. That write refreshes
+    // updatedAt, which on its own would make the capture look processing again.
+    const fake = makeFakeDeps();
+    await seedProcessingWithEvent(fake, 11);
+
+    const patch = await invokeUpdate(fake, { title: 'Frieze Masters' });
+    expect(patch.statusCode).toBe(200);
+    expect(patch.body.status).toBe('failed');
+    expect(patch.body.error).toBe(STALLED_ERROR);
+    const stored = await fake.store.getCapture('user-1', 'cap-1');
+    expect(stored?.status).toBe('failed');
+    expect(stored?.error).toBe(STALLED_ERROR);
+
+    const res = await invokeApprove(fake);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.status).toBe('completed');
+    expect(res.body.error).toBeNull();
+    expect(fake.insertedEvents[0]!.event.summary).toBe('Frieze Masters');
+  });
+
+  it('an edit to a capture that is processing now leaves its status alone', async () => {
+    const fake = makeFakeDeps();
+    await seedProcessingWithEvent(fake, 1);
+
+    const patch = await invokeUpdate(fake, { title: 'Frieze Masters' });
+
+    expect(patch.statusCode).toBe(200);
+    expect(patch.body.status).toBe('processing');
+    const stored = await fake.store.getCapture('user-1', 'cap-1');
+    expect(stored?.status).toBe('processing');
+    expect(stored?.error).toBeUndefined();
   });
 });
