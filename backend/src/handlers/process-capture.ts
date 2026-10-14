@@ -147,6 +147,8 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
     // retry. They keep whatever was extracted, so when there is an event the
     // app's review screen can fix and approve the capture. Anything else
     // rethrows so SQS retries (×3) and then parks the message on the DLQ.
+    // A timeout or crash never gets here: captureView (captures-read.ts)
+    // reports that capture as failed once it has stalled.
     const needsReauth = e instanceof HttpError && e.code === 'needs_reauth';
     const terminal = e instanceof TerminalProcessingError || needsReauth;
     const message =

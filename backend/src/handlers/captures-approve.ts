@@ -6,7 +6,7 @@ import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { realDeps, type Deps } from './deps.js';
 import { authenticate, errorResponse, HttpError, json, type ApiHandler } from '../lib/http.js';
 import { createCalendarEntry } from './process-capture.js';
-import { captureView } from './captures-read.js';
+import { captureView, isStalled } from './captures-read.js';
 import { NoDateError, TerminalProcessingError, type ExtractedEvent } from '../pipeline/types.js';
 import { logger } from '../lib/logger.js';
 
@@ -18,7 +18,15 @@ export function makeHandler(deps: Deps): ApiHandler {
       if (!captureId) throw new HttpError(400, 'Missing capture id');
       const capture = await deps.store.getCapture(user.userId, captureId);
       if (!capture) throw new HttpError(404, 'Capture not found');
-      if (capture.status !== 'needs_review' && capture.status !== 'failed') {
+      // A stalled capture is reported as failed (captureView). One that kept
+      // an event from an earlier attempt (a redelivery or a redrive of a
+      // capture that had already finished) shows the approve action, so it is
+      // accepted here as a failed one is.
+      if (
+        capture.status !== 'needs_review' &&
+        capture.status !== 'failed' &&
+        !isStalled(capture, new Date())
+      ) {
         throw new HttpError(409, `Capture is ${capture.status}, not awaiting approval`);
       }
       if (!capture.event) {

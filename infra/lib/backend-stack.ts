@@ -93,6 +93,12 @@ export class BackendStack extends Stack {
     });
     const queue = new sqs.Queue(this, 'ProcessQueue', {
       queueName: `s2c-process-${stage}`,
+      // Keep well under STALLED_AFTER_MS (10 min) in backend/src/handlers/
+      // captures-read.ts: a capture waiting for its retry was last written up
+      // to this long ago, and must not be reported as failed. The stack tests
+      // hold it at 300 s or less. Time a message waits behind others (the
+      // processor's maxConcurrency, below) counts towards the 10 min as well,
+      // so a long backlog can still show a live capture as failed.
       visibilityTimeout: Duration.seconds(180),
       deadLetterQueue: { queue: dlq, maxReceiveCount: 3 },
     });
@@ -178,6 +184,8 @@ export class BackendStack extends Stack {
     // At most two captures in flight: a burst of shares (or a redrive of the
     // DLQ) queues up instead of fanning out into parallel Claude calls, which
     // bounds the spend rate. 2 is the lowest value SQS event sources accept.
+    // The cost: a capture waits unwritten in that queue, and one that waits past
+    // STALLED_AFTER_MS (captures-read.ts) is reported as failed.
     processor.addEventSource(new SqsEventSource(queue, { batchSize: 1, maxConcurrency: 2 }));
 
     const authFn = makeFn('AuthGoogle', 'auth-google.ts', 'handler');

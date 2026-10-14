@@ -15,7 +15,7 @@ import {
   type CorrectableField,
   type ExtractedEvent,
 } from '../pipeline/types.js';
-import { captureView } from './captures-read.js';
+import { captureView, isStalled, STALLED_ERROR } from './captures-read.js';
 import { logger } from '../lib/logger.js';
 
 const DAILY_CORRECTION_LIMIT = 20;
@@ -134,7 +134,14 @@ export function makeHandler(deps: Deps): ApiHandler {
         });
       }
 
-      await deps.store.updateCapture(user.userId, captureId, { corrected });
+      // Every write refreshes updatedAt. On a stalled capture, which
+      // captureView reports as failed, that would bring it back as processing
+      // for another STALLED_AFTER_MS, so the failure the app showed is stored.
+      const stalled = isStalled(capture, new Date());
+      await deps.store.updateCapture(user.userId, captureId, {
+        corrected,
+        ...(stalled ? { status: 'failed' as const, error: STALLED_ERROR } : {}),
+      });
       logger.info('capture_corrected', {
         userId: user.userId,
         captureId,
