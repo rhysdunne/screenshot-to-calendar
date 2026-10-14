@@ -1,7 +1,7 @@
 import Foundation
 
 // The Events list's date logic. Foundation only, with no SwiftUI or AppState,
-// so it can be checked on its own (see #125 for the test target it waits for).
+// so the Screenshot2CalTests target (ios/Tests/) compiles it on its own.
 //
 // Every rule compares `yyyy-MM-dd` strings against "today" in the user's
 // settings timezone. There is no date arithmetic, so the DST change days and
