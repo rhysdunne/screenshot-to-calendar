@@ -19,6 +19,15 @@ final class AppState: ObservableObject {
     @Published var bootstrapError: String?
     @Published var settings: UserSettings?
     @Published var captures: [Capture] = []
+    /// The last good captures fetch came back with a cursor: `captures` is one
+    /// page of the newest shares (up to 200, or fewer if DynamoDB's 1 MB read
+    /// limit cut it short), and older captures may be missing. The app does
+    /// not follow the cursor. At exactly 200 it is true although nothing is
+    /// missing, because DynamoDB returns a cursor whenever it stops at the
+    /// limit. A new share keeps it true (one capture then really is missing);
+    /// only a delete back below 200 clears it. It changes only where
+    /// `captures` does, so it always describes the list on screen.
+    @Published var hasMoreCaptures = false
     @Published var pendingDeepLinkCaptureId: String?
     /// Why the last `signIn` failed. Set only there, and never for a user
     /// cancel. SignInView shows it, and so does the library when a reconnect
@@ -107,6 +116,7 @@ final class AppState: ObservableObject {
         didBootstrap = false
         settings = nil
         captures = []
+        hasMoreCaptures = false
         signInError = nil
         capturesError = nil
         needsReauth = false
@@ -129,7 +139,9 @@ final class AppState: ObservableObject {
     /// an error row. Any success clears an error shown earlier.
     func refreshCaptures(reportErrors: Bool = true) async {
         do {
-            captures = try await api.listCaptures().captures
+            let page = try await api.listCaptures()
+            captures = page.captures
+            hasMoreCaptures = page.cursor != nil
             capturesError = nil
         } catch let APIError.unauthorized(code) where code == "unauthorized" {
             // The session itself is gone (revoked, or the user no longer exists).

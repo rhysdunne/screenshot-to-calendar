@@ -163,6 +163,18 @@ struct LibraryView: View {
                     Text("Screenshots that didn't become a dated event.")
                 }
             }
+
+            // Last in the list, after whichever sections are present. The
+            // page is the newest shares, but the list is sorted by event date,
+            // so an old capture of a far-future event can be the one left out
+            // of Upcoming. The count, not a fixed 200: DynamoDB's 1 MB read
+            // can cut the page short.
+            if appState.hasMoreCaptures {
+                Section {
+                } footer: {
+                    Text("Showing your \(appState.captures.count) most recently shared captures. Older ones aren't listed here.")
+                }
+            }
         }
         .listStyle(.insetGrouped)
     }
