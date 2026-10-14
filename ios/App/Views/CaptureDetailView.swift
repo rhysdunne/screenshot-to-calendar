@@ -108,7 +108,7 @@ struct CaptureDetailView: View {
             // (black) cover because the row's host may be detached when the
             // presentation fires.
             .fullScreenCover(item: $viewerImage) { viewer in
-                ImageViewerView(image: viewer.image)
+                ImageViewerView(image: viewer.image, imageSize: viewer.size)
             }
         }
     }
@@ -162,7 +162,9 @@ struct CaptureDetailView: View {
                         // contentShape, so the whole row opens the viewer.
                         .frame(maxWidth: .infinity, maxHeight: 200)
                         .contentShape(Rectangle())
-                        .onTapGesture { viewerImage = ViewerImage(image: Image(uiImage: image)) }
+                        .onTapGesture {
+                            viewerImage = ViewerImage(image: Image(uiImage: image), size: image.size)
+                        }
                         .accessibilityLabel("Capture image")
                         .accessibilityAddTraits(.isButton)
                         .accessibilityHint("Opens the image full screen")
@@ -502,6 +504,8 @@ private enum ImageState {
 private struct ViewerImage: Identifiable {
     let id = UUID()
     let image: Image
+    /// The decoded image's size, which the viewer's pan bounds need (#145).
+    let size: CGSize
 }
 
 /// A signal-strength-style meter for the AI's extraction confidence. Replaces

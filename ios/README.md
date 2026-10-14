@@ -62,9 +62,10 @@ are registered to this Apple team. A fork also renames them in `project.yml`,
   expiry, and `UploadBodyStore.swift`, which writes, sweeps and deletes upload
   bodies.
 - `Tests/`: Swift Testing unit tests for the Foundation-only logic
-  (`EventSections.swift` and `Models.swift`). The Screenshot2CalTests target
-  compiles those two files straight in and runs on the Mac, with no host app
-  or simulator, so it cannot test views or `AppState`. To test another file,
+  (`EventSections.swift`, `ImageViewerGeometry.swift` and `Models.swift`). The
+  Screenshot2CalTests target compiles those three files straight in and runs
+  on the Mac, with no host app or simulator, so it cannot test views or
+  `AppState`. To test another file,
   add it to the target's sources in `project.yml`. That file must stay
   Foundation-only: `import UIKit` or `import GoogleSignIn` fails the test
   build, but `import SwiftUI` compiles on macOS, so review has to catch it.
