@@ -147,7 +147,10 @@ struct CaptureDetailView: View {
                         // portrait screenshot filled the sheet and hid every
                         // field (#121). At 200 pt the image, the status and
                         // the fields down to Start date fit on a 6.1-inch
-                        // iPhone at the default text size and one step larger.
+                        // iPhone at the default text size and one step larger,
+                        // when Title, Venue and Address each fit on one line.
+                        // One step larger, a longer value moves its label onto
+                        // a line of its own and Start date no longer fits.
                         // maxWidth centres a narrow image. It goes before
                         // contentShape, so the whole row opens the viewer.
                         .frame(maxWidth: .infinity, maxHeight: 200)
