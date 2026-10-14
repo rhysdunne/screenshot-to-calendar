@@ -3,27 +3,34 @@ import Testing
 
 @Suite("EventSections")
 struct EventSectionsTests {
+    // The unsorted sections (processing, review, other) get their input in
+    // real API order: newest share, so highest id, first. The dates run in
+    // neither direction, so a sort by id or by date changes the result.
+
     @Test("Queued and processing captures stay in API order, whatever their date")
     func processing() {
         let s = EventSections([
-            capture("10", .processing),
-            capture("11", .queued, event(start: "2026-10-01")),
+            capture("12", .queued, event(start: "2026-10-20")),
+            capture("11", .processing),
+            capture("10", .queued, event(start: "2026-10-01")),
         ], today: today)
-        #expect(ids(s.processing) == ["10", "11"])
+        #expect(ids(s.processing) == ["12", "11", "10"])
+        #expect(s.upcoming.isEmpty)
         #expect(s.past.isEmpty)
     }
 
     @Test("Review holds needs_review and failed-with-event captures, even past-dated ones")
     func review() {
         let s = EventSections([
-            capture("12", .needsReview, event(start: "2025-10-01")),
-            capture("13", .failed, event()),
+            capture("16", .needsReview, event(start: "2025-10-01")),
+            capture("15", .failed, event(start: "2026-10-20")),
             capture("14", .failed),
-            capture("15", .completed, event(start: "2026-10-20"), possibleDuplicateOf: "01OTHER"),
+            capture("13", .needsReview, event()),
+            capture("12", .completed, event(start: "2026-10-20"), possibleDuplicateOf: "01OTHER"),
         ], today: today)
-        #expect(ids(s.review) == ["12", "13"])
+        #expect(ids(s.review) == ["16", "15", "13"])
         #expect(ids(s.other) == ["14"])
-        #expect(ids(s.upcoming) == ["15"], "a possible duplicate never sits in review")
+        #expect(ids(s.upcoming) == ["12"], "a possible duplicate never sits in review")
     }
 
     @Test("Upcoming: soonest first, all-day before timed on the same day")
@@ -62,13 +69,13 @@ struct EventSectionsTests {
     @Test("Other: not events, failures with nothing, and no valid date")
     func other() {
         let s = EventSections([
-            capture("14", .failed),
-            capture("15", .notEvent),
-            capture("25", .completed, event(start: "not-a-date")),
-            capture("26", .completed, event(start: "2026-10-1")),
-            capture("27", .completed, event(startTime: "19:00")),
+            capture("19", .failed),
+            capture("18", .notEvent),
+            capture("17", .completed, event(start: "not-a-date")),
+            capture("16", .completed, event(start: "2026-10-1")),
+            capture("15", .completed, event(startTime: "19:00")),
         ], today: today)
-        #expect(ids(s.other) == ["14", "15", "25", "26", "27"])
+        #expect(ids(s.other) == ["19", "18", "17", "16", "15"])
     }
 
     @Test("Corrections decide the section: a moved date moves it, a cleared date drops it to Other")
