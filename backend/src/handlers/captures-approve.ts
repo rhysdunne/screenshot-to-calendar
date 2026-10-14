@@ -8,6 +8,7 @@ import { authenticate, errorResponse, HttpError, json, type ApiHandler } from '.
 import { createCalendarEntry } from './process-capture.js';
 import { captureView, isStalled } from './captures-read.js';
 import { NoDateError, TerminalProcessingError, type ExtractedEvent } from '../pipeline/types.js';
+import { CaptureGoneError } from '../lib/ddb.js';
 import { logger } from '../lib/logger.js';
 
 export function makeHandler(deps: Deps): ApiHandler {
@@ -46,10 +47,17 @@ export function makeHandler(deps: Deps): ApiHandler {
       }
       // Clear the old error first and let updates override it: when there is
       // still no target calendar, updates carries fresh guidance to show.
-      await deps.store.updateCapture(user.userId, captureId, { error: null, ...updates });
+      try {
+        await deps.store.updateCapture(user.userId, captureId, { error: null, ...updates });
+      } catch (e) {
+        // Deleted since it was read above, for example from another device.
+        if (e instanceof CaptureGoneError) throw new HttpError(404, 'Capture not found');
+        throw e;
+      }
       logger.info('capture_approved', { userId: user.userId, captureId, status: updates.status });
       const updated = await deps.store.getCapture(user.userId, captureId);
-      return json(200, captureView(updated!));
+      if (!updated) throw new HttpError(404, 'Capture not found');
+      return json(200, captureView(updated));
     } catch (e) {
       return errorResponse(e);
     }

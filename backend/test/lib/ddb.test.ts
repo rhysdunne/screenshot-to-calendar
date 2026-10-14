@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
+import { ConditionalCheckFailedException } from '@aws-sdk/client-dynamodb';
 import {
   BatchWriteCommand,
   DynamoDBDocumentClient,
   GetCommand,
   PutCommand,
   QueryCommand,
+  UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { DdbStore } from '../../src/lib/ddb.js';
+import { CaptureGoneError, DdbStore } from '../../src/lib/ddb.js';
+import { FakeStore } from '../helpers/fake-deps.js';
 
 const ddbMock = mockClient(DynamoDBDocumentClient);
 
@@ -63,6 +66,42 @@ describe('DdbStore', () => {
     // ~90 days out (allow a wide band so the test isn't clock-flaky).
     expect(expiresAt).toBeGreaterThan(nowSec + 89 * 24 * 60 * 60);
     expect(expiresAt).toBeLessThan(nowSec + 91 * 24 * 60 * 60);
+  });
+
+  it('updateCapture writes only to a capture that exists', async () => {
+    ddbMock.on(UpdateCommand).resolves({});
+    await store.updateCapture('u1', 'cap1', { status: 'processing', error: null });
+    const update = ddbMock.commandCalls(UpdateCommand)[0]!.args[0].input;
+    expect(update.Key).toEqual({ PK: 'USER#u1', SK: 'CAPTURE#cap1' });
+    expect(update.ConditionExpression).toBe('attribute_exists(SK)');
+    expect(update.UpdateExpression).toContain('REMOVE #error');
+  });
+
+  it('updateCapture reports a deleted capture as CaptureGoneError', async () => {
+    ddbMock.on(UpdateCommand).rejects(
+      new ConditionalCheckFailedException({ message: 'The conditional request failed', $metadata: {} }),
+    );
+    await expect(store.updateCapture('u1', 'cap1', { status: 'failed' })).rejects.toBeInstanceOf(
+      CaptureGoneError,
+    );
+  });
+
+  it('updateCapture passes any other error through', async () => {
+    const err = new Error('Rate exceeded');
+    err.name = 'ProvisionedThroughputExceededException';
+    ddbMock.on(UpdateCommand).rejects(err);
+    const write = store.updateCapture('u1', 'cap1', { status: 'failed' });
+    await expect(write).rejects.toThrow('Rate exceeded');
+    await expect(write).rejects.not.toBeInstanceOf(CaptureGoneError);
+  });
+
+  // The handler tests run on FakeStore, so it must refuse the same writes.
+  it('FakeStore.updateCapture refuses a missing capture as DdbStore does', async () => {
+    const fake = new FakeStore();
+    await expect(fake.updateCapture('u1', 'cap1', { status: 'failed' })).rejects.toBeInstanceOf(
+      CaptureGoneError,
+    );
+    expect(fake.captures.size).toBe(0);
   });
 
   it('listCaptures queries newest-first', async () => {

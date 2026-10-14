@@ -1,11 +1,12 @@
 // End-to-end tests for the pipeline orchestrator with all I/O faked but the
 // real pipeline code (prompts, extraction, mapping, dedup) in the loop.
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { processCapture } from '../../src/handlers/process-capture.js';
-import { captureView } from '../../src/handlers/captures-read.js';
+import { captureView, STALLED_ERROR } from '../../src/handlers/captures-read.js';
 import { makeFakeDeps, testUser } from '../helpers/fake-deps.js';
 import { todayInZone } from '../../src/pipeline/dates.js';
 import { HttpError } from '../../src/lib/http.js';
+import { logger } from '../../src/lib/logger.js';
 
 const PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+P+/HgAFhAJ/wlseKgAAAABJRU5ErkJggg==';
 
@@ -433,6 +434,39 @@ describe('processCapture', () => {
     expect(view.error).toBeNull();
   });
 
+  // A correction to a capture that looked stalled stores failed and the
+  // stalled error. Here it lands after the processor's first write, which
+  // cleared the error, so only the success write can clear it again.
+  it.each([
+    { outcome: 'completed', opts: { extractResult: GOOD_EXTRACTION } },
+    {
+      outcome: 'duplicate',
+      opts: {
+        extractResult: GOOD_EXTRACTION,
+        existingEvents: [{ id: 'existing-1', summary: 'Frieze London', start: { date: '2026-10-14' } }],
+      },
+    },
+    { outcome: 'needs_review', opts: { extractResult: { ...GOOD_EXTRACTION, confidence: 'low' } } },
+    {
+      outcome: 'not_event',
+      opts: { classifyResult: { category: 'other_scrapbook', is_event: false, confidence: 'high' } },
+    },
+  ])('a $outcome write clears an error stored while the attempt ran', async ({ outcome, opts }) => {
+    const fake = makeFakeDeps(opts);
+    await seedCapture(fake);
+    const fakeCall = fake.deps.callClaude;
+    fake.deps.callClaude = async (options) => {
+      if (options.stage === 'classify') {
+        await fake.store.updateCapture('user-1', 'cap-1', { status: 'failed', error: STALLED_ERROR });
+      }
+      return fakeCall(options);
+    };
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+    const capture = await fake.store.getCapture('user-1', 'cap-1');
+    expect(capture?.status).toBe(outcome);
+    expect(capture?.error).toBeUndefined();
+  });
+
   it('no target calendar selected fails with guidance', async () => {
     const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
     await fake.store.putUser(
@@ -458,5 +492,71 @@ describe('processCapture', () => {
     const extractCall = fake.claudeCalls.find((c) => c.stage === 'extract')!;
     expect(extractCall.prompt).toContain(todayInZone('Europe/London'));
     expect(extractCall.prompt).not.toContain('{{TODAY}}');
+  });
+});
+
+describe('processCapture: a capture deleted while it processes', () => {
+  // The user deletes the capture from the app while its message is in flight.
+  // No write may bring it back: an item with only the updated attributes has
+  // no captureId or createdAt, and it stops the app loading the Events list.
+  afterEach(() => vi.restoreAllMocks());
+
+  const deleteCapture = (fake: ReturnType<typeof makeFakeDeps>) =>
+    fake.store.deleteCapture('user-1', 'cap-1', 'sha-1');
+
+  it('is not recreated by the success write, and the message ends', async () => {
+    const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
+    await seedCapture(fake);
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    const error = vi.spyOn(logger, 'error').mockImplementation(() => {});
+    const fakeCall = fake.deps.callClaude;
+    fake.deps.callClaude = async (options) => {
+      if (options.stage === 'extract') await deleteCapture(fake);
+      return fakeCall(options);
+    };
+
+    // Resolves, so SQS deletes the message rather than retrying it.
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+
+    expect(await fake.store.getCapture('user-1', 'cap-1')).toBeNull();
+    expect(fake.store.captures.size).toBe(0);
+    expect(warn).toHaveBeenCalledWith(
+      'capture_missing',
+      expect.objectContaining({ captureId: 'cap-1', duringProcessing: true }),
+    );
+    // A delete is not a processing failure.
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it('is not recreated by the failure write, and a transient error is not retried', async () => {
+    const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
+    await seedCapture(fake);
+    vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    vi.spyOn(logger, 'error').mockImplementation(() => {});
+    fake.deps.calendar.insertEvent = async () => {
+      await deleteCapture(fake);
+      throw new Error('Google 503');
+    };
+
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+
+    expect(fake.store.captures.size).toBe(0);
+  });
+
+  it('is not recreated by the processing write, and no model is called', async () => {
+    const fake = makeFakeDeps({ extractResult: GOOD_EXTRACTION });
+    await seedCapture(fake);
+    vi.spyOn(logger, 'warn').mockImplementation(() => {});
+    // Deleted after the processor read the capture, before its first write.
+    const getUser = fake.store.getUser.bind(fake.store);
+    fake.store.getUser = async (userId) => {
+      await deleteCapture(fake);
+      return getUser(userId);
+    };
+
+    await processCapture(fake.deps, { userId: 'user-1', captureId: 'cap-1' });
+
+    expect(fake.store.captures.size).toBe(0);
+    expect(fake.claudeCalls).toHaveLength(0);
   });
 });

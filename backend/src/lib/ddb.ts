@@ -92,6 +92,18 @@ export interface AiCallRecord {
 /** Partial capture update; null clears the attribute. */
 export type CaptureUpdates = { [K in keyof CaptureRecord]?: CaptureRecord[K] | null };
 
+/**
+ * updateCapture found no capture to update: it was deleted after the caller
+ * read it (by the user, or by account deletion). The processor stops on it,
+ * and the API handlers answer 404.
+ */
+export class CaptureGoneError extends Error {
+  constructor(readonly captureId: string) {
+    super(`Capture ${captureId} no longer exists`);
+    this.name = 'CaptureGoneError';
+  }
+}
+
 const userPk = (userId: string) => `USER#${userId}`;
 
 // AI-call log items are operational telemetry (tokens/cost), not user-facing
@@ -233,6 +245,12 @@ export class DdbStore {
     return { items, cursor: nextCursor };
   }
 
+  /**
+   * Update an existing capture. Throws CaptureGoneError when there is none:
+   * UpdateItem on its own creates a missing item, and a capture made only of
+   * the updated attributes (no captureId, createdAt or imageKey) stops the
+   * app decoding the whole list.
+   */
   async updateCapture(
     userId: string,
     captureId: string,
@@ -253,16 +271,24 @@ export class DdbStore {
         sets.push(`#${k} = :${k}`);
       }
     }
-    await this.doc.send(
-      new UpdateCommand({
-        TableName: this.tableName,
-        Key: { PK: userPk(userId), SK: `CAPTURE#${captureId}` },
-        UpdateExpression:
-          `SET ${sets.join(', ')}` + (removes.length ? ` REMOVE ${removes.join(', ')}` : ''),
-        ExpressionAttributeNames: names,
-        ExpressionAttributeValues: values,
-      }),
-    );
+    try {
+      await this.doc.send(
+        new UpdateCommand({
+          TableName: this.tableName,
+          Key: { PK: userPk(userId), SK: `CAPTURE#${captureId}` },
+          UpdateExpression:
+            `SET ${sets.join(', ')}` + (removes.length ? ` REMOVE ${removes.join(', ')}` : ''),
+          ConditionExpression: 'attribute_exists(SK)',
+          ExpressionAttributeNames: names,
+          ExpressionAttributeValues: values,
+        }),
+      );
+    } catch (e) {
+      if ((e as { name?: string }).name === 'ConditionalCheckFailedException') {
+        throw new CaptureGoneError(captureId);
+      }
+      throw e;
+    }
   }
 
   async deleteCapture(userId: string, captureId: string, imageSha256: string): Promise<void> {

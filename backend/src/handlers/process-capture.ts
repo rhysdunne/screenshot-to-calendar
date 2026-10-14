@@ -16,7 +16,7 @@ import {
   type ExtractedEvent,
 } from '../pipeline/types.js';
 import type { ImageMediaType } from '../pipeline/image.js';
-import type { CaptureRecord, UserRecord } from '../lib/ddb.js';
+import { CaptureGoneError, type CaptureRecord, type UserRecord } from '../lib/ddb.js';
 import { HttpError } from '../lib/http.js';
 import { logger, safeError } from '../lib/logger.js';
 
@@ -26,6 +26,21 @@ export interface ProcessMessage {
 }
 
 export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<void> {
+  try {
+    await runPipeline(deps, msg);
+  } catch (e) {
+    // The user deleted the capture while it was processing, so a write found
+    // nothing to update. A retry would find nothing either: return, and SQS
+    // deletes the message.
+    if (e instanceof CaptureGoneError) {
+      logger.warn('capture_missing', { ...msg, duringProcessing: true });
+      return;
+    }
+    throw e;
+  }
+}
+
+async function runPipeline(deps: Deps, msg: ProcessMessage): Promise<void> {
   const { store, images, config } = deps;
   const capture = await store.getCapture(msg.userId, msg.captureId);
   if (!capture) {
@@ -38,8 +53,10 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
     return;
   }
 
-  // Clears the error an earlier failed attempt left, so a retry that succeeds
-  // does not show it on a completed capture.
+  // Clears the error an earlier failed attempt left, so the app does not show
+  // it while this attempt runs. Each success write below clears it again: a
+  // correction to a capture that looked stalled can store the stalled error
+  // after this write (captures-update.ts).
   await store.updateCapture(msg.userId, msg.captureId, { status: 'processing', error: null });
 
   // Kept in scope so a failure can persist what the model actually said —
@@ -83,6 +100,7 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
         status: 'not_event',
         classification,
         costUsd: totalCost,
+        error: null,
       });
       return;
     }
@@ -129,19 +147,26 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
         classification,
         event,
         costUsd: totalCost,
+        error: null,
       });
       return;
     }
 
-    // 5. Dedup + create (shared with the approve endpoint).
+    // 5. Dedup + create (shared with the approve endpoint). The error is
+    // cleared before updates, which carry fresh guidance when no target
+    // calendar is set.
     const updates = await createCalendarEntry(deps, user, msg.captureId, event);
     await store.updateCapture(msg.userId, msg.captureId, {
       classification,
       event,
       costUsd: totalCost,
+      error: null,
       ...updates,
     });
   } catch (e) {
+    // A deleted capture is not a processing failure: there is nothing to mark
+    // failed, and processCapture stops on it.
+    if (e instanceof CaptureGoneError) throw e;
     // Terminal failures (no date, an end before the start, a model refusal, a
     // Google grant that needs a fresh sign-in) would fail the same way on every
     // retry. They keep whatever was extracted, so when there is an event the
@@ -168,6 +193,8 @@ export async function processCapture(deps: Deps, msg: ProcessMessage): Promise<v
         logger.warn('needs_reauth_flag_failed', { ...msg, error: safeError(flagError) });
       });
     }
+    // When the capture was deleted during this attempt, this write throws
+    // CaptureGoneError, and processCapture stops instead of asking for a retry.
     await store.updateCapture(msg.userId, msg.captureId, {
       status: 'failed',
       error: message,
