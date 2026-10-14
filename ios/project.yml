@@ -133,6 +133,7 @@ targets:
     sources:
       - Tests
       - App/EventSections.swift
+      - App/ImageViewerGeometry.swift
       - Shared/Models.swift
     settings:
       base:

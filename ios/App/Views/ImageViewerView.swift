@@ -8,7 +8,11 @@ import SwiftUI
 struct ImageViewerView: View {
     @Environment(\.dismiss) private var dismiss
     let image: Image
+    /// The image's size, for the pan bounds. A SwiftUI Image does not expose it.
+    let imageSize: CGSize
 
+    /// The padding that holds the outline just outside the image, on each side.
+    private static let outlineInset: CGFloat = 1
     private static let minScale: CGFloat = 1
     private static let maxScale: CGFloat = 5
     private static let doubleTapScale: CGFloat = 2.5
@@ -39,7 +43,7 @@ struct ImageViewerView: View {
                     // picture ends, even when its top is as black as the
                     // background. It goes when zoomed, as scaleEffect would
                     // thicken it.
-                    .padding(1)
+                    .padding(Self.outlineInset)
                     .border(Color.white.opacity(scale > 1 ? 0 : 0.3), width: 1)
                     .frame(width: geo.size.width, height: geo.size.height)
                     // Gestures work from the margins beside the image too.
@@ -71,10 +75,9 @@ struct ImageViewerView: View {
 
     // MARK: Gestures
     //
-    // Zoom is about the view center, not the pinch/tap point — anchor-correct
-    // zoom needs the fitted image's geometry (SwiftUI's Image doesn't expose
-    // its pixel size). Revisit with a UIScrollView bridge only if the feel
-    // demands it on device.
+    // Zoom is about the view center, not the pinch/tap point. Anchor-correct
+    // zoom could build on ImageViewerGeometry.fittedSize. Revisit it, or a
+    // UIScrollView bridge, only if the feel demands it on device.
 
     private func magnify(in size: CGSize) -> some Gesture {
         MagnifyGesture()
@@ -130,14 +133,12 @@ struct ImageViewerView: View {
         }
     }
 
-    /// Bounds pan so the image can't be flung fully off screen. Uses the
-    /// container as a proxy for the fitted image size — the letterboxed axis
-    /// gets a little extra slack, acceptable since the intrinsic pixel size
-    /// isn't available from a SwiftUI Image.
+    /// Bounds pan so the image's edges stop at the container's edges, so a pan
+    /// adds no black beside a letterboxed image (#145). An image smaller than
+    /// the container on an axis stays centred on that axis.
     private func clampedOffset(_ o: CGSize, in size: CGSize) -> CGSize {
-        let maxX = max(0, size.width * (scale - 1) / 2)
-        let maxY = max(0, size.height * (scale - 1) / 2)
-        return CGSize(width: min(max(o.width, -maxX), maxX),
-                      height: min(max(o.height, -maxY), maxY))
+        let fitted = ImageViewerGeometry.fittedSize(of: imageSize, in: size,
+                                                    inset: Self.outlineInset)
+        return ImageViewerGeometry.clampedOffset(o, fitted: fitted, scale: scale, in: size)
     }
 }
