@@ -92,6 +92,18 @@ export interface AiCallRecord {
 /** Partial capture update; null clears the attribute. */
 export type CaptureUpdates = { [K in keyof CaptureRecord]?: CaptureRecord[K] | null };
 
+/**
+ * updateCapture found no capture to update: it was deleted after the caller
+ * read it (by the user, or by account deletion). The processor stops on it,
+ * and the API handlers answer 404.
+ */
+export class CaptureGoneError extends Error {
+  constructor(readonly captureId: string) {
+    super(`Capture ${captureId} no longer exists`);
+    this.name = 'CaptureGoneError';
+  }
+}
+
 const userPk = (userId: string) => `USER#${userId}`;
 
 // AI-call log items are operational telemetry (tokens/cost), not user-facing
@@ -209,30 +221,51 @@ export class DdbStore {
     return (r.Item as CaptureRecord | undefined) ?? null;
   }
 
+  /**
+   * Up to `limit` captures, newest first. The cursor is the id of the last
+   * capture returned, and the next page starts after it. It is set only when
+   * older captures may exist.
+   */
   async listCaptures(
     userId: string,
     limit = 50,
     cursor?: string,
   ): Promise<{ items: CaptureRecord[]; cursor?: string }> {
+    // One item more than the page shows whether an older capture exists.
+    // DynamoDB returns a LastEvaluatedKey whenever a Query stops at its Limit,
+    // even when nothing follows, so with Limit: limit a library of exactly
+    // `limit` captures got a cursor.
     const r = await this.doc.send(
       new QueryCommand({
         TableName: this.tableName,
         KeyConditionExpression: 'PK = :pk AND begins_with(SK, :sk)',
         ExpressionAttributeValues: { ':pk': userPk(userId), ':sk': 'CAPTURE#' },
         ScanIndexForward: false, // newest first (ULID sort)
-        Limit: limit,
+        Limit: limit + 1,
         ExclusiveStartKey: cursor
           ? { PK: userPk(userId), SK: `CAPTURE#${cursor}` }
           : undefined,
       }),
     );
-    const items = (r.Items ?? []) as CaptureRecord[];
-    const nextCursor = r.LastEvaluatedKey
-      ? String(r.LastEvaluatedKey.SK).replace('CAPTURE#', '')
-      : undefined;
+    const found = (r.Items ?? []) as Array<CaptureRecord & { SK: string }>;
+    const items = found.slice(0, limit);
+    const lastReturned = found.length > limit ? found[limit - 1] : undefined;
+    let nextCursor: string | undefined;
+    if (lastReturned) {
+      nextCursor = lastReturned.SK.replace('CAPTURE#', '');
+    } else if (r.LastEvaluatedKey) {
+      // DynamoDB's 1 MB read limit cut the page short, so more may follow.
+      nextCursor = String(r.LastEvaluatedKey.SK).replace('CAPTURE#', '');
+    }
     return { items, cursor: nextCursor };
   }
 
+  /**
+   * Update an existing capture. Throws CaptureGoneError when there is none:
+   * UpdateItem on its own creates a missing item, and a capture made only of
+   * the updated attributes (no captureId, createdAt or imageKey) stops the
+   * app decoding the whole list.
+   */
   async updateCapture(
     userId: string,
     captureId: string,
@@ -253,16 +286,24 @@ export class DdbStore {
         sets.push(`#${k} = :${k}`);
       }
     }
-    await this.doc.send(
-      new UpdateCommand({
-        TableName: this.tableName,
-        Key: { PK: userPk(userId), SK: `CAPTURE#${captureId}` },
-        UpdateExpression:
-          `SET ${sets.join(', ')}` + (removes.length ? ` REMOVE ${removes.join(', ')}` : ''),
-        ExpressionAttributeNames: names,
-        ExpressionAttributeValues: values,
-      }),
-    );
+    try {
+      await this.doc.send(
+        new UpdateCommand({
+          TableName: this.tableName,
+          Key: { PK: userPk(userId), SK: `CAPTURE#${captureId}` },
+          UpdateExpression:
+            `SET ${sets.join(', ')}` + (removes.length ? ` REMOVE ${removes.join(', ')}` : ''),
+          ConditionExpression: 'attribute_exists(SK)',
+          ExpressionAttributeNames: names,
+          ExpressionAttributeValues: values,
+        }),
+      );
+    } catch (e) {
+      if ((e as { name?: string }).name === 'ConditionalCheckFailedException') {
+        throw new CaptureGoneError(captureId);
+      }
+      throw e;
+    }
   }
 
   async deleteCapture(userId: string, captureId: string, imageSha256: string): Promise<void> {

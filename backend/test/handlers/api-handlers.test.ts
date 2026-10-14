@@ -324,6 +324,39 @@ describe('captures-update (corrections)', () => {
     expect(capture?.corrected).toBeUndefined();
   });
 
+  it('a capture deleted while the edit runs is a 404 and is not recreated', async () => {
+    const fake = makeFakeDeps();
+    const token = await seed(fake);
+    // Deleted from another device while Google was being patched.
+    fake.deps.calendar.patchEvent = async (_t, _calendarId, eventId) => {
+      await fake.store.deleteCapture('user-1', 'cap-1', 's');
+      return { id: eventId, htmlLink: 'https://calendar.google.com/event?eid=1' };
+    };
+    const res = await invoke(
+      makeUpdateHandler(fake.deps),
+      apiEvent({ token, pathParameters: { id: 'cap-1' }, body: { title: 'Frieze 2026' } }),
+    );
+    expect(res.statusCode).toBe(404);
+    expect(res.body.error).toBe('Capture not found');
+    expect(fake.store.captures.size).toBe(0);
+  });
+
+  it('a capture deleted just after the edit is written is a 404', async () => {
+    const fake = makeFakeDeps();
+    const token = await seed(fake);
+    const updateCapture = fake.store.updateCapture.bind(fake.store);
+    fake.store.updateCapture = async (userId, captureId, updates) => {
+      await updateCapture(userId, captureId, updates);
+      await fake.store.deleteCapture(userId, captureId, 's');
+    };
+    const res = await invoke(
+      makeUpdateHandler(fake.deps),
+      apiEvent({ token, pathParameters: { id: 'cap-1' }, body: { title: 'Frieze 2026' } }),
+    );
+    expect(res.statusCode).toBe(404);
+    expect(res.body.error).toBe('Capture not found');
+  });
+
   it('rejects a malformed date or time with 400 before writing anything', async () => {
     const fake = makeFakeDeps();
     const token = await seed(fake);

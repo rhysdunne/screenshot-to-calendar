@@ -3,11 +3,12 @@
 // Anthropic, Google) are faked.
 import { ulid } from 'ulid';
 import type { Deps, Images, Store } from '../../src/handlers/deps.js';
-import type {
-  AiCallRecord,
-  CaptureRecord,
-  CorrectionRecord,
-  UserRecord,
+import {
+  CaptureGoneError,
+  type AiCallRecord,
+  type CaptureRecord,
+  type CorrectionRecord,
+  type UserRecord,
 } from '../../src/lib/ddb.js';
 import type { ClaudeCallOptions, ClaudeCallResult } from '../../src/lib/anthropic.js';
 import type { CalendarEventInput, ExistingCalendarEvent } from '../../src/pipeline/types.js';
@@ -57,7 +58,8 @@ export class FakeStore implements Store {
   ) {
     const key = `${userId}/${captureId}`;
     const capture = this.captures.get(key);
-    if (!capture) return;
+    // Mirrors DdbStore's attribute_exists condition: never recreates a capture.
+    if (!capture) throw new CaptureGoneError(captureId);
     const next = { ...capture } as Record<string, unknown>;
     for (const [k, v] of Object.entries(updates)) {
       if (v === undefined) continue;

@@ -190,6 +190,36 @@ describe('confidence gating', () => {
     expect(fake.insertedEvents).toHaveLength(0);
   });
 
+  it('a capture deleted while approve runs is a 404 and is not recreated', async () => {
+    const fake = makeFakeDeps({ extractResult: LOW_CONFIDENCE_EXTRACTION });
+    await seedProcessedLowConfidence(fake);
+    // Deleted from another device while the event was being created.
+    const insertEvent = fake.deps.calendar.insertEvent;
+    fake.deps.calendar.insertEvent = async (...args) => {
+      await fake.store.deleteCapture('user-1', 'cap-1', 's');
+      return insertEvent(...args);
+    };
+
+    const res = await invokeApprove(fake);
+    expect(res.statusCode).toBe(404);
+    expect(res.body.error).toBe('Capture not found');
+    expect(fake.store.captures.size).toBe(0);
+  });
+
+  it('a capture deleted just after approve writes it is a 404', async () => {
+    const fake = makeFakeDeps({ extractResult: LOW_CONFIDENCE_EXTRACTION });
+    await seedProcessedLowConfidence(fake);
+    const updateCapture = fake.store.updateCapture.bind(fake.store);
+    fake.store.updateCapture = async (userId, captureId, updates) => {
+      await updateCapture(userId, captureId, updates);
+      await fake.store.deleteCapture(userId, captureId, 's');
+    };
+
+    const res = await invokeApprove(fake);
+    expect(res.statusCode).toBe(404);
+    expect(res.body.error).toBe('Capture not found');
+  });
+
   it('rejects approval of captures not awaiting review', async () => {
     const fake = makeFakeDeps({
       extractResult: { ...LOW_CONFIDENCE_EXTRACTION, confidence: 'high' },

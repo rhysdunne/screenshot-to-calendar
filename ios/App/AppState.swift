@@ -22,11 +22,10 @@ final class AppState: ObservableObject {
     /// The last good captures fetch came back with a cursor: `captures` is one
     /// page of the newest shares (up to 200, or fewer if DynamoDB's 1 MB read
     /// limit cut it short), and older captures may be missing. The app does
-    /// not follow the cursor. At exactly 200 it is true although nothing is
-    /// missing, because DynamoDB returns a cursor whenever it stops at the
-    /// limit. A new share keeps it true (one capture then really is missing);
-    /// only a delete back below 200 clears it. It changes only where
-    /// `captures` does, so it always describes the list on screen.
+    /// not follow the cursor. The API sends one only when an older capture
+    /// exists or the read limit ended the page, so at exactly 200 it is
+    /// false. It changes only where `captures` does, so it always describes
+    /// the list on screen.
     @Published var hasMoreCaptures = false
     @Published var pendingDeepLinkCaptureId: String?
     /// Why the last `signIn` failed. Set only there, and never for a user

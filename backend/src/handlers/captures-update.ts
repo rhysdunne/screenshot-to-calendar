@@ -16,6 +16,7 @@ import {
   type ExtractedEvent,
 } from '../pipeline/types.js';
 import { captureView, isStalled, STALLED_ERROR } from './captures-read.js';
+import { CaptureGoneError } from '../lib/ddb.js';
 import { logger } from '../lib/logger.js';
 
 const DAILY_CORRECTION_LIMIT = 20;
@@ -138,17 +139,24 @@ export function makeHandler(deps: Deps): ApiHandler {
       // captureView reports as failed, that would bring it back as processing
       // for another STALLED_AFTER_MS, so the failure the app showed is stored.
       const stalled = isStalled(capture, new Date());
-      await deps.store.updateCapture(user.userId, captureId, {
-        corrected,
-        ...(stalled ? { status: 'failed' as const, error: STALLED_ERROR } : {}),
-      });
+      try {
+        await deps.store.updateCapture(user.userId, captureId, {
+          corrected,
+          ...(stalled ? { status: 'failed' as const, error: STALLED_ERROR } : {}),
+        });
+      } catch (e) {
+        // Deleted since it was read above, for example from another device.
+        if (e instanceof CaptureGoneError) throw new HttpError(404, 'Capture not found');
+        throw e;
+      }
       logger.info('capture_corrected', {
         userId: user.userId,
         captureId,
         fields: changes.map((c) => c.field),
       });
       const updated = await deps.store.getCapture(user.userId, captureId);
-      return json(200, captureView(updated!));
+      if (!updated) throw new HttpError(404, 'Capture not found');
+      return json(200, captureView(updated));
     } catch (e) {
       return errorResponse(e);
     }
