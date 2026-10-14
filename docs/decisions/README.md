@@ -46,3 +46,4 @@ the old ADR.
 - [0006](0006-prompt-improvement-manual-only.md): Run prompt improvement on demand only
 - [0007](0007-model-refresh-2026-10.md): Haiku 5.5 for classification, Sonnet 5 extraction with thinking off
 - [0008](0008-human-written-prompt-review.md): Human-written prompt fixes are reviewed per case, not sign-test gated
+- [0009](0009-stalled-captures-derived-at-read-time.md): Report stalled captures as failed at read time

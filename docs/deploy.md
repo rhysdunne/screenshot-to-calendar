@@ -98,7 +98,10 @@ the choice in a new ADR.
   processor logs `capture_missing` and drops the message. A large redrive
   also delays new shares: the processor takes two captures at a time, and a
   new capture that waits more than ten minutes behind the redrive is reported
-  as `failed` too. Redrive a large DLQ at a quiet time.
+  as `failed` too. Redrive a large DLQ at a quiet time. A DLQ consumer that
+  marks these captures failed was rejected, because it would empty the queue
+  that this alarm and the redrive depend on
+  ([ADR 0009](decisions/0009-stalled-captures-derived-at-read-time.md)).
 - **API 5xx alarm** (`s2c-api-5xx-*`) fires when the HTTP API returns any 5xx.
   Look for `unhandled_error` in the logs of the route Lambdas
   (`/aws/lambda/s2c-<route>-prod`), for example
