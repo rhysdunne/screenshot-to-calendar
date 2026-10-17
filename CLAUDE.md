@@ -150,10 +150,10 @@ cd evals   && npm run eval -- --models claude-haiku-4-5,claude-sonnet-5-5 --data
 - iOS: the required `ios-build` PR check (`ios.yml`, macOS runner, Xcode 26.6, no
   signing) compiles the app for a device, then runs the Swift Testing target
   `Screenshot2CalTests` (`ios/Tests/`) natively on the runner's Mac. The target
-  compiles `App/EventSections.swift`, `App/ImageViewerGeometry.swift` and
-  `Shared/Models.swift` directly, with no host app or simulator, so any file it
-  lists must stay Foundation-only. Its scheme pins en_GB and `TZ=Pacific/Auckland`,
-  so a "today" taken from the device zone fails.
+  compiles `App/EventSections.swift`, `App/ImageViewerGeometry.swift`,
+  `Shared/APIURL.swift` and `Shared/Models.swift` directly, with no host app or
+  simulator, so any file it lists must stay Foundation-only. Its scheme pins en_GB
+  and `TZ=Pacific/Auckland`, so a "today" taken from the device zone fails.
   `just ios-build` and `just ios-test` run the same steps on a Mac. Why macOS and not
   a simulator: ADR 0010. Views, `AppState` and the Share Extension have no tests:
   check them on a device or simulator. Keep `ios/Shared/Models.swift` in sync with
