@@ -11,16 +11,33 @@ API Gateway HTTP API (s2c-api-{stage})
             │
    ┌────────┴──────────┐
    ▼                   ▼
-API Lambdas       captures-create ──► S3 (image) + DynamoDB (capture) ──► SQS
-                                                                            │
-                                                                            ▼
-                                                              process-capture Lambda
-                                                                classify  (Haiku)
-                                                                extract   (Sonnet)
-                                                                places    (venue→address)
-                                                                gate      (low confidence → needs_review)
-                                                                dedup     (calendar window)
-                                                                insert    (Google Calendar)
+API Lambdas       captures-create
+(one per route)     1. claim IMGHASH#<sha256> in DynamoDB (conditional put)
+                       already claimed → 200 duplicate, nothing stored
+                    2. S3 (image)
+                    3. DynamoDB (capture, queued)
+                    4. SQS ──► DLQ after 3 failed receives
+                        │
+                        ▼
+                  process-capture Lambda
+                    classify  (Haiku)
+                    extract   (Sonnet)
+                    places    (venue→address)
+                    gate      (low confidence → needs_review)
+                    dedup     (calendar window)
+                    insert    (Google Calendar)
+
+Parameter Store /s2c/{stage}/ ──► the Lambdas (five SecureString secrets and
+                                  the signup-allowlist String, cached 5 min)
+
+CloudWatch alarms ──► SNS (s2c-alerts-{stage}) ──► email (ALERT_EMAIL)
+  DLQ not empty │ Processor errors │ AuthGoogle errors │ API 5xx │ AI spend > $2 in 24 h
+
+┌─ Web stack: CloudFront + private S3 ─┐
+│  /.well-known/apple-app-site-association ──► iOS opens /c/* links in the app
+│  /c/<captureId> without the app ──► fallback page (capture-fallback.html)
+│  /privacy.html, /terms.html (linked from the app)
+└──────────────────────────────────────┘
 ```
 
 ## API contract (v1)
@@ -113,7 +130,10 @@ All authenticated routes take `Authorization: Bearer <JWT>`. Mirrored by
 
 ## Dedup design
 
-1. **Exact**: SHA-256 of image bytes claimed via conditional put at upload.
+1. **Exact**: SHA-256 of image bytes claimed via conditional put at upload,
+   before the image goes to S3. If a later upload step fails, the handler
+   releases the claim and deletes the partial capture and image, so a retry
+   of the same upload is not reported as a duplicate.
 2. **Own event**: before insert, list calendar events in `[start−1d, end+1d]`.
    An event whose description carries this capture's `/c/<captureId>` link
    was created by an earlier attempt at the same capture (an SQS redelivery,
