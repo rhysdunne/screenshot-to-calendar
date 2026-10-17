@@ -134,6 +134,7 @@ targets:
       - Tests
       - App/EventSections.swift
       - App/ImageViewerGeometry.swift
+      - Shared/APIURL.swift
       - Shared/Models.swift
     settings:
       base:

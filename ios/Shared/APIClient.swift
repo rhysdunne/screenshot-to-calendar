@@ -19,8 +19,10 @@ struct APIClient {
     var baseURL: URL = AppConfig.apiBase
     var tokenProvider: () -> String? = { KeychainStore.token }
 
-    private func request(_ method: String, _ path: String, body: Encodable? = nil) throws -> URLRequest {
-        var req = URLRequest(url: baseURL.appending(path: path))
+    private func request(
+        _ method: String, _ path: String, query: [URLQueryItem] = [], body: Encodable? = nil
+    ) throws -> URLRequest {
+        var req = URLRequest(url: APIURL.make(baseURL, path: path, query: query))
         req.httpMethod = method
         if let token = tokenProvider() {
             req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
@@ -83,8 +85,9 @@ struct APIClient {
     }
 
     func deleteCapture(id: String, deleteEvent: Bool) async throws {
-        let _: [String: Bool] = try await send(
-            try request("DELETE", "/v1/captures/\(id)?deleteEvent=\(deleteEvent)"))
+        let _: [String: Bool] = try await send(try request(
+            "DELETE", "/v1/captures/\(id)",
+            query: [URLQueryItem(name: "deleteEvent", value: String(deleteEvent))]))
     }
 
     // MARK: Calendars & settings
